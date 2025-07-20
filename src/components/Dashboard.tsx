@@ -92,6 +92,18 @@ const Dashboard: React.FC = () => {
     fee: string;
   }) => {
     try {
+      // Check if Supabase is configured
+      if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+        alert('Please connect to Supabase to add transactions. Click "Connect to Supabase" in the top right.');
+        return;
+      }
+
+      // Check if there's a current portfolio
+      if (!currentPortfolio) {
+        alert('No portfolio available. Please ensure you are logged in and have a portfolio created.');
+        return;
+      }
+
       await addTransaction(transactionData);
     } catch (error) {
       console.error('Error adding transaction:', error);
