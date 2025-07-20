@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal } from 'lucide-react';
+import { usePortfolio } from '../hooks/usePortfolio';
 import PortfolioChart from './PortfolioChart';
 import StockTrends from './StockTrends';
 import TransactionHistory from './TransactionHistory';
@@ -8,33 +9,20 @@ import DividendCalendar from './DividendCalendar';
 import DividendsReceived from './DividendsReceived';
 import Sidebar from './Sidebar';
 import PortfolioModal from './PortfolioModal';
-import { portfolioData, stockTrendsData, transactionData, dividendData } from '../data/mockData';
-
-interface PortfolioItem {
-  symbol: string;
-  name: string;
-  shares: number;
-  price: number;
-  value: number;
-  cost: number;
-  change: number;
-  changePercent: number;
-}
-
-interface Transaction {
-  id: string;
-  symbol: string;
-  type: 'buy' | 'sell' | 'dividend';
-  shares?: number;
-  price?: number;
-  amount: number;
-  date: string;
-  status: 'completed' | 'pending';
-}
 
 const Dashboard: React.FC = () => {
-  const [currentPortfolioData, setCurrentPortfolioData] = useState<PortfolioItem[]>(portfolioData);
-  const [currentTransactionData, setCurrentTransactionData] = useState<Transaction[]>(transactionData);
+  const {
+    portfolios,
+    currentPortfolio,
+    holdings,
+    transactions,
+    dividends,
+    loading,
+    error,
+    addTransaction,
+    getPortfolioData
+  } = usePortfolio();
+
   const [hoveredStock, setHoveredStock] = useState<string | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -58,6 +46,35 @@ const Dashboard: React.FC = () => {
     };
   }, [isPortfolioMenuOpen]);
 
+  // Get portfolio data in the format expected by components
+  const currentPortfolioData = getPortfolioData();
+
+  // Convert transactions to the format expected by TransactionHistory component
+  const currentTransactionData = transactions.map(transaction => ({
+    id: transaction.id,
+    symbol: transaction.stock?.symbol || '',
+    type: transaction.type,
+    shares: transaction.shares,
+    price: transaction.price,
+    amount: transaction.amount,
+    date: transaction.transaction_date,
+    status: transaction.status
+  }));
+
+  // Convert dividends to the format expected by DividendTracker component
+  const dividendData = dividends.map(dividend => ({
+    id: dividend.id,
+    symbol: dividend.stock?.symbol || '',
+    name: dividend.stock?.name || '',
+    amount: dividend.amount,
+    date: dividend.payment_date,
+    exDividendDate: dividend.ex_dividend_date,
+    paymentDate: dividend.payment_date,
+    yield: dividend.dividend_yield || 0,
+    frequency: dividend.frequency,
+    status: dividend.status
+  }));
+
   const totalValue = currentPortfolioData.reduce((sum, stock) => sum + stock.value, 0);
   const totalGain = currentPortfolioData.reduce((sum, stock) => sum + (stock.value - stock.cost), 0);
   const gainPercentage = (totalGain / (totalValue - totalGain)) * 100;
@@ -65,7 +82,7 @@ const Dashboard: React.FC = () => {
   const dayChange = 2847.32;
   const dayChangePercent = 1.24;
 
-  const handlePortfolioTransaction = (transactionData: {
+  const handlePortfolioTransaction = async (transactionData: {
     ticker: string;
     operation: 'buy' | 'sell';
     date: string;
@@ -74,91 +91,35 @@ const Dashboard: React.FC = () => {
     currency: string;
     fee: string;
   }) => {
-    const shares = parseInt(transactionData.shares);
-    const price = parseFloat(transactionData.price);
-    const fee = parseFloat(transactionData.fee || '0');
-    const amount = shares * price;
-    
-    // Create new transaction record
-    const newTransaction: Transaction = {
-      id: Date.now().toString(),
-      symbol: transactionData.ticker,
-      type: transactionData.operation,
-      shares: shares,
-      price: price,
-      amount: amount,
-      date: transactionData.date,
-      status: 'completed'
-    };
-    
-    // Update transaction history
-    setCurrentTransactionData(prev => [newTransaction, ...prev]);
-    
-    // Update portfolio data
-    setCurrentPortfolioData(prev => {
-      const existingStockIndex = prev.findIndex(stock => stock.symbol === transactionData.ticker);
-      
-      if (existingStockIndex >= 0) {
-        // Update existing stock
-        const updatedPortfolio = [...prev];
-        const existingStock = updatedPortfolio[existingStockIndex];
-        
-        if (transactionData.operation === 'buy') {
-          // Calculate new averages for buy operation
-          const totalShares = existingStock.shares + shares;
-          const totalCost = existingStock.cost + amount;
-          const newAveragePrice = totalCost / totalShares;
-          
-          updatedPortfolio[existingStockIndex] = {
-            ...existingStock,
-            shares: totalShares,
-            price: price,
-            value: totalShares * price,
-            cost: totalCost,
-            change: (totalShares * price) - totalCost,
-            changePercent: ((totalShares * price) - totalCost) / totalCost * 100
-          };
-        } else {
-          // Sell operation
-          const remainingShares = Math.max(0, existingStock.shares - shares);
-          const proportionalCost = (remainingShares / existingStock.shares) * existingStock.cost;
-          
-          if (remainingShares > 0) {
-            updatedPortfolio[existingStockIndex] = {
-              ...existingStock,
-              shares: remainingShares,
-              price: price,
-              value: remainingShares * price,
-              cost: proportionalCost,
-              change: (remainingShares * price) - proportionalCost,
-              changePercent: ((remainingShares * price) - proportionalCost) / proportionalCost * 100
-            };
-          } else {
-            // Remove stock if no shares remaining
-            updatedPortfolio.splice(existingStockIndex, 1);
-          }
-        }
-        
-        return updatedPortfolio;
-      } else if (transactionData.operation === 'buy') {
-        // Add new stock to portfolio
-        const newStock: PortfolioItem = {
-          symbol: transactionData.ticker,
-          name: `${transactionData.ticker} Inc.`, // In a real app, you'd fetch the company name
-          shares: shares,
-          price: price,
-          value: amount,
-          cost: amount,
-          change: 0,
-          changePercent: 0
-        };
-        
-        return [...prev, newStock];
-      }
-      
-      return prev;
-    });
+    try {
+      await addTransaction(transactionData);
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      // You could add error handling UI here
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-400 mx-auto mb-4"></div>
+          <p className="text-xl">Loading your portfolio...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-xl text-red-400 mb-4">Error loading portfolio</p>
+          <p className="text-gray-400">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex">
