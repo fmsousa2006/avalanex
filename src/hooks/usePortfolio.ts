@@ -135,12 +135,16 @@ export const usePortfolio = () => {
       setPortfolios([data]);
       setCurrentPortfolio(data);
     } else {
+      // Get current user for valid UUID
+      const user = await getCurrentUser();
+      const userId = user?.id || '00000000-0000-0000-0000-000000000000';
+      
       // Create the fixed portfolio if it doesn't exist
       const { data: newPortfolio, error: insertError } = await supabase
         .from('portfolios')
         .insert([{
           id: FIXED_PORTFOLIO_ID,
-          user_id: 'default-user',
+          user_id: userId,
           name: 'My Portfolio',
           description: 'Default portfolio for tracking investments'
         }])
