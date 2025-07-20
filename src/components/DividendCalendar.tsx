@@ -298,10 +298,7 @@ const DividendCalendar: React.FC<DividendCalendarProps> = ({ isOpen, onClose }) 
             <ChevronLeft className="w-5 h-5" />
           </button>
           
-              <div className="flex items-center space-x-2">
-                <h2 className="text-xl font-bold">Dividend Calendar</h2>
-                <Move className="w-4 h-4 text-gray-400" />
-              </div>
+          <h3 className="text-lg font-bold">
             {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </h3>
           
