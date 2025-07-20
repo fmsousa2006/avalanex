@@ -1,0 +1,336 @@
+import React, { useState } from 'react';
+import { X, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { dividendData } from '../data/mockData';
+
+interface DividendCalendarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+interface CalendarDividend {
+  date: string;
+  symbol: string;
+  name: string;
+  amount: number;
+  type: 'payment' | 'ex-dividend';
+}
+
+const DividendCalendar: React.FC<DividendCalendarProps> = ({ isOpen, onClose }) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [hoveredDate, setHoveredDate] = useState<string | null>(null);
+
+  // Handle escape key
+  React.useEffect(() => {
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscapeKey);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [isOpen, onClose]);
+  if (!isOpen) return null;
+
+  // Generate fixed calendar dividends for the current month
+  const generateFixedCalendarDividends = (month: number, year: number): CalendarDividend[] => {
+    const dividends: CalendarDividend[] = [];
+
+    // Add existing dividend data
+    dividendData.forEach(dividend => {
+      const paymentDate = new Date(dividend.paymentDate);
+      const exDividendDate = new Date(dividend.exDividendDate);
+
+      if (paymentDate.getMonth() === month && paymentDate.getFullYear() === year) {
+        dividends.push({
+          date: dividend.paymentDate,
+          symbol: dividend.symbol,
+          name: dividend.name,
+          amount: dividend.amount,
+          type: 'payment'
+        });
+      }
+
+      if (exDividendDate.getMonth() === month && exDividendDate.getFullYear() === year) {
+        dividends.push({
+          date: dividend.exDividendDate,
+          symbol: dividend.symbol,
+          name: dividend.name,
+          amount: dividend.amount,
+          type: 'ex-dividend'
+        });
+      }
+    });
+
+    // Generate additional fixed mock dividends using month/year as seed
+    const seed = month * 100 + year;
+    const mockStocks = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA'];
+    
+    mockStocks.forEach((symbol, index) => {
+      // Use deterministic "random" based on seed and index
+      const pseudoRandom1 = ((seed + index * 17) % 28) + 1;
+      const pseudoRandom2 = ((seed + index * 23) % 28) + 1;
+      const pseudoRandom3 = (seed + index * 13) % 100;
+      
+      const paymentDate = new Date(year, month, pseudoRandom1);
+      const exDividendDate = new Date(year, month, pseudoRandom2);
+      
+      if (pseudoRandom3 > 50) { // 50% chance to have a dividend this month
+        dividends.push({
+          date: paymentDate.toISOString().split('T')[0],
+          symbol: symbol,
+          name: `${symbol} Inc.`,
+          amount: ((pseudoRandom3 % 200) + 50) / 100, // Deterministic dividend amount
+          type: 'payment'
+        });
+      }
+      
+      if (pseudoRandom3 > 70) { // 30% chance to have an ex-dividend date
+        dividends.push({
+          date: exDividendDate.toISOString().split('T')[0],
+          symbol: symbol,
+          name: `${symbol} Inc.`,
+          amount: ((pseudoRandom3 % 200) + 50) / 100,
+          type: 'ex-dividend'
+        });
+      }
+    });
+
+    return dividends;
+  };
+
+  const calendarDividends = generateFixedCalendarDividends(currentDate.getMonth(), currentDate.getFullYear());
+
+  const getDividendsForDate = (date: string): CalendarDividend[] => {
+    return calendarDividends.filter(dividend => dividend.date === date);
+  };
+
+  const getDaysInMonth = (date: Date): number => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (date: Date): number => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      if (direction === 'prev') {
+        newDate.setMonth(prev.getMonth() - 1);
+      } else {
+        newDate.setMonth(prev.getMonth() + 1);
+      }
+      return newDate;
+    });
+  };
+
+  const formatDate = (year: number, month: number, day: number): string => {
+    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  };
+
+  const renderCalendarDays = () => {
+    const daysInMonth = getDaysInMonth(currentDate);
+    const firstDay = getFirstDayOfMonth(currentDate);
+    const days = [];
+
+    // Empty cells for days before the first day of the month
+    for (let i = 0; i < firstDay; i++) {
+      days.push(<div key={`empty-${i}`} className="h-20"></div>);
+    }
+
+    // Days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateString = formatDate(currentDate.getFullYear(), currentDate.getMonth(), day);
+      const dayDividends = getDividendsForDate(dateString);
+      const isToday = new Date().toDateString() === new Date(dateString).toDateString();
+
+      days.push(
+        <div
+          key={day}
+          className={`h-20 border border-gray-700 p-1 relative cursor-pointer hover:bg-gray-800 transition-colors ${
+            isToday ? 'bg-blue-900/20 border-blue-500' : ''
+          }`}
+          onMouseEnter={() => setHoveredDate(dateString)}
+          onMouseLeave={() => setHoveredDate(null)}
+        >
+          <div className={`text-sm font-medium ${isToday ? 'text-blue-400' : 'text-gray-300'}`}>
+            {day}
+          </div>
+          
+          {dayDividends.length > 0 && (
+            <div className="mt-1 space-y-1">
+              {dayDividends.slice(0, 2).map((dividend, index) => (
+                <div
+                  key={index}
+                  className={`text-xs px-1 py-0.5 rounded truncate text-center ${
+                    dividend.type === 'payment'
+                      ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-600/30'
+                      : 'bg-yellow-600/20 text-yellow-400 border border-yellow-600/30'
+                  }`}
+                >
+                  {dividend.symbol}
+                </div>
+              ))}
+              {dayDividends.length > 2 && (
+                <div className="text-xs text-gray-400 text-center">
+                  +{dayDividends.length - 2} more
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return days;
+  };
+
+  const hoveredDividends = hoveredDate ? getDividendsForDate(hoveredDate) : [];
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900 rounded-xl max-w-3xl w-full max-h-[80vh] overflow-y-auto border border-gray-700">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-700">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center justify-center w-10 h-10 bg-gray-800 rounded-lg">
+              <Calendar className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold">Dividend Calendar</h2>
+              <p className="text-gray-400">Track upcoming dividend payments and ex-dividend dates</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Calendar Navigation */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-700">
+          <button
+            onClick={() => navigateMonth('prev')}
+            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          
+          <h3 className="text-lg font-semibold">
+            {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          </h3>
+          
+          <button
+            onClick={() => navigateMonth('next')}
+            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Legend */}
+        <div className="p-4 border-b border-gray-700">
+          <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-emerald-600/20 border border-emerald-600/30 rounded"></div>
+              <span className="text-sm text-gray-300">Dividend Payment</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-yellow-600/20 border border-yellow-600/30 rounded"></div>
+              <span className="text-sm text-gray-300">Ex-Dividend Date</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Calendar Grid */}
+        <div className="p-4">
+          {/* Day headers */}
+          <div className="grid grid-cols-7 gap-0 mb-2">
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
+              <div key={index} className="h-6 flex items-center justify-center text-xs font-medium text-gray-400">
+                {day}
+              </div>
+            ))}
+          </div>
+          
+          {/* Calendar days */}
+          <div className="grid grid-cols-7 gap-0 border border-gray-700">
+            {renderCalendarDays()}
+          </div>
+        </div>
+
+        {/* Tooltip for hovered date */}
+        {hoveredDate && hoveredDividends.length > 0 && (
+          <div className="fixed bg-gray-700 text-white p-4 rounded-lg shadow-lg border border-gray-600 z-50 pointer-events-none max-w-xs"
+               style={{ 
+                 left: '50%', 
+                 top: '50%', 
+                 transform: 'translate(-50%, -50%)',
+                 position: 'fixed'
+               }}>
+            <div className="text-sm font-semibold mb-2">
+              {new Date(hoveredDate).toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </div>
+            <div className="space-y-2">
+              {hoveredDividends.map((dividend, index) => (
+                <div key={index} className="text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{dividend.symbol}</span>
+                    <span className={dividend.type === 'payment' ? 'text-emerald-400' : 'text-yellow-400'}>
+                      ${dividend.amount.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="text-gray-400">
+                    {dividend.type === 'payment' ? 'Payment' : 'Ex-Dividend'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Summary */}
+        <div className="p-4 border-t border-gray-700">
+          <h4 className="text-base font-semibold mb-3">This Month's Summary</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-gray-800 rounded-lg p-3">
+              <p className="text-gray-400 text-sm">Total Payments</p>
+              <p className="text-xl font-bold text-emerald-400">
+                ${calendarDividends
+                  .filter(d => d.type === 'payment')
+                  .reduce((sum, d) => sum + d.amount, 0)
+                  .toFixed(2)}
+              </p>
+            </div>
+            <div className="bg-gray-800 rounded-lg p-3">
+              <p className="text-gray-400 text-sm">Payment Events</p>
+              <p className="text-xl font-bold">
+                {calendarDividends.filter(d => d.type === 'payment').length}
+              </p>
+            </div>
+            <div className="bg-gray-800 rounded-lg p-3">
+              <p className="text-gray-400 text-sm">Ex-Dividend Events</p>
+              <p className="text-xl font-bold">
+                {calendarDividends.filter(d => d.type === 'ex-dividend').length}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default DividendCalendar;
