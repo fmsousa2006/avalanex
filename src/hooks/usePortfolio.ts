@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase, Portfolio, PortfolioHolding, Transaction, Dividend, Stock, PortfolioData } from '../lib/supabase';
+import { portfolioData, transactionData, dividendData } from '../data/mockData';
 
 export const usePortfolio = () => {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
@@ -9,6 +10,7 @@ export const usePortfolio = () => {
   const [dividends, setDividends] = useState<Dividend[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isUsingMockData, setIsUsingMockData] = useState(false);
 
   // Get current user
   const getCurrentUser = async () => {
@@ -18,6 +20,87 @@ export const usePortfolio = () => {
     }
     const { data: { user } } = await supabase.auth.getUser();
     return user;
+  };
+
+  // Create mock portfolio when Supabase is not available
+  const createMockPortfolio = () => {
+    const mockPortfolio: Portfolio = {
+      id: 'mock-portfolio-1',
+      user_id: 'mock-user',
+      name: 'Demo Portfolio',
+      description: 'Sample portfolio with demo data',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const mockHoldings: PortfolioHolding[] = portfolioData.map((stock, index) => ({
+      id: `mock-holding-${index}`,
+      portfolio_id: mockPortfolio.id,
+      stock_id: `mock-stock-${index}`,
+      shares: stock.shares,
+      average_cost: stock.cost / stock.shares,
+      current_price: stock.price,
+      last_updated: new Date().toISOString(),
+      stock: {
+        id: `mock-stock-${index}`,
+        symbol: stock.symbol,
+        name: stock.name,
+        sector: 'Technology',
+        market_cap: '1T+',
+        created_at: new Date().toISOString()
+      }
+    }));
+
+    const mockTransactions: Transaction[] = transactionData.map((tx, index) => ({
+      id: tx.id,
+      portfolio_id: mockPortfolio.id,
+      stock_id: `mock-stock-${index}`,
+      type: tx.type,
+      shares: tx.shares,
+      price: tx.price,
+      amount: tx.amount,
+      fee: 0,
+      currency: 'USD',
+      transaction_date: tx.date,
+      status: tx.status,
+      created_at: new Date().toISOString(),
+      stock: {
+        id: `mock-stock-${index}`,
+        symbol: tx.symbol,
+        name: `${tx.symbol} Inc.`,
+        sector: 'Technology',
+        market_cap: '1T+',
+        created_at: new Date().toISOString()
+      }
+    }));
+
+    const mockDividends: Dividend[] = dividendData.map((div, index) => ({
+      id: div.id,
+      stock_id: `mock-stock-${index}`,
+      amount: div.amount,
+      ex_dividend_date: div.exDividendDate,
+      payment_date: div.paymentDate,
+      record_date: div.exDividendDate,
+      dividend_yield: div.yield,
+      frequency: div.frequency as 'Monthly' | 'Quarterly' | 'Semi-Annual' | 'Annual',
+      status: div.status,
+      created_at: new Date().toISOString(),
+      stock: {
+        id: `mock-stock-${index}`,
+        symbol: div.symbol,
+        name: div.name,
+        sector: 'Technology',
+        market_cap: '1T+',
+        created_at: new Date().toISOString()
+      }
+    }));
+
+    setPortfolios([mockPortfolio]);
+    setCurrentPortfolio(mockPortfolio);
+    setHoldings(mockHoldings);
+    setTransactions(mockTransactions);
+    setDividends(mockDividends);
+    setIsUsingMockData(true);
   };
 
   // Create default portfolio for new users
@@ -128,6 +211,95 @@ export const usePortfolio = () => {
     currency: string;
     fee: string;
   }) => {
+    // If using mock data, simulate adding transaction
+    if (isUsingMockData) {
+      const newTransaction: Transaction = {
+        id: `mock-tx-${Date.now()}`,
+        portfolio_id: currentPortfolio!.id,
+        stock_id: `mock-stock-${transactionData.ticker}`,
+        type: transactionData.operation,
+        shares: parseInt(transactionData.shares),
+        price: parseFloat(transactionData.price),
+        amount: parseInt(transactionData.shares) * parseFloat(transactionData.price),
+        fee: parseFloat(transactionData.fee || '0'),
+        currency: transactionData.currency,
+        transaction_date: transactionData.date,
+        status: 'completed' as const,
+        created_at: new Date().toISOString(),
+        stock: {
+          id: `mock-stock-${transactionData.ticker}`,
+          symbol: transactionData.ticker,
+          name: `${transactionData.ticker} Inc.`,
+          sector: 'Technology',
+          market_cap: '1T+',
+          created_at: new Date().toISOString()
+        }
+      };
+
+      // Add to transactions list
+      setTransactions(prev => [newTransaction, ...prev]);
+
+      // Update or create holding
+      const shares = parseInt(transactionData.shares);
+      const price = parseFloat(transactionData.price);
+      
+      setHoldings(prev => {
+        const existingIndex = prev.findIndex(h => h.stock?.symbol === transactionData.ticker);
+        
+        if (existingIndex >= 0) {
+          const updated = [...prev];
+          const existing = updated[existingIndex];
+          
+          if (transactionData.operation === 'buy') {
+            const newShares = existing.shares + shares;
+            const totalCost = (existing.shares * existing.average_cost) + (shares * price);
+            updated[existingIndex] = {
+              ...existing,
+              shares: newShares,
+              average_cost: totalCost / newShares,
+              current_price: price,
+              last_updated: new Date().toISOString()
+            };
+          } else {
+            const newShares = Math.max(0, existing.shares - shares);
+            if (newShares > 0) {
+              updated[existingIndex] = {
+                ...existing,
+                shares: newShares,
+                current_price: price,
+                last_updated: new Date().toISOString()
+              };
+            } else {
+              updated.splice(existingIndex, 1);
+            }
+          }
+          return updated;
+        } else if (transactionData.operation === 'buy') {
+          const newHolding: PortfolioHolding = {
+            id: `mock-holding-${Date.now()}`,
+            portfolio_id: currentPortfolio!.id,
+            stock_id: `mock-stock-${transactionData.ticker}`,
+            shares: shares,
+            average_cost: price,
+            current_price: price,
+            last_updated: new Date().toISOString(),
+            stock: {
+              id: `mock-stock-${transactionData.ticker}`,
+              symbol: transactionData.ticker,
+              name: `${transactionData.ticker} Inc.`,
+              sector: 'Technology',
+              market_cap: '1T+',
+              created_at: new Date().toISOString()
+            }
+          };
+          return [...prev, newHolding];
+        }
+        return prev;
+      });
+
+      return newTransaction;
+    }
+
     if (!currentPortfolio) throw new Error('No current portfolio');
 
     const shares = parseInt(transactionData.shares);
@@ -253,7 +425,8 @@ export const usePortfolio = () => {
         
         // Check if Supabase is configured
         if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
-          setError('Supabase not configured. Please connect to Supabase to use the portfolio features.');
+          // Use mock data when Supabase is not configured
+          createMockPortfolio();
           setLoading(false);
           return;
         }
@@ -296,6 +469,7 @@ export const usePortfolio = () => {
     dividends,
     loading,
     error,
+    isUsingMockData,
     addTransaction,
     getPortfolioData,
     setCurrentPortfolio

@@ -19,6 +19,7 @@ const Dashboard: React.FC = () => {
     dividends,
     loading,
     error,
+    isUsingMockData,
     addTransaction,
     getPortfolioData
   } = usePortfolio();
@@ -92,22 +93,10 @@ const Dashboard: React.FC = () => {
     fee: string;
   }) => {
     try {
-      // Check if Supabase is configured
-      if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
-        alert('Please connect to Supabase to add transactions. Click "Connect to Supabase" in the top right.');
-        return;
-      }
-
-      // Check if there's a current portfolio
-      if (!currentPortfolio) {
-        alert('No portfolio available. Please ensure you are logged in and have a portfolio created.');
-        return;
-      }
-
       await addTransaction(transactionData);
     } catch (error) {
       console.error('Error adding transaction:', error);
-      // You could add error handling UI here
+      alert('Error adding transaction: ' + (error as Error).message);
     }
   };
 
@@ -149,7 +138,12 @@ const Dashboard: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <BarChart3 className="w-8 h-8 text-emerald-400" />
-            <h1 className="text-2xl font-bold">Portfolio Dashboard</h1>
+            <div>
+              <h1 className="text-2xl font-bold">Portfolio Dashboard</h1>
+              {isUsingMockData && (
+                <p className="text-xs text-yellow-400">Using demo data - Connect to Supabase for real portfolio tracking</p>
+              )}
+            </div>
           </div>
           <div className="flex items-center space-x-6">
             <div className="text-right">
