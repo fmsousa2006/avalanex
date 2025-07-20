@@ -1,6 +1,18 @@
 import { useState, useEffect } from 'react';
 import { supabase, Portfolio, PortfolioHolding, Transaction, Dividend, Stock, PortfolioData } from '../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { portfolioData, transactionData, dividendData } from '../data/mockData';
+
+// Create admin client for bypassing RLS when creating default portfolio
+const getAdminClient = () => {
+  if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY) {
+    return null;
+  }
+  return createClient(
+    import.meta.env.VITE_SUPABASE_URL,
+    import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY
+  );
+};
 
 export const usePortfolio = () => {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
@@ -140,7 +152,12 @@ export const usePortfolio = () => {
       const userId = user?.id || '00000000-0000-0000-0000-000000000000';
       
       // Create the fixed portfolio if it doesn't exist
-      const { data: newPortfolio, error: insertError } = await supabase
+      const adminClient = getAdminClient();
+      if (!adminClient) {
+        throw new Error('Admin client not available');
+      }
+      
+      const { data: newPortfolio, error: insertError } = await adminClient
         .from('portfolios')
         .insert([{
           id: FIXED_PORTFOLIO_ID,
