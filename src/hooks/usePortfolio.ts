@@ -120,58 +120,38 @@ export const usePortfolio = () => {
 
   // Create default portfolio for new users
   const createDefaultPortfolio = async (userId: string) => {
-    // Use the fixed portfolio that was inserted via migration
-    const { data, error } = await supabase
-      .from('portfolios')
-      .select('*')
-      .eq('id', FIXED_PORTFOLIO_ID)
-      .single();
-
-    if (error) throw error;
-    return data;
+    // This function is no longer needed as we handle portfolio creation in fetchPortfolios
+    return null;
   };
 
   // Fetch portfolios
   const fetchPortfolios = async () => {
-    // Fetch the fixed portfolio instead of user-specific portfolios
-    const { data, error } = await supabase
-      .from('portfolios')
-      .select('*')
-      .eq('id', FIXED_PORTFOLIO_ID)
-      .maybeSingle();
-
-    if (error) throw error;
-
-    // Set the fixed portfolio as current if it exists, otherwise create it
-    if (data) {
-      setPortfolios([data]);
-      setCurrentPortfolio(data);
-    } else {
-      // Get current user for valid UUID
-      const user = await getCurrentUser();
-      const userId = user?.id || '00000000-0000-0000-0000-000000000000';
-      
-      // Create the fixed portfolio if it doesn't exist
-      const adminClient = getAdminClient();
-      if (!adminClient) {
-        throw new Error('Admin client not available');
-      }
-      
-      const { data: newPortfolio, error: insertError } = await adminClient
+    try {
+      // Try to fetch the fixed portfolio
+      const { data, error } = await supabase
         .from('portfolios')
-        .insert([{
-          id: FIXED_PORTFOLIO_ID,
-          user_id: userId,
-          name: 'My Portfolio',
-          description: 'Default portfolio for tracking investments'
-        }])
-        .select()
-        .single();
+        .select('*')
+        .eq('id', FIXED_PORTFOLIO_ID)
+        .maybeSingle();
 
-      if (insertError) throw insertError;
+      if (error) {
+        console.warn('Error fetching portfolio from Supabase:', error);
+        // Fall back to mock data
+        createMockPortfolio();
+        return;
+      }
 
-      setPortfolios([newPortfolio]);
-      setCurrentPortfolio(newPortfolio);
+      if (data) {
+        setPortfolios([data]);
+        setCurrentPortfolio(data);
+      } else {
+        console.warn('No portfolio found, using mock data');
+        // Fall back to mock data if no portfolio exists
+        createMockPortfolio();
+      }
+    } catch (err) {
+      console.warn('Failed to connect to Supabase, using mock data:', err);
+      createMockPortfolio();
     }
   };
 
