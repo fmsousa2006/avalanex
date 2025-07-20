@@ -140,9 +140,6 @@ const Dashboard: React.FC = () => {
             <BarChart3 className="w-8 h-8 text-emerald-400" />
             <div>
               <h1 className="text-2xl font-bold">Portfolio Dashboard</h1>
-              {isUsingMockData && (
-                <p className="text-xs text-yellow-400">Using demo data - Connect to Supabase for real portfolio tracking</p>
-              )}
             </div>
           </div>
           <div className="flex items-center space-x-6">
