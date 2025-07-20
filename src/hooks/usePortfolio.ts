@@ -12,6 +12,10 @@ export const usePortfolio = () => {
 
   // Get current user
   const getCurrentUser = async () => {
+    // Return null if Supabase is not properly configured
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      return null;
+    }
     const { data: { user } } = await supabase.auth.getUser();
     return user;
   };
@@ -246,6 +250,14 @@ export const usePortfolio = () => {
     const initializeData = async () => {
       try {
         setLoading(true);
+        
+        // Check if Supabase is configured
+        if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+          setError('Supabase not configured. Please connect to Supabase to use the portfolio features.');
+          setLoading(false);
+          return;
+        }
+        
         await fetchPortfolios();
         await fetchDividends();
       } catch (err) {
