@@ -130,13 +130,27 @@ export const usePortfolio = () => {
 
     if (error) throw error;
 
-    // Set the fixed portfolio as current if it exists
+    // Set the fixed portfolio as current if it exists, otherwise create it
     if (data) {
       setPortfolios([data]);
       setCurrentPortfolio(data);
     } else {
-      setPortfolios([]);
-      setCurrentPortfolio(null);
+      // Create the fixed portfolio if it doesn't exist
+      const { data: newPortfolio, error: insertError } = await supabase
+        .from('portfolios')
+        .insert([{
+          id: FIXED_PORTFOLIO_ID,
+          user_id: 'default-user',
+          name: 'My Portfolio',
+          description: 'Default portfolio for tracking investments'
+        }])
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      setPortfolios([newPortfolio]);
+      setCurrentPortfolio(newPortfolio);
     }
   };
 
