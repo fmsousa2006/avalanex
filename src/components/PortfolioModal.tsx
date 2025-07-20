@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Calendar, Search, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface PortfolioModalProps {
   isOpen: boolean;
@@ -38,20 +39,31 @@ const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onSave
 
   const [showCalendar, setShowCalendar] = useState(false);
   const [showTickerSuggestions, setShowTickerSuggestions] = useState(false);
-  const [tickerSuggestions, setTickerSuggestions] = useState<string[]>([]);
+  const [tickerSuggestions, setTickerSuggestions] = useState<Array<{symbol: string, name: string}>>([]);
+  const [availableStocks, setAvailableStocks] = useState<Array<{symbol: string, name: string}>>([]);
   const [errors, setErrors] = useState<Partial<FormData>>({});
   
   const tickerInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Popular tickers for autocomplete
-  const popularTickers = [
-    'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'NFLX', 'AMD', 'INTC',
-    'JPM', 'BAC', 'WFC', 'GS', 'MS', 'V', 'MA', 'PYPL', 'SQ', 'ADBE',
-    'CRM', 'ORCL', 'IBM', 'CSCO', 'QCOM', 'AVGO', 'TXN', 'AMAT', 'LRCX', 'KLAC',
-    'JNJ', 'PFE', 'UNH', 'ABBV', 'BMY', 'MRK', 'GILD', 'AMGN', 'BIIB', 'REGN',
-    'KO', 'PEP', 'WMT', 'TGT', 'COST', 'HD', 'LOW', 'NKE', 'SBUX', 'MCD'
-  ];
+  // Fetch available stocks from database
+  const fetchAvailableStocks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('stocks')
+        .select('symbol, name')
+        .order('symbol');
+      
+      if (error) {
+        console.error('Error fetching stocks:', error);
+        return;
+      }
+      
+      setAvailableStocks(data || []);
+    } catch (err) {
+      console.error('Error fetching stocks:', err);
+    }
+  };
 
   const currencies = [
     'USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'HUF'
@@ -73,6 +85,13 @@ const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onSave
       document.removeEventListener('keydown', handleEscapeKey);
     };
   }, [isOpen, onClose]);
+
+  // Fetch available stocks when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchAvailableStocks();
+    }
+  }, [isOpen]);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -102,8 +121,9 @@ const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onSave
 
     // Handle ticker autocomplete
     if (field === 'ticker') {
-      const filtered = popularTickers.filter(ticker => 
-        ticker.toLowerCase().includes(value.toLowerCase())
+      const filtered = availableStocks.filter(stock => 
+        stock.symbol.toLowerCase().includes(value.toLowerCase()) ||
+        stock.name.toLowerCase().includes(value.toLowerCase())
       ).slice(0, 8);
       setTickerSuggestions(filtered);
       setShowTickerSuggestions(value.length > 0 && filtered.length > 0);
@@ -127,8 +147,8 @@ const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onSave
     }
   };
 
-  const selectTicker = (ticker: string) => {
-    setFormData(prev => ({ ...prev, ticker }));
+  const selectTicker = (symbol: string) => {
+    setFormData(prev => ({ ...prev, ticker: symbol }));
     setShowTickerSuggestions(false);
     setTickerSuggestions([]);
   };
@@ -294,13 +314,14 @@ const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onSave
               {/* Ticker Suggestions */}
               {showTickerSuggestions && (
                 <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                  {tickerSuggestions.map((ticker) => (
+                  {tickerSuggestions.map((stock) => (
                     <button
-                      key={ticker}
-                      onClick={() => selectTicker(ticker)}
-                      className="w-full px-4 py-2 text-left hover:bg-gray-700 transition-colors"
+                      key={stock.symbol}
+                      onClick={() => selectTicker(stock.symbol)}
+                      className="w-full px-4 py-2 text-left hover:bg-gray-700 transition-colors flex flex-col"
                     >
-                      {ticker}
+                      <span className="font-medium">{stock.symbol}</span>
+                      <span className="text-sm text-gray-400">{stock.name}</span>
                     </button>
                   ))}
                 </div>
