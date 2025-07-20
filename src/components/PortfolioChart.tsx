@@ -132,6 +132,12 @@ const PortfolioChart: React.FC<PortfolioChartProps> = ({ data, onHover, hoveredS
             'Z'
           ].join(' ');
           
+          // For single stock (100% of portfolio), create a full circle instead of a slice
+          const isFullCircle = data.length === 1;
+          const finalPathData = isFullCircle 
+            ? `M ${centerX} ${centerY} m -${radius}, 0 a ${radius},${radius} 0 1,0 ${radius * 2},0 a ${radius},${radius} 0 1,0 -${radius * 2},0`
+            : pathData;
+          
           currentAngle += angle;
           
           const isHovered = hoveredStock === stock.symbol;
@@ -140,7 +146,7 @@ const PortfolioChart: React.FC<PortfolioChartProps> = ({ data, onHover, hoveredS
           return (
             <g key={stock.symbol}>
               <path
-                d={pathData}
+                d={finalPathData}
                 fill={colors[index % colors.length]}
                 stroke="#1f2937"
                 strokeWidth="2"
