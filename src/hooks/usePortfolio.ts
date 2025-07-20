@@ -127,11 +127,20 @@ export const usePortfolio = () => {
   // Fetch portfolios
   const fetchPortfolios = async () => {
     try {
-      // Try to fetch the fixed portfolio
+      // Get current authenticated user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.warn('No authenticated user found, using mock data');
+        createMockPortfolio();
+        return;
+      }
+
+      // Try to fetch portfolio for the authenticated user
       const { data, error } = await supabase
         .from('portfolios')
         .select('*')
-        .eq('id', FIXED_PORTFOLIO_ID)
+        .eq('user_id', user.id)
         .maybeSingle();
 
       if (error) {
@@ -145,9 +154,27 @@ export const usePortfolio = () => {
         setPortfolios([data]);
         setCurrentPortfolio(data);
       } else {
-        console.warn('No portfolio found, using mock data');
-        // Fall back to mock data if no portfolio exists
-        createMockPortfolio();
+        // Create default portfolio for the user
+        const { data: newPortfolio, error: createError } = await supabase
+          .from('portfolios')
+          .insert([
+            {
+              user_id: user.id,
+              name: 'My Portfolio',
+              description: 'Default portfolio'
+            }
+          ])
+          .select()
+          .single();
+
+        if (createError) {
+          console.warn('Error creating portfolio, using mock data:', createError);
+          createMockPortfolio();
+          return;
+        }
+
+        setPortfolios([newPortfolio]);
+        setCurrentPortfolio(newPortfolio);
       }
     } catch (err) {
       console.warn('Failed to connect to Supabase, using mock data:', err);
