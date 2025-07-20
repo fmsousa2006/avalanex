@@ -12,6 +12,9 @@ export const usePortfolio = () => {
   const [error, setError] = useState<string | null>(null);
   const [isUsingMockData, setIsUsingMockData] = useState(false);
 
+  // Fixed portfolio ID for single portfolio setup
+  const FIXED_PORTFOLIO_ID = '550e8400-e29b-41d4-a716-446655440000';
+
   // Get current user
   const getCurrentUser = async () => {
     // Return null if Supabase is not properly configured
@@ -105,16 +108,11 @@ export const usePortfolio = () => {
 
   // Create default portfolio for new users
   const createDefaultPortfolio = async (userId: string) => {
+    // Use the fixed portfolio that was inserted via migration
     const { data, error } = await supabase
       .from('portfolios')
-      .insert([
-        {
-          user_id: userId,
-          name: 'My Portfolio',
-          description: 'Default portfolio'
-        }
-      ])
-      .select()
+      .select('*')
+      .eq('id', FIXED_PORTFOLIO_ID)
       .single();
 
     if (error) throw error;
@@ -123,26 +121,18 @@ export const usePortfolio = () => {
 
   // Fetch portfolios
   const fetchPortfolios = async () => {
-    const user = await getCurrentUser();
-    if (!user) return;
-
+    // Fetch the fixed portfolio instead of user-specific portfolios
     const { data, error } = await supabase
       .from('portfolios')
       .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: true });
+      .eq('id', FIXED_PORTFOLIO_ID)
+      .single();
 
     if (error) throw error;
 
-    if (data.length === 0) {
-      // Create default portfolio if none exists
-      const defaultPortfolio = await createDefaultPortfolio(user.id);
-      setPortfolios([defaultPortfolio]);
-      setCurrentPortfolio(defaultPortfolio);
-    } else {
-      setPortfolios(data);
-      setCurrentPortfolio(data[0]); // Set first portfolio as current
-    }
+    // Set the fixed portfolio as current
+    setPortfolios([data]);
+    setCurrentPortfolio(data);
   };
 
   // Fetch holdings for current portfolio
