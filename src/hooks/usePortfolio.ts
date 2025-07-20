@@ -40,7 +40,7 @@ export const usePortfolio = () => {
   // Create mock portfolio when Supabase is not available
   const createMockPortfolio = () => {
     const mockPortfolio: Portfolio = {
-      id: 'mock-portfolio-1',
+      id: FIXED_PORTFOLIO_ID,
       user_id: 'mock-user',
       name: 'Demo Portfolio',
       description: 'Sample portfolio with demo data',
