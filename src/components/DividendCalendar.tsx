@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Calendar, ChevronLeft, ChevronRight, Move } from 'lucide-react';
 import { dividendData } from '../data/mockData';
 
 interface DividendCalendarProps {
@@ -18,6 +18,10 @@ interface CalendarDividend {
 const DividendCalendar: React.FC<DividendCalendarProps> = ({ isOpen, onClose }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const modalRef = React.useRef<HTMLDivElement>(null);
 
   // Handle escape key
   React.useEffect(() => {
@@ -35,6 +39,59 @@ const DividendCalendar: React.FC<DividendCalendarProps> = ({ isOpen, onClose }) 
       document.removeEventListener('keydown', handleEscapeKey);
     };
   }, [isOpen, onClose]);
+
+  // Handle mouse events for dragging
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!modalRef.current) return;
+    
+    const rect = modalRef.current.getBoundingClientRect();
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+    setIsDragging(true);
+  };
+
+  React.useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      
+      const newX = e.clientX - dragOffset.x;
+      const newY = e.clientY - dragOffset.y;
+      
+      // Constrain to viewport
+      const maxX = window.innerWidth - (modalRef.current?.offsetWidth || 0);
+      const maxY = window.innerHeight - (modalRef.current?.offsetHeight || 0);
+      
+      setPosition({
+        x: Math.max(0, Math.min(newX, maxX)),
+        y: Math.max(0, Math.min(newY, maxY))
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset]);
+
+  // Reset position when modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      setPosition({ x: 0, y: 0 });
+      setIsDragging(false);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   // Generate fixed calendar dividends for the current month
@@ -194,8 +251,20 @@ const DividendCalendar: React.FC<DividendCalendarProps> = ({ isOpen, onClose }) 
   const hoveredDividends = hoveredDate ? getDividendsForDate(hoveredDate) : [];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-xl max-w-3xl w-full max-h-[80vh] overflow-y-auto border border-gray-700">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 p-4">
+      <div 
+        ref={modalRef}
+        className={`bg-gray-900 rounded-xl max-w-3xl w-full max-h-[80vh] overflow-y-auto border border-gray-700 absolute ${
+          isDragging ? 'cursor-grabbing' : ''
+        }`}
+        style={{
+          left: position.x === 0 ? '50%' : `${position.x}px`,
+          top: position.y === 0 ? '50%' : `${position.y}px`,
+          transform: position.x === 0 && position.y === 0 ? 'translate(-50%, -50%)' : 'none',
+          maxWidth: '768px', // max-w-3xl equivalent
+          width: 'calc(100% - 2rem)', // Account for padding
+        }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-700">
           <div className="flex items-center space-x-4">
@@ -216,7 +285,12 @@ const DividendCalendar: React.FC<DividendCalendarProps> = ({ isOpen, onClose }) 
         </div>
 
         {/* Calendar Navigation */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
+        <div 
+          className={`flex items-center justify-between p-4 border-b border-gray-700 ${
+            isDragging ? 'cursor-grabbing' : 'cursor-grab'
+          }`}
+          onMouseDown={handleMouseDown}
+        >
           <button
             onClick={() => navigateMonth('prev')}
             className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
@@ -224,13 +298,17 @@ const DividendCalendar: React.FC<DividendCalendarProps> = ({ isOpen, onClose }) 
             <ChevronLeft className="w-5 h-5" />
           </button>
           
-          <h3 className="text-lg font-semibold">
+              <div className="flex items-center space-x-2">
+                <h2 className="text-xl font-bold">Dividend Calendar</h2>
+                <Move className="w-4 h-4 text-gray-400" />
+              </div>
             {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </h3>
           
           <button
             onClick={() => navigateMonth('next')}
-            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer"
+            onMouseDown={(e) => e.stopPropagation()}
           >
             <ChevronRight className="w-5 h-5" />
           </button>
