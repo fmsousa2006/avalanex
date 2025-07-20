@@ -126,13 +126,18 @@ export const usePortfolio = () => {
       .from('portfolios')
       .select('*')
       .eq('id', FIXED_PORTFOLIO_ID)
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
 
-    // Set the fixed portfolio as current
-    setPortfolios([data]);
-    setCurrentPortfolio(data);
+    // Set the fixed portfolio as current if it exists
+    if (data) {
+      setPortfolios([data]);
+      setCurrentPortfolio(data);
+    } else {
+      setPortfolios([]);
+      setCurrentPortfolio(null);
+    }
   };
 
   // Fetch holdings for current portfolio
