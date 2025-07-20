@@ -228,9 +228,24 @@ export const usePortfolio = () => {
 
   // Add or update stock
   const upsertStock = async (symbol: string, name: string) => {
+    // First, try to get existing stock data
+    const { data: existingStock, error: fetchError } = await supabase
+      .from('stocks')
+      .select('*')
+      .eq('symbol', symbol)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
+
+    // If stock exists, return it
+    if (existingStock) {
+      return existingStock;
+    }
+
+    // If stock doesn't exist, create it with the provided name
     const { data, error } = await supabase
       .from('stocks')
-      .upsert([{ symbol, name }], { onConflict: 'symbol' })
+      .insert([{ symbol, name }])
       .select()
       .single();
 
