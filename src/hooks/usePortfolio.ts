@@ -41,7 +41,7 @@ export const usePortfolio = () => {
   const createMockPortfolio = () => {
     const mockPortfolio: Portfolio = {
       id: FIXED_PORTFOLIO_ID,
-      user_id: 'mock-user',
+      user_id: '49be5272-a0ba-4d3a-9b17-c119181bb0e9',
       name: 'Demo Portfolio',
       description: 'Sample portfolio with demo data',
       created_at: new Date().toISOString(),
