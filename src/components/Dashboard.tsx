@@ -237,7 +237,12 @@ const Dashboard: React.FC = () => {
                 {/* Add Transaction Button */}
                 <button
                   onClick={() => setIsPortfolioModalOpen(true)}
-                  className="p-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+                  disabled={!currentPortfolio && !isUsingMockData}
+                  className={`p-2 rounded-lg transition-colors ${
+                    !currentPortfolio && !isUsingMockData
+                      ? 'bg-gray-600 cursor-not-allowed opacity-50'
+                      : 'bg-emerald-600 hover:bg-emerald-700'
+                  }`}
                   title="Add Transaction"
                 >
                   <Plus className="w-4 h-4" />
