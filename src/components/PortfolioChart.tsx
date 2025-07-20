@@ -227,7 +227,7 @@ const PortfolioChart: React.FC<PortfolioChartProps> = ({ data, onHover, hoveredS
               style={{ backgroundColor: colors[index % colors.length] }}
             />
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate">{stock.symbol}</div>
+              <div className="text-sm font-medium truncate">{stock.symbol} - {stock.name}</div>
               <div className="text-xs text-gray-400">${stock.value.toLocaleString()}</div>
             </div>
           </div>
