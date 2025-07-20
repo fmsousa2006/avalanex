@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { DollarSign, Calendar } from 'lucide-react';
+import { DollarSign, Calendar, Database } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface DividendPayment {
   year: number;
@@ -13,12 +14,15 @@ interface DividendPayment {
 }
 
 interface DividendsReceivedProps {
-  data?: any[];
+  portfolioId?: string;
 }
 
-const DividendsReceived: React.FC<DividendsReceivedProps> = ({ data = [] }) => {
+const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) => {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; data: DividendPayment } | null>(null);
   const [chartDimensions, setChartDimensions] = useState({ width: 600, height: 300 });
+  const [dividendData, setDividendData] = useState<DividendPayment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
   // Update chart dimensions on resize
@@ -40,60 +44,148 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ data = [] }) => {
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // Generate fixed annual dividend data
-  const generateAnnualDividendData = (): DividendPayment[] => {
-    const currentYear = new Date().getFullYear();
-    const startYear = 2019; // First dividend year
-    const years: DividendPayment[] = [];
+  // Fetch dividend data from Supabase
+  const fetchDividendData = async () => {
+    if (!portfolioId) {
+      setLoading(false);
+      return;
+    }
 
-    const stocks = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA'];
-    
-    for (let year = startYear; year <= currentYear; year++) {
-      const yearData: DividendPayment = {
-        year,
-        amount: 0,
-        count: 0,
-        stocks: []
-      };
+    try {
+      setLoading(true);
+      setError(null);
 
-      stocks.forEach((symbol, index) => {
-        // Use year and symbol as seed for consistent data
-        const seed = year * 1000 + symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        let random = seed;
-        
-        // Generate pseudo-random but consistent data
-        random = (random * 9301 + 49297) % 233280;
-        const hasPayment = (random / 233280) > 0.3; // 70% chance of payment
-        
-        if (hasPayment) {
-          random = (random * 9301 + 49297) % 233280;
-          const baseAmount = 50 + (random / 233280) * 200; // $50-$250 base
-          
-          // Growth over years
-          const growthFactor = 1 + ((year - startYear) * 0.08); // 8% annual growth
-          const amount = baseAmount * growthFactor;
-          
-          random = (random * 9301 + 49297) % 233280;
-          const payments = 1 + Math.floor((random / 233280) * 4); // 1-4 payments per year
-          
-          yearData.stocks.push({
+      // Get all dividend transactions for this portfolio
+      const { data: transactions, error: transactionError } = await supabase
+        .from('transactions')
+        .select(`
+          *,
+          stock:stocks(symbol, name)
+        `)
+        .eq('portfolio_id', portfolioId)
+        .eq('type', 'dividend')
+        .eq('status', 'completed')
+        .order('transaction_date', { ascending: true });
+
+      if (transactionError) {
+        throw transactionError;
+      }
+
+      if (!transactions || transactions.length === 0) {
+        setDividendData([]);
+        setLoading(false);
+        return;
+      }
+
+      // Group transactions by year
+      const yearlyData: { [year: number]: DividendPayment } = {};
+
+      transactions.forEach(transaction => {
+        const year = new Date(transaction.transaction_date).getFullYear();
+        const symbol = transaction.stock?.symbol || 'Unknown';
+        const amount = transaction.amount;
+
+        if (!yearlyData[year]) {
+          yearlyData[year] = {
+            year,
+            amount: 0,
+            count: 0,
+            stocks: []
+          };
+        }
+
+        yearlyData[year].amount += amount;
+        yearlyData[year].count += 1;
+
+        // Find or create stock entry for this year
+        const existingStock = yearlyData[year].stocks.find(s => s.symbol === symbol);
+        if (existingStock) {
+          existingStock.amount += amount;
+          existingStock.payments += 1;
+        } else {
+          yearlyData[year].stocks.push({
             symbol,
             amount,
-            payments
+            payments: 1
           });
-          
-          yearData.amount += amount;
-          yearData.count += payments;
         }
       });
 
-      years.push(yearData);
+      // Convert to array and sort by year
+      const sortedData = Object.values(yearlyData).sort((a, b) => a.year - b.year);
+      setDividendData(sortedData);
+    } catch (err) {
+      console.error('Error fetching dividend data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load dividend data');
+    } finally {
+      setLoading(false);
     }
-
-    return years;
   };
 
-  const dividendData = generateAnnualDividendData();
+  // Fetch data when portfolioId changes
+  useEffect(() => {
+    fetchDividendData();
+  }, [portfolioId]);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+        <div className="flex items-center space-x-2 mb-6">
+          <DollarSign className="w-5 h-5 text-green-400" />
+          <h2 className="text-xl font-semibold">Dividends Received</h2>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400"></div>
+          <span className="ml-3 text-gray-400">Loading dividend data...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+        <div className="flex items-center space-x-2 mb-6">
+          <DollarSign className="w-5 h-5 text-green-400" />
+          <h2 className="text-xl font-semibold">Dividends Received</h2>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <Database className="w-12 h-12 text-red-400 mx-auto mb-4" />
+            <p className="text-red-400 font-medium">Error loading dividend data</p>
+            <p className="text-gray-400 text-sm mt-2">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show no data state
+  if (dividendData.length === 0) {
+    return (
+      <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+        <div className="flex items-center space-x-2 mb-6">
+          <DollarSign className="w-5 h-5 text-green-400" />
+          <h2 className="text-xl font-semibold">Dividends Received</h2>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <DollarSign className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <p className="text-gray-400 font-medium text-lg">No dividend data available</p>
+            <p className="text-gray-500 text-sm mt-2">
+              Dividend payments will appear here once you receive them from your stock holdings.
+            </p>
+            <p className="text-gray-500 text-sm mt-1">
+              Add dividend transactions to see your dividend history.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const maxAmount = Math.max(...dividendData.map(d => d.amount));
   
   const chartWidth = chartDimensions.width;

@@ -323,7 +323,7 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           {/* Dividends Received */}
           <div className="xl:col-span-3">
-            <DividendsReceived />
+            <DividendsReceived portfolioId={currentPortfolio?.id} />
           </div>
         </div>
 
