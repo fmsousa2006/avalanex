@@ -78,6 +78,16 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
       setLoading(true);
       setError(null);
 
+      // Test Supabase connection first
+      const { error: connectionError } = await supabase
+        .from('portfolios')
+        .select('id')
+        .limit(1);
+
+      if (connectionError) {
+        throw new Error(`Supabase connection failed: ${connectionError.message}`);
+      }
+
       // Get all dividend transactions for this portfolio
       const { data: transactions, error: transactionError } = await supabase
         .from('transactions')
@@ -91,7 +101,7 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
         .order('transaction_date', { ascending: true });
 
       if (transactionError) {
-        throw transactionError;
+        throw new Error(`Database query failed: ${transactionError.message}`);
       }
 
       if (!transactions || transactions.length === 0) {
@@ -139,7 +149,15 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
       setDividendData(sortedData);
     } catch (err) {
       console.error('Error fetching dividend data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load dividend data');
+      if (err instanceof Error) {
+        if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+          setError('Unable to connect to database. Please check your Supabase configuration in the .env file and restart the development server.');
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError('Failed to load dividend data');
+      }
     } finally {
       setLoading(false);
     }
