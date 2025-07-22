@@ -123,7 +123,7 @@ class FinnhubService {
 
       if (!response.ok) {
         if (response.status === 403) {
-          console.error(`Finnhub API 403 Forbidden for ${symbol}: Check API key permissions or subscription plan`);
+          console.warn(`Finnhub API 403 Forbidden for ${symbol}: Historical data not available with current plan. Skipping historical sync for this symbol.`);
           return null;
         }
         if (response.status === 401) {
@@ -142,7 +142,7 @@ class FinnhubService {
       
       // Check if we got valid data
       if (data.s !== 'ok' || !data.c || data.c.length === 0) {
-        console.warn(`No candle data available for symbol: ${symbol}`);
+        console.warn(`No candle data available for symbol: ${symbol} (may require higher subscription plan)`);
         return null;
       }
 
@@ -283,7 +283,7 @@ class FinnhubService {
       const candles = await this.getCandles(symbol, config.resolution, fromTimestamp, now);
       
       if (!candles || !candles.c || candles.c.length === 0) {
-        console.warn(`No candle data available for ${symbol} in ${config.table}`);
+        console.warn(`No candle data available for ${symbol} in ${config.table} - may require Finnhub subscription upgrade`);
         return false;
       }
       
@@ -325,6 +325,7 @@ class FinnhubService {
           results.success.push(config.table);
         } else {
           results.failed.push(config.table);
+          console.log(`⚠️  ${config.table} sync failed for ${symbol} - continuing with other periods`);
         }
         
         // Add delay between period syncs to respect rate limits
@@ -335,7 +336,11 @@ class FinnhubService {
       }
     }
     
-    console.log(`Sync completed for ${symbol}: ${results.success.length} success, ${results.failed.length} failed`);
+    if (results.success.length === 0 && results.failed.length > 0) {
+      console.warn(`⚠️  Historical data sync failed for ${symbol} - this may require a Finnhub subscription upgrade for historical data access`);
+    } else {
+      console.log(`Sync completed for ${symbol}: ${results.success.length} success, ${results.failed.length} failed`);
+    }
     return results;
   }
 
