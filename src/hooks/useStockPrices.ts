@@ -195,11 +195,6 @@ export const useStockPrices = () => {
 
   // Test sync O 1D data
   const testSyncO1D = useCallback(async () => {
-    if (!isSupabaseConfigured) {
-      setError('Supabase is not properly configured. Please check your environment variables.');
-      return;
-    }
-
     if (!finnhubApiKey) {
       setError('Finnhub API key not configured. Please add VITE_FINNHUB_API_KEY to your .env file.');
       return;
@@ -218,7 +213,7 @@ export const useStockPrices = () => {
     } finally {
       setLoading(false);
     }
-  }, [isSupabaseConfigured, finnhubApiKey]);
+  }, [finnhubApiKey]);
 
   // Update a single stock price
   const updateSingleStockPrice = useCallback(async (symbol: string) => {

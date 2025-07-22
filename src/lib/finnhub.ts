@@ -676,6 +676,9 @@ class FinnhubService {
     try {
       console.log('🧪 Starting test sync for O (Realty Income) 1D data...');
       
+      // For testing purposes, we'll try to use Supabase directly regardless of configuration checks
+      // This ensures the test function always works for development/testing
+      
       // First, ensure O stock exists in database
       const { data: stockData, error: stockError } = await supabase
         .from('stocks')
@@ -685,7 +688,8 @@ class FinnhubService {
 
       if (stockError) {
         console.error('❌ Error fetching O stock from database:', stockError);
-        return;
+        console.log('🔧 This might be due to Supabase configuration. Please check your .env file.');
+        throw new Error(`Supabase error: ${stockError.message}`);
       }
 
       let stockId: string;
@@ -705,7 +709,7 @@ class FinnhubService {
 
         if (createError) {
           console.error('❌ Error creating O stock entry:', createError);
-          return;
+          throw new Error(`Failed to create O stock: ${createError.message}`);
         }
         stockId = newStock.id;
         console.log('✅ Created O stock with ID:', stockId);
@@ -723,17 +727,22 @@ class FinnhubService {
       
       if (deleteError) {
         console.warn('⚠️ Could not clear existing data:', deleteError);
+        // Don't throw here, continue with the test
       } else {
         console.log('✅ Cleared existing 1D data for fresh test');
       }
+      
       // First, let's try to get current quote to verify API is working
       console.log('📊 Testing Finnhub API connection with quote...');
       const quote = await this.getQuote('O');
       if (!quote) {
-        console.error('❌ Failed to get quote for O - API connection issue');
-        return;
+        console.warn('⚠️ Failed to get quote for O - will use mock price');
+        // Continue with mock data instead of failing
       }
-      console.log('✅ Successfully got quote for O:', quote);
+      
+      if (quote) {
+        console.log('✅ Successfully got quote for O:', quote);
+      }
       
       // Update current price first
       console.log('💰 Updating current price for O...');
@@ -779,7 +788,7 @@ class FinnhubService {
         
         // Generate mock data aligned with S&P 500 market hours (9:30 AM - 4:00 PM ET)
         const mockData: HistoricalPriceData[] = [];
-        const basePrice = quote.c;
+        const basePrice = quote?.c || 58.25; // Use quote price or fallback to default
         const marketDurationHours = 6.5; // 9:30 AM to 4:00 PM = 6.5 hours
         const intervalMinutes = 30; // 30-minute intervals
         const totalIntervals = Math.floor((marketDurationHours * 60) / intervalMinutes);
@@ -807,7 +816,7 @@ class FinnhubService {
           console.log('✅ Successfully stored mock 1D data for O aligned with S&P 500 market hours!');
         } else {
           console.error('❌ Failed to store mock data');
-          return;
+          throw new Error('Failed to store mock data in database');
         }
       } else {
         console.log(`📊 Got ${candles.c.length} real data points from Finnhub`);
@@ -829,7 +838,7 @@ class FinnhubService {
           console.log('✅ Successfully stored real 1D data for O aligned with market hours!');
         } else {
           console.error('❌ Failed to store real data');
-          return;
+          throw new Error('Failed to store real data in database');
         }
       }
 
@@ -844,8 +853,10 @@ class FinnhubService {
       
       if (verifyError) {
         console.error('❌ Error verifying data insertion:', verifyError);
+        throw new Error(`Verification failed: ${verifyError.message}`);
       } else if (!verifyData || verifyData.length === 0) {
         console.error('❌ No data found in stock_prices_1d table after insertion!');
+        throw new Error('No data found in table after insertion');
       } else {
         console.log(`✅ SUCCESS! Found ${verifyData.length} records in stock_prices_1d table:`);
         verifyData.forEach((record, index) => {
@@ -865,6 +876,7 @@ class FinnhubService {
 
     } catch (error) {
       console.error('❌ Error in testSyncO1D:', error);
+      throw error; // Re-throw so the UI can show the error
     }
   }
 }
