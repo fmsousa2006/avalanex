@@ -1,16 +1,18 @@
 import React from 'react';
-import { User, HelpCircle, Users, FileText, BarChart3, LogOut, Briefcase } from 'lucide-react';
+import { User, HelpCircle, Users, FileText, BarChart3, LogOut, Briefcase, TestTube } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
   onToggle: (open: boolean) => void;
   onPortfolioClick: () => void;
+  onTestingClick: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onPortfolioClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onPortfolioClick, onTestingClick }) => {
   const menuItems = [
     { icon: BarChart3, label: 'Dashboard', active: true },
     { icon: Briefcase, label: 'Portfolio', onClick: onPortfolioClick },
+    { icon: TestTube, label: 'Testing', onClick: onTestingClick },
     { icon: User, label: 'Profile' },
     { icon: HelpCircle, label: 'Contact Support' },
     { icon: Users, label: 'Invite Friends' },

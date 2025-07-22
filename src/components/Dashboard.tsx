@@ -10,6 +10,7 @@ import DividendCalendar from './DividendCalendar';
 import DividendsReceived from './DividendsReceived';
 import Sidebar from './Sidebar';
 import PortfolioModal from './PortfolioModal';
+import TestingModal from './TestingModal';
 
 const Dashboard: React.FC = () => {
   const {
@@ -38,6 +39,7 @@ const Dashboard: React.FC = () => {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
+  const [isTestingModalOpen, setIsTestingModalOpen] = useState(false);
   const [isPortfolioMenuOpen, setIsPortfolioMenuOpen] = useState(false);
 
   // Function to sync all portfolio stock prices
@@ -211,6 +213,7 @@ const Dashboard: React.FC = () => {
         isOpen={isSidebarOpen} 
         onToggle={setIsSidebarOpen}
         onPortfolioClick={() => setIsPortfolioModalOpen(true)}
+        onTestingClick={() => setIsTestingModalOpen(true)}
       />
       
       {/* Main Content */}
@@ -396,30 +399,6 @@ const Dashboard: React.FC = () => {
               >
                 <RefreshCw className={`w-4 h-4 ${pricesLoading ? 'animate-spin' : ''}`} />
               </button>
-              
-              {/* Test O 1D Sync Button */}
-              <button
-                onClick={handleTestSyncO1D}
-                disabled={pricesLoading}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  pricesLoading ? 'bg-gray-600 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'
-                }`}
-                title="Test sync O stock 1D historical data"
-              >
-                Test O 1D
-              </button>
-              
-              {/* Test NVIDIA 1D Sync Button */}
-              <button
-                onClick={handleTestSyncNVDA1D}
-                disabled={pricesLoading}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  pricesLoading ? 'bg-gray-600 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
-                }`}
-                title="Test sync NVIDIA stock 1D historical data"
-              >
-                Test NVIDIA 1D
-              </button>
             </div>
             <PortfolioChart 
               data={currentPortfolioData} 
@@ -474,6 +453,16 @@ const Dashboard: React.FC = () => {
         isOpen={isPortfolioModalOpen}
         onClose={() => setIsPortfolioModalOpen(false)}
         onSave={handlePortfolioTransaction}
+      />
+      
+      {/* Testing Modal */}
+      <TestingModal
+        isOpen={isTestingModalOpen}
+        onClose={() => setIsTestingModalOpen(false)}
+        onTestO1D={handleTestSyncO1D}
+        onTestNVDA1D={handleTestSyncNVDA1D}
+        isLoading={pricesLoading}
+        isFinnhubConfigured={isFinnhubConfigured}
       />
     </div>
   );
