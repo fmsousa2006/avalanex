@@ -1,6 +1,22 @@
 // Finnhub API integration for real-time stock data
 import { supabase } from './supabase';
 
+interface HistoricalPriceData {
+  timestamp: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+interface PeriodConfig {
+  table: string;
+  days: number;
+  resolution: string;
+  granularity: 'hour' | 'day';
+}
+
 interface FinnhubQuote {
   c: number; // Current price
   d: number; // Change
@@ -40,6 +56,17 @@ interface FinnhubProfile {
 class FinnhubService {
   private apiKey: string;
   private baseUrl = 'https://finnhub.io/api/v1';
+  
+  private periodConfigs: PeriodConfig[] = [
+    { table: 'stock_prices_1d', days: 1, resolution: '60', granularity: 'hour' },
+    { table: 'stock_prices_7d', days: 7, resolution: '60', granularity: 'hour' },
+    { table: 'stock_prices_30d', days: 30, resolution: 'D', granularity: 'day' },
+    { table: 'stock_prices_3m', days: 90, resolution: 'D', granularity: 'day' },
+    { table: 'stock_prices_6m', days: 180, resolution: 'D', granularity: 'day' },
+    { table: 'stock_prices_1y', days: 365, resolution: 'D', granularity: 'day' },
+    { table: 'stock_prices_3y', days: 1095, resolution: 'W', granularity: 'day' },
+    { table: 'stock_prices_5y', days: 1825, resolution: 'W', granularity: 'day' }
+  ];
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
@@ -144,8 +171,240 @@ class FinnhubService {
     }
   }
 
+  // Get the last timestamp for a stock in a specific period table
+  private async getLastTimestamp(stockId: string, tableName: string): Promise<Date | null> {
+    try {
+      const { data, error } = await supabase
+        .from(tableName)
+        .select('timestamp')
+        .eq('stock_id', stockId)
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error(`Error getting last timestamp from ${tableName}:`, error);
+        return null;
+      }
+
+      return data ? new Date(data.timestamp) : null;
+    } catch (error) {
+      console.error(`Error querying ${tableName}:`, error);
+      return null;
+    }
+  }
+
+  // Store historical price data in the appropriate table
+  private async storeHistoricalData(
+    stockId: string, 
+    tableName: string, 
+    priceData: HistoricalPriceData[]
+  ): Promise<boolean> {
+    if (priceData.length === 0) return true;
+
+    try {
+      const records = priceData.map(data => ({
+        stock_id: stockId,
+        timestamp: data.timestamp,
+        open_price: data.open,
+        high_price: data.high,
+        low_price: data.low,
+        close_price: data.close,
+        volume: data.volume
+      }));
+
+      const { error } = await supabase
+        .from(tableName)
+        .upsert(records, { 
+          onConflict: 'stock_id,timestamp',
+          ignoreDuplicates: false 
+        });
+
+      if (error) {
+        console.error(`Error storing data in ${tableName}:`, error);
+        return false;
+      }
+
+      console.log(`Stored ${records.length} records in ${tableName} for stock ${stockId}`);
+      return true;
+    } catch (error) {
+      console.error(`Error in storeHistoricalData for ${tableName}:`, error);
+      return false;
+    }
+  }
+
+  // Sync historical data for a specific period (incremental)
+  private async syncPeriodData(stockId: string, symbol: string, config: PeriodConfig): Promise<boolean> {
+    try {
+      console.log(`Syncing ${config.table} data for ${symbol}...`);
+      
+      // Get the last timestamp we have for this stock and period
+      const lastTimestamp = await getLastTimestamp(stockId, config.table);
+      
+      const now = Math.floor(Date.now() / 1000);
+      let fromTimestamp: number;
+      
+      if (lastTimestamp) {
+        // If we have data, only fetch from the last timestamp + 1 interval
+        if (config.granularity === 'hour') {
+          fromTimestamp = Math.floor(lastTimestamp.getTime() / 1000) + 3600; // +1 hour
+        } else {
+          fromTimestamp = Math.floor(lastTimestamp.getTime() / 1000) + 86400; // +1 day
+        }
+        
+        // If we're already up to date, skip
+        if (fromTimestamp >= now) {
+          console.log(`${config.table} for ${symbol} is already up to date`);
+          return true;
+        }
+      } else {
+        // If no data exists, fetch the full period
+        fromTimestamp = now - (config.days * 24 * 60 * 60);
+      }
+      
+      // Fetch data from Finnhub
+      const candles = await this.getCandles(symbol, config.resolution, fromTimestamp, now);
+      
+      if (!candles || !candles.c || candles.c.length === 0) {
+        console.warn(`No candle data available for ${symbol} in ${config.table}`);
+        return false;
+      }
+      
+      // Convert to our format
+      const historicalData: HistoricalPriceData[] = candles.c.map((close, index) => ({
+        timestamp: new Date(candles.t[index] * 1000).toISOString(),
+        open: candles.o[index],
+        high: candles.h[index],
+        low: candles.l[index],
+        close: close,
+        volume: candles.v[index] || 0
+      }));
+      
+      // Store in database
+      const success = await this.storeHistoricalData(stockId, config.table, historicalData);
+      
+      if (success) {
+        console.log(`Successfully synced ${historicalData.length} new records for ${symbol} in ${config.table}`);
+      }
+      
+      return success;
+    } catch (error) {
+      console.error(`Error syncing ${config.table} for ${symbol}:`, error);
+      return false;
+    }
+  }
+
+  // Sync all historical data for a stock (incremental for all periods)
+  async syncStockHistoricalData(stockId: string, symbol: string): Promise<{ success: string[], failed: string[] }> {
+    const results = { success: [] as string[], failed: [] as string[] };
+    
+    console.log(`Starting incremental sync for ${symbol}...`);
+    
+    for (const config of this.periodConfigs) {
+      try {
+        const success = await this.syncPeriodData(stockId, symbol, config);
+        
+        if (success) {
+          results.success.push(config.table);
+        } else {
+          results.failed.push(config.table);
+        }
+        
+        // Add delay between period syncs to respect rate limits
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error) {
+        console.error(`Error syncing ${config.table} for ${symbol}:`, error);
+        results.failed.push(config.table);
+      }
+    }
+    
+    console.log(`Sync completed for ${symbol}: ${results.success.length} success, ${results.failed.length} failed`);
+    return results;
+  }
+
+  // Sync multiple stocks with incremental historical data
+  async syncMultipleStocksIncremental(stockData: Array<{id: string, symbol: string}>): Promise<{ success: string[], failed: string[] }> {
+    const results = { success: [] as string[], failed: [] as string[] };
+    
+    console.log(`Starting incremental sync for ${stockData.length} stocks...`);
+    
+    for (const stock of stockData) {
+      try {
+        // First update current price
+        const priceUpdated = await this.updateStockPrice(stock.symbol);
+        
+        if (priceUpdated) {
+          // Then sync historical data incrementally
+          const syncResults = await this.syncStockHistoricalData(stock.id, stock.symbol);
+          
+          if (syncResults.success.length > 0) {
+            results.success.push(stock.symbol);
+          } else {
+            results.failed.push(stock.symbol);
+          }
+        } else {
+          results.failed.push(stock.symbol);
+        }
+        
+        // Add delay between stocks to respect rate limits
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (error) {
+        console.error(`Error syncing ${stock.symbol}:`, error);
+        results.failed.push(stock.symbol);
+      }
+    }
+    
+    console.log(`Incremental sync completed: ${results.success.length} success, ${results.failed.length} failed`);
+    return results;
+  }
+
+  // Get historical data from database for charts
+  async getHistoricalDataFromDB(stockId: string, period: string): Promise<{ prices: number[], dates: string[], change: number, changePercent: number } | null> {
+    try {
+      const config = this.periodConfigs.find(c => c.table === `stock_prices_${period}`);
+      if (!config) {
+        console.error(`Invalid period: ${period}`);
+        return null;
+      }
+      
+      const { data, error } = await supabase
+        .from(config.table)
+        .select('timestamp, close_price')
+        .eq('stock_id', stockId)
+        .order('timestamp', { ascending: true });
+      
+      if (error) {
+        console.error(`Error fetching ${config.table} data:`, error);
+        return null;
+      }
+      
+      if (!data || data.length === 0) {
+        console.warn(`No historical data found for stock ${stockId} in ${config.table}`);
+        return null;
+      }
+      
+      const prices = data.map(d => parseFloat(d.close_price));
+      const dates = data.map(d => d.timestamp);
+      
+      const firstPrice = prices[0];
+      const lastPrice = prices[prices.length - 1];
+      const change = lastPrice - firstPrice;
+      const changePercent = (change / firstPrice) * 100;
+      
+      return {
+        prices,
+        dates,
+        change,
+        changePercent
+      };
+    } catch (error) {
+      console.error(`Error in getHistoricalDataFromDB:`, error);
+      return null;
+    }
+  }
+
   // Get historical data for all time periods
-  async getHistoricalData(symbol: string): Promise<{ [key: string]: { prices: number[], dates: string[], change: number, changePercent: number } } | null> {
+  async getHistoricalDataLegacy(symbol: string): Promise<{ [key: string]: { prices: number[], dates: string[], change: number, changePercent: number } } | null> {
     try {
       const now = Math.floor(Date.now() / 1000);
       const historicalData: { [key: string]: { prices: number[], dates: string[], change: number, changePercent: number } } = {};
