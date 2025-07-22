@@ -418,6 +418,15 @@ export const usePortfolio = () => {
 
     if (!currentPortfolio) throw new Error('No current portfolio');
 
+    // Get the original transaction data before updating
+    const { data: originalTransaction, error: fetchError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('id', transactionId)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!originalTransaction) throw new Error('Original transaction not found');
     const shares = parseInt(transactionData.shares);
     const price = parseFloat(transactionData.price);
     const fee = parseFloat(transactionData.fee || '0');
@@ -445,9 +454,76 @@ export const usePortfolio = () => {
 
     if (updateError) throw updateError;
 
-    // Note: For now, we're only updating the transaction record
-    // Holdings recalculation should be done through a separate process
-    // to avoid complex reversal logic that can cause data inconsistencies
+    // Update portfolio holdings if the transaction affects holdings
+    if (originalTransaction.type !== 'dividend' && originalTransaction.shares) {
+      const existingHolding = holdings.find(h => h.stock_id === originalTransaction.stock_id);
+      
+      if (existingHolding) {
+        // Calculate the effect of removing the original transaction
+        let adjustedShares = existingHolding.shares;
+        let adjustedTotalCost = existingHolding.shares * existingHolding.average_cost;
+        
+        // Reverse the original transaction
+        if (originalTransaction.type === 'buy') {
+          adjustedShares -= originalTransaction.shares;
+          adjustedTotalCost -= originalTransaction.amount;
+        } else if (originalTransaction.type === 'sell') {
+          adjustedShares += originalTransaction.shares;
+          // For sells, we don't adjust cost basis
+        }
+        
+        // Apply the new transaction
+        if (transactionData.operation === 'buy') {
+          adjustedShares += shares;
+          adjustedTotalCost += amount;
+        } else if (transactionData.operation === 'sell') {
+          adjustedShares -= shares;
+          // For sells, we don't adjust cost basis
+        }
+        
+        // Calculate new average cost
+        const newAverageCost = adjustedShares > 0 ? adjustedTotalCost / adjustedShares : 0;
+        
+        if (adjustedShares > 0) {
+          // Update existing holding
+          const { error: updateHoldingError } = await supabase
+            .from('portfolio_holdings')
+            .update({
+              shares: adjustedShares,
+              average_cost: newAverageCost,
+              current_price: price,
+              last_updated: new Date().toISOString()
+            })
+            .eq('id', existingHolding.id);
+            
+          if (updateHoldingError) throw updateHoldingError;
+        } else {
+          // Remove holding if no shares left
+          const { error: deleteHoldingError } = await supabase
+            .from('portfolio_holdings')
+            .delete()
+            .eq('id', existingHolding.id);
+            
+          if (deleteHoldingError) throw deleteHoldingError;
+        }
+      } else if (transactionData.operation === 'buy') {
+        // Create new holding if it's a buy transaction and no existing holding
+        const { error: insertHoldingError } = await supabase
+          .from('portfolio_holdings')
+          .insert([
+            {
+              portfolio_id: currentPortfolio.id,
+              stock_id: stock.id,
+              shares: shares,
+              average_cost: price,
+              current_price: price,
+              last_updated: new Date().toISOString()
+            }
+          ]);
+          
+        if (insertHoldingError) throw insertHoldingError;
+      }
+    }
 
     // Refresh data
     await Promise.all([
