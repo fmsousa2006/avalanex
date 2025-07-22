@@ -130,23 +130,21 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteT
       {data.map((transaction) => (
         <div 
           key={transaction.id}
-          className="relative bg-gray-750 rounded-lg border border-gray-600 hover:border-gray-500 transition-colors"
+          className="relative bg-gray-750 rounded-lg border border-gray-600 hover:border-gray-500 transition-colors overflow-hidden"
         >
           {/* Delete Button Background */}
-          {shouldShowDeleteButton(transaction.id) && (
-            <div className="absolute right-0 top-0 bottom-0 w-32 bg-red-600 rounded-r-lg flex items-center justify-center">
-              <button
-                onClick={() => handleDeleteClick(transaction.id)}
-                className="text-white hover:text-red-200 transition-colors p-2"
-              >
-                <Trash2 className="w-6 h-6" />
-              </button>
-            </div>
-          )}
+          <div className="absolute right-0 top-0 bottom-0 w-32 bg-red-600 rounded-r-lg flex items-center justify-center">
+            <button
+              onClick={() => handleDeleteClick(transaction.id)}
+              className="text-white hover:text-red-200 transition-colors p-2"
+            >
+              <Trash2 className="w-6 h-6" />
+            </button>
+          </div>
 
           {/* Transaction Content */}
           <div 
-            className="relative bg-gray-750 rounded-lg p-4 cursor-grab active:cursor-grabbing transition-transform duration-200 ease-out"
+            className="relative bg-gray-750 rounded-lg p-4 cursor-grab active:cursor-grabbing transition-transform duration-200 ease-out z-10"
             style={{ transform: `translateX(${getTransformX(transaction.id)}px)` }}
             onMouseDown={(e) => handleMouseDown(e, transaction.id)}
             onMouseMove={handleMouseMove}
