@@ -14,6 +14,16 @@ interface PortfolioModalProps {
     currency: string;
     fee: string;
   }) => void;
+  editTransaction?: {
+    id: string;
+    ticker: string;
+    operation: 'buy' | 'sell';
+    date: string;
+    shares: string;
+    price: string;
+    currency: string;
+    fee: string;
+  } | null;
 }
 
 interface FormData {
@@ -26,7 +36,7 @@ interface FormData {
   fee: string;
 }
 
-const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onSave }) => {
+const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onSave, editTransaction }) => {
   const [formData, setFormData] = useState<FormData>({
     ticker: '',
     operation: 'buy',
@@ -45,6 +55,8 @@ const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onSave
   
   const tickerInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+
+  const isEditMode = !!editTransaction;
 
   // Fetch available stocks from database
   const fetchAvailableStocks = async () => {
@@ -96,20 +108,34 @@ const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onSave
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
-      setFormData({
-        ticker: '',
-        operation: 'buy',
-        date: new Date().toISOString().split('T')[0],
-        shares: '',
-        price: '',
-        currency: 'USD',
-        fee: '0.00'
-      });
+      if (editTransaction) {
+        // Pre-fill form with edit transaction data
+        setFormData({
+          ticker: editTransaction.ticker,
+          operation: editTransaction.operation,
+          date: editTransaction.date,
+          shares: editTransaction.shares,
+          price: editTransaction.price,
+          currency: editTransaction.currency,
+          fee: editTransaction.fee
+        });
+      } else {
+        // Reset form for new transaction
+        setFormData({
+          ticker: '',
+          operation: 'buy',
+          date: new Date().toISOString().split('T')[0],
+          shares: '',
+          price: '',
+          currency: 'USD',
+          fee: '0.00'
+        });
+      }
       setErrors({});
       setShowCalendar(false);
       setShowTickerSuggestions(false);
     }
-  }, [isOpen]);
+  }, [isOpen, editTransaction]);
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -268,8 +294,12 @@ const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onSave
               <DollarSign className="w-6 h-6 text-emerald-400" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold">Portfolio Transaction</h2>
-              <p className="text-gray-400">Buy or sell stocks in your portfolio</p>
+              <h2 className="text-2xl font-bold">
+                {isEditMode ? 'Edit Transaction' : 'Portfolio Transaction'}
+              </h2>
+              <p className="text-gray-400">
+                {isEditMode ? 'Modify your existing transaction' : 'Buy or sell stocks in your portfolio'}
+              </p>
             </div>
           </div>
           <button
@@ -510,17 +540,19 @@ const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onSave
           >
             Cancel
           </button>
-          <button
-            onClick={() => handleSave(true)}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
-          >
-            Save and Add More
-          </button>
+          {!isEditMode && (
+            <button
+              onClick={() => handleSave(true)}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+            >
+              Save and Add More
+            </button>
+          )}
           <button
             onClick={() => handleSave(false)}
             className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-medium transition-colors"
           >
-            Save
+            {isEditMode ? 'Update Transaction' : 'Save'}
           </button>
         </div>
       </div>

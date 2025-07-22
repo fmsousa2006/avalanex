@@ -27,6 +27,7 @@ const Dashboard: React.FC = () => {
     error,
     isUsingMockData,
     addTransaction,
+    updateTransaction,
     deleteTransaction,
     getPortfolioData
   } = usePortfolio();
@@ -46,6 +47,16 @@ const Dashboard: React.FC = () => {
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [isTestingModalOpen, setIsTestingModalOpen] = useState(false);
   const [isPortfolioMenuOpen, setIsPortfolioMenuOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<{
+    id: string;
+    ticker: string;
+    operation: 'buy' | 'sell';
+    date: string;
+    shares: string;
+    price: string;
+    currency: string;
+    fee: string;
+  } | null>(null);
 
   // Function to sync all portfolio stock prices
   const handleSyncPortfolioPrices = async () => {
@@ -187,7 +198,15 @@ const Dashboard: React.FC = () => {
     fee: string;
   }) => {
     try {
-      await addTransaction(transactionData);
+      if (editingTransaction) {
+        // Update existing transaction
+        await updateTransaction(editingTransaction.id, transactionData);
+        setEditingTransaction(null);
+      } else {
+        // Add new transaction
+        await addTransaction(transactionData);
+      }
+      setIsPortfolioModalOpen(false);
     } catch (error) {
       console.error('Error adding transaction:', error);
       alert('Error adding transaction: ' + (error as Error).message);
@@ -204,10 +223,35 @@ const Dashboard: React.FC = () => {
   };
 
   const handleEditTransaction = async (transactionId: string) => {
-    // TODO: Implement edit transaction functionality
-    console.log('Edit transaction:', transactionId);
-    alert('Edit transaction functionality will be implemented soon!');
+    // Find the transaction to edit
+    const transactionToEdit = transactions.find(t => t.id === transactionId);
+    
+    if (!transactionToEdit) {
+      alert('Transaction not found');
+      return;
+    }
+
+    // Prepare edit data
+    const editData = {
+      id: transactionToEdit.id,
+      ticker: transactionToEdit.stock?.symbol || '',
+      operation: transactionToEdit.type as 'buy' | 'sell',
+      date: transactionToEdit.transaction_date,
+      shares: transactionToEdit.shares?.toString() || '0',
+      price: transactionToEdit.price?.toString() || '0',
+      currency: transactionToEdit.currency,
+      fee: transactionToEdit.fee.toString()
+    };
+
+    setEditingTransaction(editData);
+    setIsPortfolioModalOpen(true);
   };
+
+  const handleClosePortfolioModal = () => {
+    setIsPortfolioModalOpen(false);
+    setEditingTransaction(null);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
@@ -479,8 +523,9 @@ const Dashboard: React.FC = () => {
       {/* Portfolio Modal */}
       <PortfolioModal
         isOpen={isPortfolioModalOpen}
-        onClose={() => setIsPortfolioModalOpen(false)}
+        onClose={handleClosePortfolioModal}
         onSave={handlePortfolioTransaction}
+        editTransaction={editingTransaction}
       />
       
       {/* Testing Modal */}

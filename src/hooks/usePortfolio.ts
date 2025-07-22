@@ -399,6 +399,159 @@ export const usePortfolio = () => {
     return transaction;
   };
 
+  // Update transaction
+  const updateTransaction = async (
+    transactionId: string,
+    transactionData: {
+      ticker: string;
+      operation: 'buy' | 'sell';
+      date: string;
+      shares: string;
+      price: string;
+      currency: string;
+      fee: string;
+    }
+  ) => {
+    if (!isSupabaseConfiguredForRealData) {
+      throw new Error('Cannot update transactions when using mock data. Please configure Supabase.');
+    }
+
+    if (!currentPortfolio) throw new Error('No current portfolio');
+
+    // Get the original transaction to reverse its effects
+    const { data: originalTransaction, error: fetchError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('id', transactionId)
+      .single();
+
+    if (fetchError || !originalTransaction) {
+      throw new Error('Original transaction not found');
+    }
+
+    const shares = parseInt(transactionData.shares);
+    const price = parseFloat(transactionData.price);
+    const fee = parseFloat(transactionData.fee || '0');
+    const amount = shares * price;
+
+    // Ensure stock exists
+    const stock = await upsertStock(transactionData.ticker, `${transactionData.ticker} Inc.`);
+
+    // Update the transaction
+    const { data: updatedTransaction, error: updateError } = await supabase
+      .from('transactions')
+      .update({
+        stock_id: stock.id,
+        type: transactionData.operation,
+        shares: shares,
+        price: price,
+        amount: amount,
+        fee: fee,
+        currency: transactionData.currency,
+        transaction_date: transactionData.date
+      })
+      .eq('id', transactionId)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    // Reverse the original transaction's effect on holdings
+    const originalHolding = holdings.find(h => h.stock_id === originalTransaction.stock_id);
+    
+    if (originalHolding && originalTransaction.shares) {
+      let reversedShares: number;
+      let reversedAverageCost: number;
+
+      if (originalTransaction.type === 'buy') {
+        // Reverse the buy: subtract shares and recalculate average cost
+        reversedShares = Math.max(0, originalHolding.shares - originalTransaction.shares);
+        if (reversedShares > 0) {
+          const totalCost = (originalHolding.shares * originalHolding.average_cost) - originalTransaction.amount;
+          reversedAverageCost = totalCost / reversedShares;
+        } else {
+          reversedAverageCost = 0;
+        }
+      } else {
+        // Reverse the sell: add shares back
+        reversedShares = originalHolding.shares + originalTransaction.shares;
+        reversedAverageCost = originalHolding.average_cost;
+      }
+
+      if (reversedShares > 0) {
+        await supabase
+          .from('portfolio_holdings')
+          .update({
+            shares: reversedShares,
+            average_cost: reversedAverageCost,
+            last_updated: new Date().toISOString()
+          })
+          .eq('id', originalHolding.id);
+      } else {
+        await supabase
+          .from('portfolio_holdings')
+          .delete()
+          .eq('id', originalHolding.id);
+      }
+    }
+
+    // Apply the new transaction's effect on holdings
+    const newHolding = holdings.find(h => h.stock_id === stock.id);
+
+    if (newHolding) {
+      let newShares: number;
+      let newAverageCost: number;
+
+      if (transactionData.operation === 'buy') {
+        newShares = newHolding.shares + shares;
+        const totalCost = (newHolding.shares * newHolding.average_cost) + amount;
+        newAverageCost = totalCost / newShares;
+      } else {
+        newShares = Math.max(0, newHolding.shares - shares);
+        newAverageCost = newHolding.average_cost;
+      }
+
+      if (newShares > 0) {
+        await supabase
+          .from('portfolio_holdings')
+          .update({
+            shares: newShares,
+            average_cost: newAverageCost,
+            current_price: price,
+            last_updated: new Date().toISOString()
+          })
+          .eq('id', newHolding.id);
+      } else {
+        await supabase
+          .from('portfolio_holdings')
+          .delete()
+          .eq('id', newHolding.id);
+      }
+    } else if (transactionData.operation === 'buy') {
+      // Create new holding
+      await supabase
+        .from('portfolio_holdings')
+        .insert([
+          {
+            portfolio_id: currentPortfolio.id,
+            stock_id: stock.id,
+            shares: shares,
+            average_cost: price,
+            current_price: price,
+            last_updated: new Date().toISOString()
+          }
+        ]);
+    }
+
+    // Refresh data
+    await Promise.all([
+      fetchHoldings(currentPortfolio.id),
+      fetchTransactions(currentPortfolio.id)
+    ]);
+
+    return updatedTransaction;
+  };
+
   // Delete transaction
   const deleteTransaction = async (transactionId: string) => {
     if (!isSupabaseConfiguredForRealData) {
@@ -562,6 +715,7 @@ export const usePortfolio = () => {
     error,
     isUsingMockData,
     addTransaction,
+    updateTransaction,
     deleteTransaction,
     getPortfolioData,
     setCurrentPortfolio
