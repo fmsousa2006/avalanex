@@ -1011,70 +1011,53 @@ class FinnhubService {
         console.log('✅ Successfully updated current price for NVDA');
       }
 
-      // Generate rolling 24-hour market data (only during market hours 9:30 AM - 4:00 PM ET)
-      console.log('📈 Generating rolling 24-hour market data...');
-      
-      // For demo purposes, we'll generate mock data since Finnhub free plan doesn't support historical data
+      // Generate mock data for rolling 24-hour window
       console.log('💡 Generating mock rolling 24-hour data...');
       
       const mockData: HistoricalPriceData[] = [];
       const basePrice = quote?.c || 875.25; // Use quote price or fallback to NVDA typical price
       
-      // Generate missing data points in the rolling 24-hour window
-      let currentTime = new Date(startTime);
+      // Define market hours: 13:30 (market open), then hourly from 14:00 to 20:00 UTC
+      const marketHours = [13.5, 14, 15, 16, 17, 18, 19, 20]; // 13.5 = 13:30
       
-      while (currentTime <= currentMarketTime) {
-        const dayOfWeek = currentTime.getUTCDay();
+      // Generate data for each day in the rolling window
+      const currentDay = new Date(startTime);
+      while (currentDay <= currentMarketTime) {
+        const dayOfWeek = currentDay.getUTCDay();
         
         // Skip weekends
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-          const utcHour = currentTime.getUTCHours();
-          const utcMinutes = currentTime.getUTCMinutes();
+          console.log(`📅 Processing trading day: ${currentDay.toISOString().split('T')[0]}`);
           
-          // Check if this time should be included
-          let shouldInclude = false;
-          
-          // Always include market open at 13:30 UTC (9:30 AM ET)
-          if (utcHour === 13 && utcMinutes === 30) {
-            shouldInclude = true;
-            console.log(`🕘 Market open time: ${currentTime.toISOString()}`);
-          }
-          // Hourly intervals from 14:00 to 20:00 UTC (10:00 AM to 4:00 PM ET)  
-          else if (utcHour >= 14 && utcHour <= 20 && utcMinutes === 0) {
-            shouldInclude = true;
-            console.log(`🕐 Hourly interval: ${currentTime.toISOString()}`);
-          }
-          
-          if (shouldInclude) {
-            const timeKey = currentTime.toISOString();
+          // Generate data for each market hour
+          for (const hour of marketHours) {
+            const wholeHour = Math.floor(hour);
+            const minutes = (hour - wholeHour) * 60;
             
-            // Only add if we don't already have this timestamp
-            if (!existingTimestamps.has(timeKey)) {
-              const etTimeString = currentTime.toLocaleString("en-US", {timeZone: "America/New_York", hour12: false});
-              const price = basePrice + (Math.sin(currentTime.getTime() / 1000000) * 1); // Deterministic variation
+            const dataTime = new Date(currentDay);
+            dataTime.setUTCHours(wholeHour, minutes, 0, 0);
+            
+            // Only include if within our rolling window
+            if (dataTime >= startTime && dataTime <= currentMarketTime) {
+              const price = basePrice + (Math.sin(dataTime.getTime() / 1000000) * 2); // Deterministic variation
               
               mockData.push({
-                timestamp: timeKey,
+                timestamp: dataTime.toISOString(),
                 open: price,
-                high: price + Math.random() * 0.5,
-                low: price - Math.random() * 0.5,
+                high: price + Math.random() * 1.0,
+                low: price - Math.random() * 1.0,
                 close: price,
-                volume: Math.floor(Math.random() * 1000000) + 500000
+                volume: Math.floor(Math.random() * 2000000) + 1000000 // Higher volume for NVDA
               });
               
-              console.log(`📊 Added data point: ${timeKey} (${etTimeString} ET) - $${price.toFixed(2)}`);
-            } else {
-              console.log(`⏭️ Skipping existing timestamp: ${timeKey}`);
+              const etTimeString = dataTime.toLocaleString("en-US", {timeZone: "America/New_York", hour12: false});
+              console.log(`📊 Added data point: ${dataTime.toISOString()} (${etTimeString} ET) - $${price.toFixed(2)}`);
             }
           }
         }
         
-        // Smart increment: if we're at 13:30, jump to 14:00, otherwise increment by 1 hour
-        if (currentTime.getUTCHours() === 13 && currentTime.getUTCMinutes() === 30) {
-          currentTime.setUTCHours(14, 0, 0, 0); // Jump to 14:00
-        } else {
-          currentTime.setUTCHours(currentTime.getUTCHours() + 1, 0, 0, 0); // Next hour
-        }
+        // Move to next day
+        currentDay.setUTCDate(currentDay.getUTCDate() + 1);
       }
       
       console.log(`📊 Generated ${mockData.length} mock data points for rolling 24-hour window (market hours only)`);
