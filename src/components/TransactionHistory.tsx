@@ -110,10 +110,14 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteT
 
   const getTransformX = (transactionId: string) => {
     if (swipedTransaction !== transactionId) return 0;
-    if (!isDragging) return swipedTransaction === transactionId ? -120 : 0;
+    if (!isDragging) return -120;
     
     const deltaX = startX - currentX;
     return Math.min(0, Math.max(-120, -deltaX));
+  };
+
+  const shouldShowDeleteButton = (transactionId: string) => {
+    return swipedTransaction === transactionId && (isDragging || getTransformX(transactionId) === -120);
   };
 
   return (
@@ -124,14 +128,16 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteT
           className="relative bg-gray-750 rounded-lg border border-gray-600 hover:border-gray-500 transition-colors"
         >
           {/* Delete Button Background */}
-          <div className="absolute right-0 top-0 bottom-0 w-32 bg-red-600 rounded-r-lg flex items-center justify-center">
-            <button
-              onClick={() => handleDeleteClick(transaction.id)}
-              className="text-white hover:text-red-200 transition-colors p-2"
-            >
-              <Trash2 className="w-6 h-6" />
-            </button>
-          </div>
+          {shouldShowDeleteButton(transaction.id) && (
+            <div className="absolute right-0 top-0 bottom-0 w-32 bg-red-600 rounded-r-lg flex items-center justify-center">
+              <button
+                onClick={() => handleDeleteClick(transaction.id)}
+                className="text-white hover:text-red-200 transition-colors p-2"
+              >
+                <Trash2 className="w-6 h-6" />
+              </button>
+            </div>
+          )}
 
           {/* Transaction Content */}
           <div 
