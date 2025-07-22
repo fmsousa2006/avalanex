@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { DollarSign, Calendar, Database } from 'lucide-react';
+import { DollarSign, Calendar, Database, Plus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 // Helper function to check if Supabase environment is properly configured
