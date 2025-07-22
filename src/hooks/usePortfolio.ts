@@ -399,6 +399,92 @@ export const usePortfolio = () => {
     return transaction;
   };
 
+  // Delete transaction
+  const deleteTransaction = async (transactionId: string) => {
+    if (!isSupabaseConfiguredForRealData) {
+      throw new Error('Cannot delete transactions when using mock data. Please configure Supabase.');
+    }
+
+    if (!currentPortfolio) throw new Error('No current portfolio');
+
+    // Get transaction details before deletion for portfolio updates
+    const { data: transaction, error: fetchError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('id', transactionId)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!transaction) throw new Error('Transaction not found');
+
+    // Delete the transaction
+    const { error: deleteError } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('id', transactionId);
+
+    if (deleteError) throw deleteError;
+
+    // Update portfolio holdings based on the deleted transaction
+    const existingHolding = holdings.find(h => h.stock_id === transaction.stock_id);
+
+    if (existingHolding && transaction.shares) {
+      let newShares: number;
+      let newAverageCost: number;
+
+      if (transaction.type === 'buy') {
+        // Reverse the buy: subtract shares and recalculate average cost
+        newShares = Math.max(0, existingHolding.shares - transaction.shares);
+        if (newShares > 0) {
+          const totalCost = (existingHolding.shares * existingHolding.average_cost) - transaction.amount;
+          newAverageCost = totalCost / newShares;
+        } else {
+          newAverageCost = 0;
+        }
+      } else if (transaction.type === 'sell') {
+        // Reverse the sell: add shares back
+        newShares = existingHolding.shares + transaction.shares;
+        newAverageCost = existingHolding.average_cost; // Keep same average cost
+      } else {
+        // For dividend transactions, no holding changes needed
+        newShares = existingHolding.shares;
+        newAverageCost = existingHolding.average_cost;
+      }
+
+      if (transaction.type !== 'dividend') {
+        if (newShares > 0) {
+          // Update existing holding
+          const { error: updateError } = await supabase
+            .from('portfolio_holdings')
+            .update({
+              shares: newShares,
+              average_cost: newAverageCost,
+              last_updated: new Date().toISOString()
+            })
+            .eq('id', existingHolding.id);
+
+          if (updateError) throw updateError;
+        } else {
+          // Remove holding if no shares left
+          const { error: deleteHoldingError } = await supabase
+            .from('portfolio_holdings')
+            .delete()
+            .eq('id', existingHolding.id);
+
+          if (deleteHoldingError) throw deleteHoldingError;
+        }
+      }
+    }
+
+    // Refresh data
+    await Promise.all([
+      fetchHoldings(currentPortfolio.id),
+      fetchTransactions(currentPortfolio.id)
+    ]);
+
+    return true;
+  };
+
   // Convert holdings to portfolio data format
   const getPortfolioData = (): PortfolioData[] => {
     return holdings.map(holding => {
@@ -476,6 +562,7 @@ export const usePortfolio = () => {
     error,
     isUsingMockData,
     addTransaction,
+    deleteTransaction,
     getPortfolioData,
     setCurrentPortfolio
   };

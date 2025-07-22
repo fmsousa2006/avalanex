@@ -27,6 +27,7 @@ const Dashboard: React.FC = () => {
     error,
     isUsingMockData,
     addTransaction,
+    deleteTransaction,
     getPortfolioData
   } = usePortfolio();
   
@@ -194,14 +195,8 @@ const Dashboard: React.FC = () => {
   };
 
   const handleDeleteTransaction = async (transactionId: string) => {
-    if (!confirm('Are you sure you want to delete this transaction?')) {
-      return;
-    }
-
     try {
-      // TODO: Implement delete transaction function in usePortfolio hook
-      console.log('Delete transaction:', transactionId);
-      alert('Delete transaction functionality will be implemented soon');
+      await deleteTransaction(transactionId);
     } catch (error) {
       console.error('Error deleting transaction:', error);
       alert('Error deleting transaction: ' + (error as Error).message);

@@ -102,6 +102,11 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteT
   };
 
   const handleDeleteClick = (transactionId: string) => {
+    if (!confirm('Are you sure you want to delete this transaction?')) {
+      setSwipedTransaction(null);
+      return;
+    }
+    
     if (onDeleteTransaction) {
       onDeleteTransaction(transactionId);
     }
