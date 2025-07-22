@@ -115,6 +115,8 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
         return null;
       }
 
+      console.log(`Found stock info for ${stockSymbol}:`, stockInfo);
+
       // Fetch 1-day historical data
       const { data: priceData, error: priceError } = await supabase
         .from('stock_prices_1d')
@@ -126,6 +128,8 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
         console.error(`Error fetching price data for ${stockSymbol}:`, priceError);
         return null;
       }
+
+      console.log(`Fetched ${priceData?.length || 0} price records for ${stockSymbol}:`, priceData);
 
       if (!priceData || priceData.length === 0) {
         console.warn(`No historical price data found for ${stockSymbol}`);
@@ -143,6 +147,8 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
       const lastPrice = prices[prices.length - 1];
       const change = lastPrice - firstPrice;
       const changePercent = (change / firstPrice) * 100;
+
+      console.log(`Processed data for ${stockSymbol}: ${prices.length} prices, change: ${change.toFixed(2)} (${changePercent.toFixed(2)}%)`);
 
       const historicalData = {
         '1d': {
@@ -184,6 +190,8 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
 
           const { stockInfo, historicalData } = result;
 
+          console.log('Processing result:', { stockInfo: stockInfo?.symbol, hasHistoricalData: !!historicalData });
+
           // Build stock data object
           const realStockData: StockData = {
             symbol: stockInfo.symbol,
@@ -207,12 +215,17 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
           if (!historicalData) {
             realStockData.priceData = generateMockPriceData(realStockData.currentPrice);
             setHasHistoricalData(false);
+            console.log('No historical data found, using mock data for all periods');
           } else {
             // Fill in missing periods with mock data
             const allPeriods = generateMockPriceData(realStockData.currentPrice);
             realStockData.priceData = { ...allPeriods, ...historicalData };
             setHasHistoricalData(true);
+            console.log('Using real 1D data + mock data for other periods');
           }
+
+          console.log('Final stock data priceData keys:', Object.keys(realStockData.priceData));
+          console.log('1D data sample:', realStockData.priceData['1d']?.prices?.slice(0, 3));
 
           setStockData(realStockData);
         } catch (error) {
@@ -407,6 +420,9 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
   const currentPeriodData = stockData.priceData[selectedPeriod];
   const isPositive = currentPeriodData?.changePercent >= 0;
 
+  // Debug current period data
+  console.log(`Current period: ${selectedPeriod}, data:`, currentPeriodData);
+
   const chartWidth = chartDimensions.width;
   const chartHeight = chartDimensions.height;
   const padding = 40;
@@ -450,9 +466,19 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
     if (!currentPeriodData) return '';
     
     const { prices } = currentPeriodData;
+    
+    console.log(`Creating price path for ${selectedPeriod}: ${prices?.length} prices`);
+    
+    if (!prices || prices.length === 0) {
+      console.warn('No prices available for path creation');
+      return '';
+    }
+    
     const minPrice = Math.min(...prices);
     const maxPrice = Math.max(...prices);
     const priceRange = maxPrice - minPrice;
+
+    console.log(`Price range: ${minPrice.toFixed(2)} - ${maxPrice.toFixed(2)} (range: ${priceRange.toFixed(2)})`);
 
     if (priceRange === 0) return '';
 
@@ -462,7 +488,9 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
       return `${x},${y}`;
     });
 
-    return `M ${points.join(' L ')}`;
+    const path = `M ${points.join(' L ')}`;
+    console.log(`Generated path with ${points.length} points`);
+    return path;
   };
 
   const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
