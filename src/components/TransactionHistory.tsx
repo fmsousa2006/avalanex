@@ -194,20 +194,3 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteT
 };
 
 export default TransactionHistory;
-                </div>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className={`font-semibold ${getTransactionColor(transaction.type)}`}>
-                {transaction.type === 'buy' ? '-' : '+'}${transaction.amount.toLocaleString()}
-              </div>
-              <div className="text-sm text-gray-400">{transaction.date}</div>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-export default TransactionHistory;
