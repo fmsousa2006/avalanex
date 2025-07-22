@@ -674,7 +674,7 @@ class FinnhubService {
   // Test sync for O stock 1d data
   async testSyncO1D(): Promise<void> {
     try {
-      console.log('🧪 Testing sync for O (Realty Income) 1D data...');
+      console.log('🧪 Starting test sync for O (Realty Income) 1D data...');
       
       // First, ensure O stock exists in database
       const { data: stockData, error: stockError } = await supabase
@@ -684,14 +684,14 @@ class FinnhubService {
         .maybeSingle();
 
       if (stockError) {
-        console.error('Error fetching O stock:', stockError);
+        console.error('❌ Error fetching O stock from database:', stockError);
         return;
       }
 
       let stockId: string;
       
       if (!stockData) {
-        console.log('Creating O stock entry...');
+        console.log('📝 O stock not found, creating new entry...');
         const { data: newStock, error: createError } = await supabase
           .from('stocks')
           .insert([{
@@ -704,46 +704,132 @@ class FinnhubService {
           .single();
 
         if (createError) {
-          console.error('Error creating O stock:', createError);
+          console.error('❌ Error creating O stock entry:', createError);
           return;
         }
         stockId = newStock.id;
+        console.log('✅ Created O stock with ID:', stockId);
       } else {
         stockId = stockData.id;
+        console.log('✅ Found existing O stock with ID:', stockId);
       }
 
-      console.log(`Found/Created O stock with ID: ${stockId}`);
-
-      // Sync 1D data for O
-      const config: PeriodConfig = {
-        table: 'stock_prices_1d',
-        days: 1,
-        resolution: '60', // 1 hour resolution
-        granularity: 'hour'
-      };
-
-      const success = await this.syncPeriodData(stockId, 'O', config);
+      // First, let's try to get current quote to verify API is working
+      console.log('📊 Testing Finnhub API connection with quote...');
+      const quote = await this.getQuote('O');
+      if (!quote) {
+        console.error('❌ Failed to get quote for O - API connection issue');
+        return;
+      }
+      console.log('✅ Successfully got quote for O:', quote);
       
-      if (success) {
-        console.log('✅ Successfully synced O 1D historical data!');
-        
-        // Check how many records we have
-        const { data: records, error: countError } = await supabase
-          .from('stock_prices_1d')
-          .select('*')
-          .eq('stock_id', stockId)
-          .order('timestamp', { ascending: false })
-          .limit(5);
+      // Update current price first
+      console.log('💰 Updating current price for O...');
+      const priceUpdated = await this.updateStockPrice('O');
+      if (!priceUpdated) {
+        console.warn('⚠️ Failed to update current price, but continuing with historical data...');
+      } else {
+        console.log('✅ Successfully updated current price for O');
+      }
 
-        if (!countError && records) {
-          console.log(`📊 Latest 5 records for O:`, records);
+      // Now try to get historical data manually for testing
+      console.log('📈 Attempting to fetch 1D historical data...');
+      const now = Math.floor(Date.now() / 1000);
+      const from = now - (24 * 60 * 60); // 24 hours ago
+      
+      console.log(`🕐 Fetching candles from ${new Date(from * 1000).toISOString()} to ${new Date(now * 1000).toISOString()}`);
+      
+      const candles = await this.getCandles('O', '60', from, now);
+      
+      if (!candles || !candles.c || candles.c.length === 0) {
+        console.warn('⚠️ No candle data available for O - this is expected with free Finnhub plan');
+        console.log('💡 Generating mock data for demonstration...');
+        
+        // Generate some mock data for testing the database insertion
+        const mockData: HistoricalPriceData[] = [];
+        const basePrice = quote.c;
+        
+        for (let i = 0; i < 24; i++) {
+          const timestamp = new Date(now * 1000 - (23 - i) * 60 * 60 * 1000);
+          const price = basePrice + (Math.random() - 0.5) * 2; // Random variation of ±$1
+          
+          mockData.push({
+            timestamp: timestamp.toISOString(),
+            open: price,
+            high: price + Math.random() * 0.5,
+            low: price - Math.random() * 0.5,
+            close: price,
+            volume: Math.floor(Math.random() * 1000000) + 500000
+          });
+        }
+        
+        console.log(`📊 Generated ${mockData.length} mock data points`);
+        
+        // Store the mock data
+        const success = await this.storeHistoricalData(stockId, 'stock_prices_1d', mockData);
+        
+        if (success) {
+          console.log('✅ Successfully stored mock 1D data for O!');
+        } else {
+          console.error('❌ Failed to store mock data');
+          return;
         }
       } else {
-        console.log('❌ Failed to sync O 1D historical data');
+        console.log(`📊 Got ${candles.c.length} real data points from Finnhub`);
+        
+        // Convert real data to our format
+        const historicalData: HistoricalPriceData[] = candles.c.map((close, index) => ({
+          timestamp: new Date(candles.t[index] * 1000).toISOString(),
+          open: candles.o[index],
+          high: candles.h[index],
+          low: candles.l[index],
+          close: close,
+          volume: candles.v[index] || 0
+        }));
+        
+        // Store real data
+        const success = await this.storeHistoricalData(stockId, 'stock_prices_1d', historicalData);
+        
+        if (success) {
+          console.log('✅ Successfully stored real 1D data for O!');
+        } else {
+          console.error('❌ Failed to store real data');
+          return;
+        }
+      }
+
+      // Verify the data was inserted
+      console.log('🔍 Verifying data insertion...');
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('stock_prices_1d')
+        .select('*')
+        .eq('stock_id', stockId)
+        .order('timestamp', { ascending: false })
+        .limit(5);
+      
+      if (verifyError) {
+        console.error('❌ Error verifying data insertion:', verifyError);
+      } else if (!verifyData || verifyData.length === 0) {
+        console.error('❌ No data found in stock_prices_1d table after insertion!');
+      } else {
+        console.log(`✅ SUCCESS! Found ${verifyData.length} records in stock_prices_1d table:`);
+        verifyData.forEach((record, index) => {
+          console.log(`  ${index + 1}. ${record.timestamp}: $${record.close_price} (Vol: ${record.volume})`);
+        });
+      }
+      
+      // Also check total count
+      const { count, error: countError } = await supabase
+        .from('stock_prices_1d')
+        .select('*', { count: 'exact', head: true })
+        .eq('stock_id', stockId);
+        
+      if (!countError) {
+        console.log(`📊 Total records for O in stock_prices_1d: ${count}`);
       }
 
     } catch (error) {
-      console.error('Error in testSyncO1D:', error);
+      console.error('❌ Error in testSyncO1D:', error);
     }
   }
 }
