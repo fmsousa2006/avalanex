@@ -937,29 +937,29 @@ class FinnhubService {
 
       // Calculate rolling 24-hour market window (excluding weekends)
       console.log('📅 Calculating rolling 24-hour market window...');
-      const now = new Date();
-      const currentET = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
-      const currentETHour = currentET.getHours();
-      const currentETMinutes = currentET.getMinutes();
       
-      // Get current time in market hours format (rounded to nearest hour for simplicity)
-      let currentMarketTime = new Date(currentET);
+      // Get current time in UTC
+      const nowUTC = new Date();
+      
+      // Calculate current time rounded to nearest hour
+      let currentMarketTime = new Date(nowUTC);
       currentMarketTime.setMinutes(0, 0, 0); // Round to nearest hour
       
-      // Calculate 24 hours ago from current market time
+      // Calculate 24 hours ago
       let startTime = new Date(currentMarketTime.getTime() - (24 * 60 * 60 * 1000));
       
-      // Skip weekends - if start time is weekend, move to Friday
+      // Skip weekends for start time - if weekend, move to Friday
       while (startTime.getDay() === 0 || startTime.getDay() === 6) {
         startTime.setDate(startTime.getDate() - 1);
       }
       
-      // Skip weekends - if current time is weekend, move to Monday
+      // Skip weekends for current time - if weekend, move to Monday  
       while (currentMarketTime.getDay() === 0 || currentMarketTime.getDay() === 6) {
         currentMarketTime.setDate(currentMarketTime.getDate() + 1);
       }
       
-      console.log(`🕐 Rolling 24h window: ${startTime.toLocaleString("en-US", {timeZone: "America/New_York"})} to ${currentMarketTime.toLocaleString("en-US", {timeZone: "America/New_York"})} ET`);
+      console.log(`🕐 Rolling 24h window (UTC): ${startTime.toISOString()} to ${currentMarketTime.toISOString()}`);
+      console.log(`🕐 Rolling 24h window (ET): ${startTime.toLocaleString("en-US", {timeZone: "America/New_York"})} to ${currentMarketTime.toLocaleString("en-US", {timeZone: "America/New_York"})}`);
       
       // Clear old data outside the 24-hour window
       console.log('🧹 Clearing data outside 24-hour rolling window...');
@@ -1011,23 +1011,28 @@ class FinnhubService {
       while (currentTime <= currentMarketTime) {
         // Only include data during market hours (9:30 AM - 4:00 PM ET) and weekdays
         const dayOfWeek = currentTime.getDay();
-        const hour = currentTime.getHours();
-        const minutes = currentTime.getMinutes();
+        
+        // Convert to Eastern Time to check market hours
+        const etTimeString = currentTime.toLocaleString("en-US", {timeZone: "America/New_York", hour12: false});
+        const etHour = parseInt(etTimeString.split(', ')[1].split(':')[0]);
+        const etMinutes = parseInt(etTimeString.split(', ')[1].split(':')[1]);
         
         // Skip weekends
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
           // Include market hours: 9:30 AM (9:30) to 4:00 PM (16:00) ET
-          if ((hour > 9 || (hour === 9 && minutes >= 30)) && hour < 16) {
+          if ((etHour > 9 || (etHour === 9 && etMinutes >= 30)) && etHour < 16) {
             const price = basePrice + (Math.random() - 0.5) * 20; // Random variation of ±$10
             
             mockData.push({
-              timestamp: currentTime.toISOString(),
+              timestamp: currentTime.toISOString(), // Store as UTC
               open: price,
               high: price + Math.random() * 10,
               low: price - Math.random() * 10,
               close: price,
               volume: Math.floor(Math.random() * 50000000) + 10000000 // Higher volume for NVDA
             });
+            
+            console.log(`📊 Added data point: ${currentTime.toISOString()} (${etTimeString} ET) - $${price.toFixed(2)}`);
           }
         }
         
