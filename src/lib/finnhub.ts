@@ -807,6 +807,17 @@ class FinnhubService {
           });
         }
         
+        // Add the final market close record at exactly 4:00 PM ET (20:00 UTC)
+        const finalPrice = basePrice + (Math.random() - 0.5) * 2;
+        mockData.push({
+          timestamp: marketClose.toISOString(),
+          open: finalPrice,
+          high: finalPrice + Math.random() * 0.5,
+          low: finalPrice - Math.random() * 0.5,
+          close: finalPrice,
+          volume: Math.floor(Math.random() * 1000000) + 500000
+        });
+        
         console.log(`📊 Generated ${mockData.length} mock data points for market hours (${intervalMinutes}-min intervals)`);
         
         // Store the mock data
