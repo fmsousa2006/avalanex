@@ -676,6 +676,18 @@ class FinnhubService {
     try {
       console.log('🧪 Starting test sync for O (Realty Income) 1D data...');
       
+      // Check if Supabase is properly configured
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseAnonKey || 
+          supabaseUrl === 'https://placeholder.supabase.co' ||
+          supabaseUrl === 'https://your-project-ref.supabase.co' ||
+          supabaseAnonKey === 'placeholder-anon-key' ||
+          supabaseAnonKey === 'your-anon-key-here') {
+        throw new Error('Supabase is not properly configured. Please set up your Supabase project and update the .env file with real credentials.');
+      }
+      
       // First, ensure O stock exists in database
       const { data: stockData, error: stockError } = await supabase
         .from('stocks')
@@ -819,6 +831,18 @@ class FinnhubService {
   async testSyncNVDA1D(): Promise<void> {
     try {
       console.log('🧪 Starting test sync for NVDA (NVIDIA) 1D data...');
+      
+      // Check if Supabase is properly configured
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseAnonKey || 
+          supabaseUrl === 'https://placeholder.supabase.co' ||
+          supabaseUrl === 'https://your-project-ref.supabase.co' ||
+          supabaseAnonKey === 'placeholder-anon-key' ||
+          supabaseAnonKey === 'your-anon-key-here') {
+        throw new Error('Supabase is not properly configured. Please set up your Supabase project and update the .env file with real credentials.');
+      }
       
       // First, ensure NVDA stock exists in database
       const { data: stockData, error: stockError } = await supabase
