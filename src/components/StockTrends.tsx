@@ -15,6 +15,15 @@ interface StockTrendsProps {
   data: PortfolioData[];
 }
 
+interface StockTrendData {
+  symbol: string;
+  name: string;
+  currentPrice: number;
+  weight: number;
+  change: number;
+  changePercent: number;
+}
+
 const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; value: number; symbol: string; date: string } | null>(null);
   const [chartDimensions, setChartDimensions] = useState({ width: 400, height: 180 });
@@ -45,9 +54,12 @@ const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
     .sort((a, b) => b.value - a.value)
     .slice(0, 3)
     .map(stock => ({
-      ...stock,
+      symbol: stock.symbol,
+      name: stock.name,
       currentPrice: stock.price,
-      weight: ((stock.value / totalValue) * 100)
+      weight: ((stock.value / totalValue) * 100),
+      change: stock.change,
+      changePercent: stock.changePercent
     }));
 
   const chartWidth = chartDimensions.width;
@@ -68,24 +80,28 @@ const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
     return `M ${points.join(' L ')}`;
   };
 
-  const generateFixedPriceHistory = (basePrice: number, symbol: string) => {
+  const generateFixedPriceHistory = (currentPrice: number, symbol: string) => {
     const prices: number[] = [];
-    let currentPrice = basePrice * 0.95;
+    let price = currentPrice * 0.95; // Start 30 days ago at 95% of current price
     
     // Use symbol as seed for consistent data generation
     const seed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     let random = seed;
     
-    for (let i = 0; i < 30; i++) {
+    // Generate 29 historical prices (30 days total including current)
+    for (let i = 0; i < 29; i++) {
       // Simple pseudo-random number generator for consistent results
       random = (random * 9301 + 49297) % 233280;
       const normalizedRandom = random / 233280;
       
       const volatility = (normalizedRandom - 0.5) * 0.03; // 3% daily volatility
-      const trend = 0.001; // Slight upward trend
-      currentPrice = currentPrice * (1 + volatility + trend);
-      prices.push(Math.max(currentPrice, 1));
+      const trend = (currentPrice - price) / 29; // Calculate trend to reach current price
+      price = price + trend + (price * volatility);
+      prices.push(Math.max(price, 1));
     }
+    
+    // Ensure the last price is exactly the current price
+    prices.push(currentPrice);
     
     return prices;
   };
