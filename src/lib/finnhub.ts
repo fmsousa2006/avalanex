@@ -718,16 +718,12 @@ class FinnhubService {
       // Calculate rolling 24-hour market window (excluding weekends)
       console.log('📅 Calculating rolling 24-hour market window...');
       
-      // Get current time and round to nearest 30 minutes for market data consistency
-      const nowUTC = new Date();
-      const currentMinutes = nowUTC.getMinutes();
-      const roundedMinutes = currentMinutes >= 30 ? 30 : 0;
-      nowUTC.setMinutes(roundedMinutes, 0, 0);
+      // Get current time - use actual current time for the rolling window
+      let currentMarketTime = new Date();
       
-      let currentMarketTime = new Date(nowUTC);
-      
-      // Calculate 24 hours ago
-      let startTime = new Date(currentMarketTime.getTime() - (24 * 60 * 60 * 1000));
+      // Calculate 25 hours ago to ensure we capture yesterday's 15:00 record
+      // This gives us a bit more buffer to include the full previous trading day
+      let startTime = new Date(currentMarketTime.getTime() - (25 * 60 * 60 * 1000));
       
       // Skip weekends for start time - if weekend, move to Friday
       while (startTime.getDay() === 0 || startTime.getDay() === 6) {
@@ -952,16 +948,12 @@ class FinnhubService {
       // Calculate rolling 24-hour market window (excluding weekends)
       console.log('📅 Calculating rolling 24-hour market window...');
       
-      // Get current time and round to nearest 30 minutes for market data consistency
-      const nowUTC = new Date();
-      const currentMinutes = nowUTC.getMinutes();
-      const roundedMinutes = currentMinutes >= 30 ? 30 : 0;
-      nowUTC.setMinutes(roundedMinutes, 0, 0);
+      // Get current time - use actual current time for the rolling window
+      let currentMarketTime = new Date();
       
-      let currentMarketTime = new Date(nowUTC);
-      
-      // Calculate 24 hours ago
-      let startTime = new Date(currentMarketTime.getTime() - (24 * 60 * 60 * 1000));
+      // Calculate 25 hours ago to ensure we capture yesterday's 15:00 record
+      // This gives us a bit more buffer to include the full previous trading day
+      let startTime = new Date(currentMarketTime.getTime() - (25 * 60 * 60 * 1000));
       
       // Skip weekends for start time - if weekend, move to Friday
       while (startTime.getDay() === 0 || startTime.getDay() === 6) {
