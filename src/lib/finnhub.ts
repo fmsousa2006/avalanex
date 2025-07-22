@@ -714,6 +714,18 @@ class FinnhubService {
         console.log('✅ Found existing O stock with ID:', stockId);
       }
 
+      // For testing purposes, clear existing 1D data for O to ensure fresh test
+      console.log('🧹 Clearing existing 1D data for fresh test...');
+      const { error: deleteError } = await supabase
+        .from('stock_prices_1d')
+        .delete()
+        .eq('stock_id', stockId);
+      
+      if (deleteError) {
+        console.warn('⚠️ Could not clear existing data:', deleteError);
+      } else {
+        console.log('✅ Cleared existing 1D data for fresh test');
+      }
       // First, let's try to get current quote to verify API is working
       console.log('📊 Testing Finnhub API connection with quote...');
       const quote = await this.getQuote('O');
@@ -732,8 +744,8 @@ class FinnhubService {
         console.log('✅ Successfully updated current price for O');
       }
 
-      // Now try to get historical data manually for testing
-      console.log('📈 Attempting to fetch 1D historical data...');
+      // Now try to get historical data manually for testing (always fetch fresh data)
+      console.log('📈 Attempting to fetch fresh 1D historical data from Finnhub...');
       const now = Math.floor(Date.now() / 1000);
       const from = now - (24 * 60 * 60); // 24 hours ago
       
