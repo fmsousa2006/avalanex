@@ -27,7 +27,7 @@ const Dashboard: React.FC = () => {
   
   // Add stock prices hook for real-time data
   const { 
-    updateStockPrices, 
+    updateStockPricesWithHistoricalData, 
     loading: pricesLoading,
     isConfigured: isFinnhubConfigured 
   } = useStockPrices();
@@ -54,17 +54,17 @@ const Dashboard: React.FC = () => {
     }
     
     try {
-      console.log('Syncing portfolio stock prices:', portfolioSymbols);
-      const results = await updateStockPrices(portfolioSymbols);
+      console.log('Syncing portfolio stock prices with historical data:', portfolioSymbols);
+      const results = await updateStockPricesWithHistoricalData(portfolioSymbols);
       
       if (results.success.length > 0) {
-        alert(`Successfully synced ${results.success.length} stock prices!${results.failed.length > 0 ? ` Failed to sync: ${results.failed.join(', ')}` : ''}`);
+        alert(`Successfully synced ${results.success.length} stocks with historical data!${results.failed.length > 0 ? ` Failed to sync: ${results.failed.join(', ')}` : ''}`);
       } else {
-        alert('Failed to sync stock prices. Check console for details.');
+        alert('Failed to sync stock data. Check console for details.');
       }
     } catch (error) {
-      console.error('Error updating stock price:', error);
-      alert('Error updating stock price: ' + (error as Error).message);
+      console.error('Error syncing stock data:', error);
+      alert('Error syncing stock data: ' + (error as Error).message);
     }
   };
 

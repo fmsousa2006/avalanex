@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, TrendingUp, TrendingDown, Calendar, DollarSign, BarChart3, ExternalLink, Building2 } from 'lucide-react';
 
+import { supabase } from '../lib/supabase';
+
 interface StockDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -45,6 +47,7 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
   const [stockData, setStockData] = useState<StockData | null>(null);
   const [tooltip, setTooltip] = useState<{ ballX: number; ballY: number; price: number; date: string; verticalLineX: number } | null>(null);
   const [chartDimensions, setChartDimensions] = useState({ width: 800, height: 300 });
+  const [isLoadingHistoricalData, setIsLoadingHistoricalData] = useState(false);
   const chartRef = React.useRef<HTMLDivElement>(null);
 
   const periods = [
@@ -96,84 +99,99 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
 
   useEffect(() => {
     if (isOpen && stockSymbol) {
-      // Mock data generation for demonstration
-      const generateMockData = () => {
-        // Stock specific values - adjust based on symbol
-        let basePrice = 175.50;
-        let stockSpecificData = {
-          currentPrice: 175.50,
-          change: 2.45,
-          changePercent: 1.42,
-          marketCap: '2.8T',
-          peRatio: 28.5,
-          dividend: 0.96,
-          dividendYield: 0.55,
-          week52Low: 168.2,
-          week52High: 178.4,
-          volume: '45.2M',
-          avgVolume: '52.8M'
-        };
+      // Load real data from database or generate mock data
+      const loadStockData = async () => {
+        setIsLoadingHistoricalData(true);
         
-        // Realty Income (O) specific data
-        if (stockSymbol === 'O') {
-          basePrice = 58.25;
-          stockSpecificData = {
-            currentPrice: 58.25,
-            change: 0.15,
-            changePercent: 0.26,
-            marketCap: '50.2B',
-            peRatio: 15.8,
-            dividend: 3.00,
-            dividendYield: 5.15,
-            week52Low: 52.10,
-            week52High: 62.40,
-            volume: '3.2M',
-            avgVolume: '4.1M'
-          };
-        }
-        
-        const mockData: StockData = {
-          symbol: stockSymbol,
-          name: stockName,
-          ...stockSpecificData,
-          priceData: {},
-          news: [
-            {
-              id: '1',
-              title: `${stockName} Reports Strong Q4 Earnings, Beats Expectations`,
-              summary: 'The company delivered exceptional quarterly results with revenue growth of 15% year-over-year, driven by strong product demand and operational efficiency.',
-              source: 'Financial Times',
-              publishedAt: '2024-01-15T10:30:00Z',
-              url: 'https://www.ft.com/content/sample-earnings-report'
-            },
-            {
-              id: '2',
-              title: `Analysts Upgrade ${stockSymbol} Price Target Following Innovation Announcement`,
-              summary: 'Major investment firms have raised their price targets after the company unveiled breakthrough technology that could revolutionize the industry.',
-              source: 'Reuters',
-              publishedAt: '2024-01-14T14:20:00Z',
-              url: 'https://www.reuters.com/business/technology/sample-price-target-upgrade'
-            },
-            {
-              id: '3',
-              title: `${stockName} Announces Strategic Partnership with Tech Giant`,
-              summary: 'The new partnership is expected to accelerate growth in emerging markets and strengthen the company\'s competitive position.',
-              source: 'Bloomberg',
-              publishedAt: '2024-01-13T09:15:00Z',
-              url: 'https://www.bloomberg.com/news/articles/sample-strategic-partnership'
-            },
-            {
-              id: '4',
-              title: `Market Watch: ${stockSymbol} Shows Resilience Amid Market Volatility`,
-              summary: 'Despite broader market concerns, the stock has maintained strong performance due to solid fundamentals and investor confidence.',
-              source: 'MarketWatch',
-              publishedAt: '2024-01-12T16:45:00Z',
-              url: 'https://www.marketwatch.com/story/sample-market-resilience-story'
-            }
-          ]
-        };
+        try {
+          // Try to fetch real historical data from database
+          const { data: stockInfo, error } = await supabase
+            .from('stocks')
+            .select('*')
+            .eq('symbol', stockSymbol)
+            .single();
 
-        // Generate price data for different periods
+          if (error || !stockInfo) {
+            console.warn('No stock data found in database, using mock data');
+            setStockData(generateMockData());
+            return;
+          }
+
+          // Use real data if available
+          const realStockData: StockData = {
+            symbol: stockInfo.symbol,
+            name: stockInfo.name,
+            currentPrice: stockInfo.current_price || 175.50,
+            change: stockInfo.price_change_24h || 2.45,
+            changePercent: stockInfo.price_change_percent_24h || 1.42,
+            marketCap: stockInfo.market_cap || '2.8T',
+            peRatio: stockSymbol === 'O' ? 15.8 : 28.5,
+            dividend: stockSymbol === 'O' ? 3.00 : 0.96,
+            dividendYield: stockSymbol === 'O' ? 5.15 : 0.55,
+            week52Low: stockSymbol === 'O' ? 52.10 : 168.2,
+            week52High: stockSymbol === 'O' ? 62.40 : 178.4,
+            volume: stockSymbol === 'O' ? '3.2M' : '45.2M',
+            avgVolume: stockSymbol === 'O' ? '4.1M' : '52.8M',
+            priceData: {},
+            news: generateMockNews()
+          };
+
+          // Use historical data from database if available
+          if (stockInfo.historical_data && typeof stockInfo.historical_data === 'object') {
+            realStockData.priceData = stockInfo.historical_data as any;
+          } else {
+            // Generate mock data for missing periods
+            realStockData.priceData = generateMockPriceData(realStockData.currentPrice);
+          }
+
+          setStockData(realStockData);
+        } catch (error) {
+          console.error('Error loading stock data:', error);
+          setStockData(generateMockData());
+        } finally {
+          setIsLoadingHistoricalData(false);
+        }
+      };
+
+      const generateMockNews = () => [
+        {
+          id: '1',
+          title: `${stockName} Reports Strong Q4 Earnings, Beats Expectations`,
+          summary: 'The company delivered exceptional quarterly results with revenue growth of 15% year-over-year, driven by strong product demand and operational efficiency.',
+          source: 'Financial Times',
+          publishedAt: '2024-01-15T10:30:00Z',
+          url: 'https://www.ft.com/content/sample-earnings-report'
+        },
+        {
+          id: '2',
+          title: `Analysts Upgrade ${stockSymbol} Price Target Following Innovation Announcement`,
+          summary: 'Major investment firms have raised their price targets after the company unveiled breakthrough technology that could revolutionize the industry.',
+          source: 'Reuters',
+          publishedAt: '2024-01-14T14:20:00Z',
+          url: 'https://www.reuters.com/business/technology/sample-price-target-upgrade'
+        },
+        {
+          id: '3',
+          title: `${stockName} Announces Strategic Partnership with Tech Giant`,
+          summary: 'The new partnership is expected to accelerate growth in emerging markets and strengthen the company\'s competitive position.',
+          source: 'Bloomberg',
+          publishedAt: '2024-01-13T09:15:00Z',
+          url: 'https://www.bloomberg.com/news/articles/sample-strategic-partnership'
+        },
+        {
+          id: '4',
+          title: `Market Watch: ${stockSymbol} Shows Resilience Amid Market Volatility`,
+          summary: 'Despite broader market concerns, the stock has maintained strong performance due to solid fundamentals and investor confidence.',
+          source: 'MarketWatch',
+          publishedAt: '2024-01-12T16:45:00Z',
+          url: 'https://www.marketwatch.com/story/sample-market-resilience-story'
+        }
+      ];
+
+      const generateMockPriceData = (basePrice: number) => {
+        const priceData: { [key: string]: { prices: number[], dates: string[], change: number, changePercent: number } } = {};
+        
+        // Stock specific values - adjust based on symbol
         periods.forEach(period => {
           let dataPoints: number;
           let volatility: number;
@@ -254,18 +272,62 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
           const totalChange = prices[prices.length - 1] - prices[0];
           const totalChangePercent = (totalChange / prices[0]) * 100;
 
-          mockData.priceData[period.key] = {
+          priceData[period.key] = {
             prices,
             dates,
             change: totalChange,
             changePercent: totalChangePercent
           };
         });
+        
+        return priceData;
+      };
+
+      // Mock data generation for demonstration
+      const generateMockData = () => {
+        let stockSpecificData = {
+          currentPrice: 175.50,
+          change: 2.45,
+          changePercent: 1.42,
+          marketCap: '2.8T',
+          peRatio: 28.5,
+          dividend: 0.96,
+          dividendYield: 0.55,
+          week52Low: 168.2,
+          week52High: 178.4,
+          volume: '45.2M',
+          avgVolume: '52.8M'
+        };
+        
+        // Realty Income (O) specific data
+        if (stockSymbol === 'O') {
+          stockSpecificData = {
+            currentPrice: 58.25,
+            change: 0.15,
+            changePercent: 0.26,
+            marketCap: '50.2B',
+            peRatio: 15.8,
+            dividend: 3.00,
+            dividendYield: 5.15,
+            week52Low: 52.10,
+            week52High: 62.40,
+            volume: '3.2M',
+            avgVolume: '4.1M'
+          };
+        }
+        
+        const mockData: StockData = {
+          symbol: stockSymbol,
+          name: stockName,
+          ...stockSpecificData,
+          priceData: generateMockPriceData(stockSpecificData.currentPrice),
+          news: generateMockNews()
+        };
 
         return mockData;
       };
 
-      setStockData(generateMockData());
+      loadStockData();
     }
   }, [isOpen, stockSymbol, stockName]);
 

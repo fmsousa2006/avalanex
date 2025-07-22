@@ -12,6 +12,16 @@ interface FinnhubQuote {
   t: number; // Timestamp
 }
 
+interface FinnhubCandle {
+  c: number[]; // Close prices
+  h: number[]; // High prices
+  l: number[]; // Low prices
+  o: number[]; // Open prices
+  s: string;   // Status
+  t: number[]; // Timestamps
+  v: number[]; // Volume data
+}
+
 interface FinnhubProfile {
   country: string;
   currency: string;
@@ -61,6 +71,32 @@ class FinnhubService {
     }
   }
 
+  // Get historical candle data for a stock
+  async getCandles(symbol: string, resolution: string, from: number, to: number): Promise<FinnhubCandle | null> {
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/stock/candle?symbol=${symbol}&resolution=${resolution}&from=${from}&to=${to}&token=${this.apiKey}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Finnhub API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Check if we got valid data
+      if (data.s !== 'ok' || !data.c || data.c.length === 0) {
+        console.warn(`No candle data available for symbol: ${symbol}`);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error(`Error fetching candles for ${symbol}:`, error);
+      return null;
+    }
+  }
+
   // Get company profile
   async getProfile(symbol: string): Promise<FinnhubProfile | null> {
     try {
@@ -83,6 +119,59 @@ class FinnhubService {
       return data;
     } catch (error) {
       console.error(`Error fetching profile for ${symbol}:`, error);
+      return null;
+    }
+  }
+
+  // Get historical data for all time periods
+  async getHistoricalData(symbol: string): Promise<{ [key: string]: { prices: number[], dates: string[], change: number, changePercent: number } } | null> {
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      const historicalData: { [key: string]: { prices: number[], dates: string[], change: number, changePercent: number } } = {};
+      
+      const periods = [
+        { key: '1d', days: 1, resolution: '60' }, // 1 hour resolution for 1 day
+        { key: '7d', days: 7, resolution: 'D' },   // Daily resolution for 7 days
+        { key: '30d', days: 30, resolution: 'D' }, // Daily resolution for 30 days
+        { key: '3m', days: 90, resolution: 'D' },  // Daily resolution for 3 months
+        { key: '6m', days: 180, resolution: 'D' }, // Daily resolution for 6 months
+        { key: '1y', days: 365, resolution: 'D' }, // Daily resolution for 1 year
+        { key: '3y', days: 1095, resolution: 'W' }, // Weekly resolution for 3 years
+        { key: '5y', days: 1825, resolution: 'W' }  // Weekly resolution for 5 years
+      ];
+
+      for (const period of periods) {
+        const from = now - (period.days * 24 * 60 * 60);
+        const candles = await this.getCandles(symbol, period.resolution, from, now);
+        
+        if (candles && candles.c && candles.t) {
+          const prices = candles.c;
+          const timestamps = candles.t;
+          
+          // Convert timestamps to ISO strings
+          const dates = timestamps.map(ts => new Date(ts * 1000).toISOString());
+          
+          // Calculate change and change percent
+          const firstPrice = prices[0];
+          const lastPrice = prices[prices.length - 1];
+          const change = lastPrice - firstPrice;
+          const changePercent = (change / firstPrice) * 100;
+          
+          historicalData[period.key] = {
+            prices,
+            dates,
+            change,
+            changePercent
+          };
+        }
+        
+        // Add delay between requests to respect rate limits
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      
+      return historicalData;
+    } catch (error) {
+      console.error(`Error fetching historical data for ${symbol}:`, error);
       return null;
     }
   }
@@ -120,6 +209,40 @@ class FinnhubService {
     }
   }
 
+  // Update stock with historical data
+  async updateStockWithHistoricalData(symbol: string): Promise<boolean> {
+    try {
+      // First update current price
+      const priceUpdated = await this.updateStockPrice(symbol);
+      if (!priceUpdated) return false;
+      
+      // Then get historical data
+      const historicalData = await this.getHistoricalData(symbol);
+      if (!historicalData) return false;
+      
+      // Store historical data in a separate table or as JSON
+      // For now, we'll store it as JSON in the stocks table
+      const { error } = await supabase
+        .from('stocks')
+        .update({
+          historical_data: historicalData,
+          last_historical_update: new Date().toISOString()
+        })
+        .eq('symbol', symbol);
+
+      if (error) {
+        console.error(`Error updating historical data for ${symbol}:`, error);
+        return false;
+      }
+
+      console.log(`Successfully updated historical data for ${symbol}`);
+      return true;
+    } catch (error) {
+      console.error(`Error in updateStockWithHistoricalData for ${symbol}:`, error);
+      return false;
+    }
+  }
+
   // Update multiple stock prices
   async updateMultipleStockPrices(symbols: string[]): Promise<{ success: string[], failed: string[] }> {
     const results = { success: [] as string[], failed: [] as string[] };
@@ -143,6 +266,32 @@ class FinnhubService {
       // Add delay between batches to respect rate limits
       if (i + batchSize < symbols.length) {
         await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    return results;
+  }
+
+  // Update multiple stocks with historical data
+  async updateMultipleStocksWithHistoricalData(symbols: string[]): Promise<{ success: string[], failed: string[] }> {
+    const results = { success: [] as string[], failed: [] as string[] };
+
+    // Process sequentially to avoid rate limiting (historical data is more intensive)
+    for (const symbol of symbols) {
+      try {
+        console.log(`Syncing historical data for ${symbol}...`);
+        const success = await this.updateStockWithHistoricalData(symbol);
+        if (success) {
+          results.success.push(symbol);
+        } else {
+          results.failed.push(symbol);
+        }
+        
+        // Add delay between stocks to respect rate limits
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (error) {
+        console.error(`Error updating ${symbol}:`, error);
+        results.failed.push(symbol);
       }
     }
 
@@ -216,4 +365,4 @@ export const createFinnhubService = (apiKey: string) => {
 };
 
 // Export types
-export type { FinnhubQuote, FinnhubProfile };
+export type { FinnhubQuote, FinnhubProfile, FinnhubCandle };

@@ -84,11 +84,62 @@ export const useStockPrices = () => {
     }
   }, [finnhubApiKey, fetchStockPrices]);
 
+  // Update stock prices with historical data from Finnhub API
+  const updateStockPricesWithHistoricalData = useCallback(async (symbols?: string[]) => {
+    if (!finnhubApiKey) {
+      setError('Finnhub API key not configured');
+      return { success: [], failed: [] };
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const finnhub = createFinnhubService(finnhubApiKey);
+      
+      // If no symbols provided, get all active stocks
+      let stockSymbols = symbols;
+      if (!stockSymbols) {
+        const { data, error } = await supabase
+          .from('stocks')
+          .select('symbol')
+          .eq('is_active', true);
+
+        if (error) throw error;
+        stockSymbols = data?.map(stock => stock.symbol) || [];
+      }
+
+      if (stockSymbols.length === 0) {
+        return { success: [], failed: [] };
+      }
+
+      // Update prices with historical data using Finnhub service
+      const results = await finnhub.updateMultipleStocksWithHistoricalData(stockSymbols);
+      
+      // Refresh local data
+      await fetchStockPrices();
+      
+      return results;
+    } catch (err) {
+      console.error('Error updating stock prices with historical data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update stock prices with historical data');
+      return { success: [], failed: [] };
+    } finally {
+      setLoading(false);
+    }
+  }, [finnhubApiKey, fetchStockPrices]);
+
   // Update a single stock price
   const updateSingleStockPrice = useCallback(async (symbol: string) => {
     const results = await updateStockPrices([symbol]);
     return results.success.includes(symbol);
   }, [updateStockPrices]);
+
+  // Update a single stock with historical data
+  const updateSingleStockWithHistoricalData = useCallback(async (symbol: string) => {
+    const results = await updateStockPricesWithHistoricalData([symbol]);
+    return results.success.includes(symbol);
+  }, [updateStockPricesWithHistoricalData]);
 
   // Check if prices are stale (older than 5 minutes)
   const arePricesStale = useCallback((minutes: number = 5) => {
@@ -130,7 +181,9 @@ export const useStockPrices = () => {
     error,
     lastUpdate,
     updateStockPrices,
+    updateStockPricesWithHistoricalData,
     updateSingleStockPrice,
+    updateSingleStockWithHistoricalData,
     fetchStockPrices,
     arePricesStale,
     getStockPrice,
