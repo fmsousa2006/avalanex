@@ -1108,7 +1108,6 @@ class FinnhubService {
     }
   }
 }
-}
 
 // Export a function to create the service with API key
 export const createFinnhubService = (apiKey: string) => {
