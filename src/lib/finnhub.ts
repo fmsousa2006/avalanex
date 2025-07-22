@@ -264,6 +264,7 @@ export class FinnhubService {
       const isMarketStart = utcHour === 13 && utcMinutes === 30; // 9:30 AM ET
       const isMarketHours = (utcHour === 13 && utcMinutes === 30) || (utcHour >= 14 && utcHour <= 20); // 9:30 AM - 4:00 PM ET
       
+      if (isWeekday && isMarketHours) {
         // Generate realistic price movement
         const volatility = symbol === 'O' ? 0.002 : symbol === 'NVDA' ? 0.015 : 0.008;
         const randomChange = (Math.random() - 0.5) * volatility;
