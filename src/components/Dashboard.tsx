@@ -55,7 +55,7 @@ const Dashboard: React.FC = () => {
     
     try {
       console.log('Syncing portfolio stock prices:', portfolioSymbols);
-      // First try to sync current prices only (faster and more reliable)
+      // Sync historical data incrementally (only missing data points)
       const results = await updateStockPrices(portfolioSymbols);
       
       if (results.success.length > 0) {

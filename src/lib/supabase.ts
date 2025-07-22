@@ -58,6 +58,8 @@ export interface Stock {
   market_status?: string;
   last_price_update?: string;
   is_active?: boolean;
+  historical_data?: any;
+  last_historical_update?: string;
 }
 
 export interface PortfolioHolding {
