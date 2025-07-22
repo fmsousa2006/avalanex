@@ -908,15 +908,12 @@ class FinnhubService {
       
       // Generate 25-hour rolling window with market hours (9:30 AM - 4:00 PM ET)
       const now = new Date();
-      const etNow = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
       const historicalData: HistoricalPriceData[] = [];
       
       // Generate 25-hour rolling window with market hours only (9:30 AM - 4:00 PM ET)
       let currentTime = new Date(now.getTime() - (25 * 60 * 60 * 1000)); // Start 25 hours ago
       
       while (currentTime <= now) {
-        // Convert to Eastern Time for market hour checking
-        const etTimeString = currentTime.toLocaleString("en-US", {timeZone: "America/New_York"});
         // Convert to Eastern Time for market hour checking
         const etTimeString = currentTime.toLocaleString("en-US", {timeZone: "America/New_York"});
         const etTime = new Date(etTimeString);
@@ -927,7 +924,6 @@ class FinnhubService {
         // Only include market hours (9:30 AM - 4:00 PM ET) on weekdays
         const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
         const isMarketStart = hour === 9 && minute >= 30;
-        const isMarketHours = (isMarketStart || hour >= 10) && hour < 16;
         const isMarketHours = (isMarketStart || hour >= 10) && hour < 16;
         
         if (isWeekday && isMarketHours) {
@@ -951,32 +947,6 @@ class FinnhubService {
             continue;
           }
           
-          // For market start (9:30 AM), use exact time. For other hours, use top of the hour
-          let dataTimestamp: Date;
-          if (isMarketStart && minute >= 30) {
-            // Market start - use 9:30 AM ET
-            dataTimestamp = new Date(currentTime);
-            dataTimestamp.setHours(9, 30, 0, 0);
-            // Convert back to UTC
-            const etString = dataTimestamp.toLocaleString("en-US", {timeZone: "America/New_York"});
-            const utcTime = new Date(etString + " EST");
-            dataTimestamp = new Date(utcTime.getTime() + (5 * 60 * 60 * 1000)); // Add 5 hours to convert EST to UTC
-          } else if (hour >= 10) {
-            // Regular market hours - use top of the hour
-            dataTimestamp = new Date(currentTime);
-            dataTimestamp.setMinutes(0, 0, 0);
-          } else {
-            // Skip this iteration
-            currentTime = new Date(currentTime.getTime() + (60 * 60 * 1000));
-            continue;
-          }
-          
-          // Check if we already have data for this exact timestamp
-          const timestampString = dataTimestamp.toISOString();
-          const alreadyExists = historicalData.some(d => d.timestamp === timestampString);
-          
-          if (!alreadyExists) {
-            const basePrice = quote.c;
           // Check if we already have data for this exact timestamp
           const timestampString = dataTimestamp.toISOString();
           const alreadyExists = historicalData.some(d => d.timestamp === timestampString);
