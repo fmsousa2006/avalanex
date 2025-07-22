@@ -767,6 +767,7 @@ export const usePortfolio = () => {
           await Promise.all([
             fetchHoldings(currentPortfolio.id),
             fetchTransactions(currentPortfolio.id),
+            fetchDividends(),
             fetchNextDividend(currentPortfolio.id)
           ]);
         } catch (err) {
