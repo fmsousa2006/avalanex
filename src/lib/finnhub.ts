@@ -915,36 +915,87 @@ class FinnhubService {
       let currentTime = new Date(now.getTime() - (25 * 60 * 60 * 1000)); // Start 25 hours ago
       
       while (currentTime <= now) {
-        const etTime = new Date(currentTime.toLocaleString("en-US", {timeZone: "America/New_York"}));
+        // Convert to Eastern Time for market hour checking
+        const etTimeString = currentTime.toLocaleString("en-US", {timeZone: "America/New_York"});
+        // Convert to Eastern Time for market hour checking
+        const etTimeString = currentTime.toLocaleString("en-US", {timeZone: "America/New_York"});
+        const etTime = new Date(etTimeString);
         const hour = etTime.getHours();
         const minute = etTime.getMinutes();
         const dayOfWeek = etTime.getDay(); // 0 = Sunday, 6 = Saturday
         
         // Only include market hours (9:30 AM - 4:00 PM ET) on weekdays
         const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
-        const isMarketHours = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 16;
+        const isMarketStart = hour === 9 && minute >= 30;
+        const isMarketHours = (isMarketStart || hour >= 10) && hour < 16;
+        const isMarketHours = (isMarketStart || hour >= 10) && hour < 16;
         
         if (isWeekday && isMarketHours) {
-          // First read should be exactly 9:30 AM ET if we're starting the day
-          let adjustedTime = currentTime;
-          if (hour === 9 && minute < 30) {
-            adjustedTime = new Date(currentTime);
-            adjustedTime.setHours(9, 30, 0, 0);
+          // For market start (9:30 AM), use exact time. For other hours, use top of the hour
+          let dataTimestamp: Date;
+          if (isMarketStart && minute >= 30) {
+            // Market start - use 9:30 AM ET
+            dataTimestamp = new Date(currentTime);
+            dataTimestamp.setHours(9, 30, 0, 0);
+            // Convert back to UTC
+            const etString = dataTimestamp.toLocaleString("en-US", {timeZone: "America/New_York"});
+            const utcTime = new Date(etString + " EST");
+            dataTimestamp = new Date(utcTime.getTime() + (5 * 60 * 60 * 1000)); // Add 5 hours to convert EST to UTC
+          } else if (hour >= 10) {
+            // Regular market hours - use top of the hour
+            dataTimestamp = new Date(currentTime);
+            dataTimestamp.setMinutes(0, 0, 0);
+          } else {
+            // Skip this iteration
+            currentTime = new Date(currentTime.getTime() + (60 * 60 * 1000));
+            continue;
           }
           
-          const basePrice = quote.c;
-          const volatility = 0.03; // 3% volatility for NVDA (higher than O)
-          const randomChange = (Math.random() - 0.5) * volatility * basePrice;
-          const price = Math.max(basePrice + randomChange, 1);
+          // For market start (9:30 AM), use exact time. For other hours, use top of the hour
+          let dataTimestamp: Date;
+          if (isMarketStart && minute >= 30) {
+            // Market start - use 9:30 AM ET
+            dataTimestamp = new Date(currentTime);
+            dataTimestamp.setHours(9, 30, 0, 0);
+            // Convert back to UTC
+            const etString = dataTimestamp.toLocaleString("en-US", {timeZone: "America/New_York"});
+            const utcTime = new Date(etString + " EST");
+            dataTimestamp = new Date(utcTime.getTime() + (5 * 60 * 60 * 1000)); // Add 5 hours to convert EST to UTC
+          } else if (hour >= 10) {
+            // Regular market hours - use top of the hour
+            dataTimestamp = new Date(currentTime);
+            dataTimestamp.setMinutes(0, 0, 0);
+          } else {
+            // Skip this iteration
+            currentTime = new Date(currentTime.getTime() + (60 * 60 * 1000));
+            continue;
+          }
           
-          historicalData.push({
-            timestamp: adjustedTime.toISOString(),
-            open: price * (0.995 + Math.random() * 0.01),
-            high: price * (1.002 + Math.random() * 0.015),
-            low: price * (0.990 - Math.random() * 0.015),
-            close: price,
-            volume: Math.floor(10000000 + Math.random() * 20000000) // Higher volume for NVDA
-          });
+          // Check if we already have data for this exact timestamp
+          const timestampString = dataTimestamp.toISOString();
+          const alreadyExists = historicalData.some(d => d.timestamp === timestampString);
+          
+          if (!alreadyExists) {
+            const basePrice = quote.c;
+          // Check if we already have data for this exact timestamp
+          const timestampString = dataTimestamp.toISOString();
+          const alreadyExists = historicalData.some(d => d.timestamp === timestampString);
+          
+          if (!alreadyExists) {
+            const basePrice = quote.c;
+            const volatility = 0.03; // 3% volatility for NVDA (higher than O)
+            const randomChange = (Math.random() - 0.5) * volatility * basePrice;
+            const price = Math.max(basePrice + randomChange, 1);
+            
+            historicalData.push({
+              timestamp: timestampString,
+              open: price * (0.995 + Math.random() * 0.01),
+              high: price * (1.002 + Math.random() * 0.015),
+              low: price * (0.990 - Math.random() * 0.015),
+              close: price,
+              volume: Math.floor(10000000 + Math.random() * 20000000) // Higher volume for NVDA
+            });
+          }
         }
         
         // Move to next hour
