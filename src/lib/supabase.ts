@@ -33,6 +33,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       'X-Client-Info': 'portfolio-dashboard'
     }
   }
+}
+)
 // Database types
 export interface Portfolio {
   id: string;
