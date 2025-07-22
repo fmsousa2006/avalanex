@@ -807,6 +807,7 @@ class FinnhubService {
           }
           const etMinutes = parseInt(etTimeString.split(', ')[1].split(':')[1]);
           if (shouldInclude) {
+          }
           // Skip weekends
           if (dayOfWeek !== 0 && dayOfWeek !== 6) {
             // Include market hours: 9:30 AM (9:30) to 4:00 PM (16:00) ET
