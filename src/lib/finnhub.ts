@@ -1029,8 +1029,19 @@ class FinnhubService {
         
         // Skip weekends
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-          // Include market hours: 9:30 AM (9:30) to 4:00 PM (16:00) ET
-          if ((etHour > 9 || (etHour === 9 && etMinutes >= 30)) && etHour < 16) {
+          // Special handling for market open and hourly intervals
+          let shouldInclude = false;
+          
+          // Always include market open at 9:30 AM ET (13:30 UTC)
+          if (etHour === 9 && etMinutes === 30) {
+            shouldInclude = true;
+          }
+          // Then include hourly intervals from 10:00 AM to 4:00 PM ET (14:00-20:00 UTC)
+          else if (etHour >= 10 && etHour <= 15 && etMinutes === 0) {
+            shouldInclude = true;
+          }
+          
+          if (shouldInclude) {
             // Use deterministic price based on timestamp for consistency
             const seed = currentTime.getTime() / 1000000;
             const price = basePrice + (Math.sin(seed) * 2); // Deterministic variation of ±$2
@@ -1048,7 +1059,7 @@ class FinnhubService {
           }
         }
         
-        // Move to next 30 minutes to match market data granularity
+        // Move to next 30 minutes to catch both 9:30 AM and hourly intervals
         currentTime.setMinutes(currentTime.getMinutes() + 30);
       }
       
