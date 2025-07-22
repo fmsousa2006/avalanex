@@ -98,11 +98,9 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
     if (isOpen && stockSymbol) {
       // Mock data generation for demonstration
       const generateMockData = () => {
-        // NVDA specific values
-        const basePrice = 175.50; // Current price between low and high
-        const mockData: StockData = {
-          symbol: stockSymbol,
-          name: stockName,
+        // Stock specific values - adjust based on symbol
+        let basePrice = 175.50;
+        let stockSpecificData = {
           currentPrice: 175.50,
           change: 2.45,
           changePercent: 1.42,
@@ -113,7 +111,31 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
           week52Low: 168.2,
           week52High: 178.4,
           volume: '45.2M',
-          avgVolume: '52.8M',
+          avgVolume: '52.8M'
+        };
+        
+        // Realty Income (O) specific data
+        if (stockSymbol === 'O') {
+          basePrice = 58.25;
+          stockSpecificData = {
+            currentPrice: 58.25,
+            change: 0.15,
+            changePercent: 0.26,
+            marketCap: '50.2B',
+            peRatio: 15.8,
+            dividend: 3.00,
+            dividendYield: 5.15,
+            week52Low: 52.10,
+            week52High: 62.40,
+            volume: '3.2M',
+            avgVolume: '4.1M'
+          };
+        }
+        
+        const mockData: StockData = {
+          symbol: stockSymbol,
+          name: stockName,
+          ...stockSpecificData,
           priceData: {},
           news: [
             {
@@ -209,7 +231,13 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
           let currentPrice = basePrice * (1 - trend);
 
           for (let i = 0; i < dataPoints; i++) {
-            const randomChange = (Math.random() - 0.5) * volatility;
+            // Use symbol as seed for consistent data generation
+            const seed = stockSymbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            let random = seed + i * 17;
+            random = (random * 9301 + 49297) % 233280;
+            const normalizedRandom = random / 233280;
+            
+            const randomChange = (normalizedRandom - 0.5) * volatility;
             const trendChange = trend / dataPoints;
             currentPrice += randomChange + trendChange;
             prices.push(Math.max(currentPrice, 1));

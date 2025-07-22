@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal } from 'lucide-react';
 import { usePortfolio } from '../hooks/usePortfolio';
+import { useStockPrices } from '../hooks/useStockPrices';
 import PortfolioChart from './PortfolioChart';
 import StockTrends from './StockTrends';
 import TransactionHistory from './TransactionHistory';
@@ -23,12 +24,41 @@ const Dashboard: React.FC = () => {
     addTransaction,
     getPortfolioData
   } = usePortfolio();
+  
+  // Add stock prices hook for real-time data
+  const { 
+    updateStockPrices, 
+    updateSingleStockPrice, 
+    loading: pricesLoading,
+    isConfigured: isFinnhubConfigured 
+  } = useStockPrices();
 
   const [hoveredStock, setHoveredStock] = useState<string | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [isPortfolioMenuOpen, setIsPortfolioMenuOpen] = useState(false);
+
+  // Test function to update Realty Income (O) stock price
+  const handleUpdateRealtyIncomePrice = async () => {
+    if (!isFinnhubConfigured) {
+      alert('Finnhub API key not configured. Please add VITE_FINNHUB_API_KEY to your .env file.');
+      return;
+    }
+    
+    try {
+      console.log('Updating Realty Income (O) stock price...');
+      const success = await updateSingleStockPrice('O');
+      if (success) {
+        alert('Successfully updated Realty Income (O) price from Finnhub!');
+      } else {
+        alert('Failed to update Realty Income (O) price. Check console for details.');
+      }
+    } catch (error) {
+      console.error('Error updating stock price:', error);
+      alert('Error updating stock price: ' + (error as Error).message);
+    }
+  };
 
   // Handle escape key for portfolio menu
   React.useEffect(() => {
@@ -301,6 +331,19 @@ const Dashboard: React.FC = () => {
                   )}
                 </div>
               </div>
+              {/* Test Button for Realty Income Price Update */}
+              <button
+                onClick={handleUpdateRealtyIncomePrice}
+                disabled={pricesLoading}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  pricesLoading 
+                    ? 'bg-gray-600 cursor-not-allowed' 
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+                title="Update Realty Income (O) stock price from Finnhub"
+              >
+                {pricesLoading ? 'Updating...' : 'Update O Price'}
+              </button>
             </div>
             <PortfolioChart 
               data={currentPortfolioData} 
