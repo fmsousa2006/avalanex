@@ -193,6 +193,21 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleDeleteTransaction = async (transactionId: string) => {
+    if (!confirm('Are you sure you want to delete this transaction?')) {
+      return;
+    }
+
+    try {
+      // TODO: Implement delete transaction function in usePortfolio hook
+      console.log('Delete transaction:', transactionId);
+      alert('Delete transaction functionality will be implemented soon');
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      alert('Error deleting transaction: ' + (error as Error).message);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
@@ -439,7 +454,10 @@ const Dashboard: React.FC = () => {
           {/* Transaction History */}
           <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
             <h2 className="text-xl font-semibold mb-6">Last Transactions</h2>
-            <TransactionHistory data={currentTransactionData} />
+            <TransactionHistory 
+              data={currentTransactionData} 
+              onDeleteTransaction={handleDeleteTransaction}
+            />
           </div>
 
           {/* Dividend Tracker */}
