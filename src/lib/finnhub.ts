@@ -891,6 +891,222 @@ class FinnhubService {
     }
   }
 }
+  // Test sync for NVIDIA stock 1d data
+  async testSyncNVDA1D(): Promise<void> {
+    try {
+      console.log('🧪 Starting test sync for NVDA (NVIDIA) 1D data...');
+      
+      // First, ensure NVDA stock exists in database
+      const { data: stockData, error: stockError } = await supabase
+        .from('stocks')
+        .select('id, symbol')
+        .eq('symbol', 'NVDA')
+        .maybeSingle();
+
+      if (stockError) {
+        console.error('❌ Error fetching NVDA stock from database:', stockError);
+        console.log('🔧 This might be due to Supabase configuration. Please check your .env file.');
+        throw new Error(`Supabase error: ${stockError.message}`);
+      }
+
+      let stockId: string;
+      
+      if (!stockData) {
+        console.log('📝 NVDA stock not found, creating new entry...');
+        const { data: newStock, error: createError } = await supabase
+          .from('stocks')
+          .insert([{
+            symbol: 'NVDA',
+            name: 'NVIDIA Corporation',
+            sector: 'Technology',
+            is_active: true
+          }])
+          .select('id')
+          .single();
+
+        if (createError) {
+          console.error('❌ Error creating NVDA stock entry:', createError);
+          throw new Error(`Failed to create NVDA stock: ${createError.message}`);
+        }
+        stockId = newStock.id;
+        console.log('✅ Created NVDA stock with ID:', stockId);
+      } else {
+        stockId = stockData.id;
+        console.log('✅ Found existing NVDA stock with ID:', stockId);
+      }
+
+      // For testing purposes, clear existing 1D data for NVDA to ensure fresh test
+      console.log('🧹 Clearing existing 1D data for fresh test...');
+      const { error: deleteError } = await supabase
+        .from('stock_prices_1d')
+        .delete()
+        .eq('stock_id', stockId);
+      
+      if (deleteError) {
+        console.warn('⚠️ Could not clear existing data:', deleteError);
+        // Don't throw here, continue with the test
+      } else {
+        console.log('✅ Cleared existing 1D data for fresh test');
+      }
+      
+      // First, let's try to get current quote to verify API is working
+      console.log('📊 Testing Finnhub API connection with quote...');
+      const quote = await this.getQuote('NVDA');
+      if (!quote) {
+        console.warn('⚠️ Failed to get quote for NVDA - will use mock price');
+        // Continue with mock data instead of failing
+      }
+      
+      if (quote) {
+        console.log('✅ Successfully got quote for NVDA:', quote);
+      }
+      
+      // Update current price first
+      console.log('💰 Updating current price for NVDA...');
+      const priceUpdated = await this.updateStockPrice('NVDA');
+      if (!priceUpdated) {
+        console.warn('⚠️ Failed to update current price, but continuing with historical data...');
+      } else {
+        console.log('✅ Successfully updated current price for NVDA');
+      }
+
+      // Calculate market hours aligned timestamps (Eastern Time)
+      console.log('📈 Calculating S&P 500 market hours aligned timestamps...');
+      
+      // Get current date in Eastern Time
+      const now = new Date();
+      const currentET = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+      
+      // Get the most recent market close (4:00 PM ET = 20:00 UTC)
+      const marketClose = new Date();
+      marketClose.setUTCHours(20, 0, 0, 0); // 4:00 PM ET = 20:00 UTC
+      
+      // If current time is before 4 PM today, use yesterday's close
+      const currentETHour = parseInt(currentET.toLocaleString("en-US", {timeZone: "America/New_York", hour12: false}).split(',')[1].trim().split(':')[0]);
+      if (currentETHour < 16) {
+        marketClose.setUTCDate(marketClose.getUTCDate() - 1);
+      }
+      
+      // Get market open for the same day (9:30 AM ET = 13:30 UTC)
+      const marketOpen = new Date(marketClose);
+      marketOpen.setUTCHours(13, 30, 0, 0); // 9:30 AM ET = 13:30 UTC
+      
+      const from = Math.floor(marketOpen.getTime() / 1000);
+      const to = Math.floor(marketClose.getTime() / 1000);
+      
+      console.log(`🕐 Market hours: ${marketOpen.toLocaleString("en-US", {timeZone: "America/New_York", hour12: false})} to ${marketClose.toLocaleString("en-US", {timeZone: "America/New_York", hour12: false})} ET`);
+      console.log(`🕐 Fetching candles from ${new Date(from * 1000).toISOString()} to ${new Date(to * 1000).toISOString()}`);
+      
+      const candles = await this.getCandles('NVDA', '60', from, to);
+      
+      if (!candles || !candles.c || candles.c.length === 0) {
+        console.warn('⚠️ No candle data available for NVDA - this is expected with free Finnhub plan');
+        console.log('💡 Generating mock data aligned with market hours...');
+        
+        // Generate mock data aligned with S&P 500 market hours (9:30 AM - 4:00 PM ET)
+        const mockData: HistoricalPriceData[] = [];
+        const basePrice = quote?.c || 875.25; // Use quote price or fallback to NVDA typical price
+        const marketDurationHours = 6.5; // 9:30 AM to 4:00 PM = 6.5 hours
+        const intervalMinutes = 30; // 30-minute intervals
+        const totalIntervals = Math.floor((marketDurationHours * 60) / intervalMinutes);
+        
+        for (let i = 0; i < totalIntervals; i++) {
+          const timestamp = new Date(marketOpen.getTime() + (i * intervalMinutes * 60 * 1000));
+          const price = basePrice + (Math.random() - 0.5) * 20; // Random variation of ±$10 (NVDA is more volatile)
+          
+          mockData.push({
+            timestamp: timestamp.toISOString(),
+            open: price,
+            high: price + Math.random() * 10,
+            low: price - Math.random() * 10,
+            close: price,
+            volume: Math.floor(Math.random() * 50000000) + 10000000 // Higher volume for NVDA
+          });
+        }
+        
+        // Add the final market close record at exactly 4:00 PM ET (20:00 UTC)
+        const finalPrice = basePrice + (Math.random() - 0.5) * 20;
+        mockData.push({
+          timestamp: marketClose.toISOString(),
+          open: finalPrice,
+          high: finalPrice + Math.random() * 10,
+          low: finalPrice - Math.random() * 10,
+          close: finalPrice,
+          volume: Math.floor(Math.random() * 50000000) + 10000000
+        });
+        
+        console.log(`📊 Generated ${mockData.length} mock data points for market hours (${intervalMinutes}-min intervals)`);
+        
+        // Store the mock data
+        const success = await this.storeHistoricalData(stockId, 'stock_prices_1d', mockData);
+        
+        if (success) {
+          console.log('✅ Successfully stored mock 1D data for NVDA aligned with S&P 500 market hours!');
+        } else {
+          console.error('❌ Failed to store mock data');
+          throw new Error('Failed to store mock data in database');
+        }
+      } else {
+        console.log(`📊 Got ${candles.c.length} real data points from Finnhub`);
+        
+        // Convert real data to our format
+        const historicalData: HistoricalPriceData[] = candles.c.map((close, index) => ({
+          timestamp: new Date(candles.t[index] * 1000).toISOString(),
+          open: candles.o[index],
+          high: candles.h[index],
+          low: candles.l[index],
+          close: close,
+          volume: candles.v[index] || 0
+        }));
+        
+        // Store real data
+        const success = await this.storeHistoricalData(stockId, 'stock_prices_1d', historicalData);
+        
+        if (success) {
+          console.log('✅ Successfully stored real 1D data for NVDA aligned with market hours!');
+        } else {
+          console.error('❌ Failed to store real data');
+          throw new Error('Failed to store real data in database');
+        }
+      }
+
+      // Verify the data was inserted
+      console.log('🔍 Verifying data insertion...');
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('stock_prices_1d')
+        .select('*')
+        .eq('stock_id', stockId)
+        .order('timestamp', { ascending: false })
+        .limit(5);
+      
+      if (verifyError) {
+        console.error('❌ Error verifying data insertion:', verifyError);
+        throw new Error(`Verification failed: ${verifyError.message}`);
+      } else if (!verifyData || verifyData.length === 0) {
+        console.error('❌ No data found in stock_prices_1d table after insertion!');
+        throw new Error('No data found in table after insertion');
+      } else {
+        console.log(`✅ SUCCESS! Found ${verifyData.length} records in stock_prices_1d table:`);
+        verifyData.forEach((record, index) => {
+          console.log(`  ${index + 1}. ${record.timestamp}: $${record.close_price} (Vol: ${record.volume})`);
+        });
+      }
+      
+      // Also check total count
+      const { count, error: countError } = await supabase
+        .from('stock_prices_1d')
+        .select('*', { count: 'exact', head: true })
+        .eq('stock_id', stockId);
+        
+      if (!countError) {
+        console.log(`📊 Total records for NVDA in stock_prices_1d: ${count}`);
+      }
+
+    } catch (error) {
+      console.error('❌ Error in testSyncNVDA1D:', error);
+      throw error; // Re-throw so the UI can show the error
+    }
+  }
 
 // Export a function to create the service with API key
 export const createFinnhubService = (apiKey: string) => {

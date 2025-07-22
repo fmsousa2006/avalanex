@@ -215,6 +215,27 @@ export const useStockPrices = () => {
     }
   }, [finnhubApiKey]);
 
+  // Test sync NVIDIA 1D data
+  const testSyncNVDA1D = useCallback(async () => {
+    if (!finnhubApiKey) {
+      setError('Finnhub API key not configured. Please add VITE_FINNHUB_API_KEY to your .env file.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const finnhub = createFinnhubService(finnhubApiKey);
+      await finnhub.testSyncNVDA1D();
+      console.log('✅ Test sync completed for NVIDIA 1D data');
+    } catch (err) {
+      console.error('❌ Error in NVIDIA test sync:', err);
+      setError(err instanceof Error ? err.message : 'Failed to test sync NVIDIA 1D data');
+    } finally {
+      setLoading(false);
+    }
+  }, [finnhubApiKey]);
   // Update a single stock price
   const updateSingleStockPrice = useCallback(async (symbol: string) => {
     const results = await updateStockPrices([symbol]);
@@ -279,6 +300,7 @@ export const useStockPrices = () => {
     getStockPrice,
     isConfigured: !!finnhubApiKey,
     isSupabaseConfigured,
-    testSyncO1D
+    testSyncO1D,
+    testSyncNVDA1D
   };
 };

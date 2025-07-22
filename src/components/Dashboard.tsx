@@ -30,7 +30,8 @@ const Dashboard: React.FC = () => {
     updateStockPricesWithHistoricalData, 
     loading: pricesLoading,
     isConfigured: isFinnhubConfigured,
-    testSyncO1D
+    testSyncO1D,
+    testSyncNVDA1D
   } = useStockPrices();
 
   const [hoveredStock, setHoveredStock] = useState<string | null>(null);
@@ -95,6 +96,22 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // Test sync NVIDIA 1D data
+  const handleTestSyncNVDA1D = async () => {
+    if (!isFinnhubConfigured) {
+      alert('Finnhub API key not configured. Please add VITE_FINNHUB_API_KEY to your .env file.');
+      return;
+    }
+    
+    try {
+      console.log('🧪 Starting test sync for NVIDIA 1D data...');
+      await testSyncNVDA1D();
+      alert('✅ NVIDIA test sync completed! Check console for details.');
+    } catch (error) {
+      console.error('❌ NVIDIA test sync failed:', error);
+      alert('❌ NVIDIA test sync failed: ' + (error as Error).message);
+    }
+  };
   // Handle escape key for portfolio menu
   React.useEffect(() => {
     const handleEscapeKey = (event: KeyboardEvent) => {
@@ -390,6 +407,18 @@ const Dashboard: React.FC = () => {
                 title="Test sync O stock 1D historical data"
               >
                 Test O 1D
+              </button>
+              
+              {/* Test NVIDIA 1D Sync Button */}
+              <button
+                onClick={handleTestSyncNVDA1D}
+                disabled={pricesLoading}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  pricesLoading ? 'bg-gray-600 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+                }`}
+                title="Test sync NVIDIA stock 1D historical data"
+              >
+                Test NVIDIA 1D
               </button>
             </div>
             <PortfolioChart 
