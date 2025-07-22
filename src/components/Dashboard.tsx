@@ -169,18 +169,20 @@ const Dashboard: React.FC = () => {
   }));
 
   // Convert dividends to the format expected by DividendTracker component
-  const dividendData = dividends.map(dividend => ({
-    id: dividend.id,
-    symbol: dividend.stock?.symbol || '',
-    name: dividend.stock?.name || '',
-    amount: dividend.amount,
-    date: dividend.payment_date,
-    exDividendDate: dividend.ex_dividend_date,
-    paymentDate: dividend.payment_date,
-    yield: dividend.dividend_yield || 0,
-    frequency: dividend.frequency,
-    status: dividend.status
-  }));
+  const dividendData = dividends
+    .filter(dividend => dividend.status === 'upcoming') // Extra safety filter
+    .map(dividend => ({
+      id: dividend.id,
+      symbol: dividend.stock?.symbol || '',
+      name: dividend.stock?.name || '',
+      amount: dividend.amount,
+      date: dividend.payment_date,
+      exDividendDate: dividend.ex_dividend_date,
+      paymentDate: dividend.payment_date,
+      yield: dividend.dividend_yield || 0,
+      frequency: dividend.frequency,
+      status: dividend.status
+    }));
 
   const totalValue = currentPortfolioData.reduce((sum, stock) => sum + stock.value, 0);
   const totalGain = currentPortfolioData.reduce((sum, stock) => sum + (stock.value - stock.cost), 0);

@@ -256,12 +256,16 @@ export const usePortfolio = () => {
       return; // Skip if using mock data
     }
 
+    // Only fetch upcoming dividends (not paid or ex-dividend)
+    const today = new Date().toISOString().split('T')[0];
     const { data, error } = await supabase
       .from('dividends')
       .select(`
         *,
         stock:stocks(*)
       `)
+      .eq('status', 'upcoming')
+      .gte('payment_date', today)
       .order('payment_date', { ascending: true });
 
     if (error) throw error;
