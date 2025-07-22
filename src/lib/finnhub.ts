@@ -747,45 +747,45 @@ class FinnhubService {
       }
       console.log('✅ Successfully updated current price for O in database');
 
-      // Try to get real historical data from Finnhub
-      const now = Math.floor(Date.now() / 1000);
-      const oneDayAgo = now - (24 * 60 * 60);
+      // Generate mock historical data since Finnhub free tier doesn't include historical data
+      console.log('📊 Generating mock historical data for testing...');
+      const now = new Date();
+      const historicalData: HistoricalPriceData[] = [];
       
-      console.log('📊 Attempting to fetch real historical data from Finnhub...');
-      const candles = await this.getCandles('O', '60', oneDayAgo, now);
-      
-      if (!candles || !candles.c || candles.c.length === 0) {
-        console.warn('⚠️ Unable to get real historical data from Finnhub API');
-        console.warn('⚠️ This usually means your Finnhub plan does not include historical data access');
-        throw new Error('Unable to get real historical data from Finnhub API. Historical data requires a paid Finnhub subscription.');
+      // Generate 24 hours of mock data (hourly intervals)
+      for (let i = 23; i >= 0; i--) {
+        const timestamp = new Date(now.getTime() - (i * 60 * 60 * 1000));
+        const basePrice = quote.c;
+        const volatility = 0.02; // 2% volatility
+        const randomChange = (Math.random() - 0.5) * volatility * basePrice;
+        const price = Math.max(basePrice + randomChange, 1);
+        
+        historicalData.push({
+          timestamp: timestamp.toISOString(),
+          open: price * (0.995 + Math.random() * 0.01),
+          high: price * (1.001 + Math.random() * 0.01),
+          low: price * (0.995 - Math.random() * 0.01),
+          close: price,
+          volume: Math.floor(1000000 + Math.random() * 2000000)
+        });
       }
       
-      console.log(`📊 Got ${candles.c.length} real data points from Finnhub for O`);
-      
-      // Convert real Finnhub data to our format
-      const historicalData: HistoricalPriceData[] = candles.c.map((close, index) => ({
-        timestamp: new Date(candles.t[index] * 1000).toISOString(),
-        open: candles.o[index],
-        high: candles.h[index],
-        low: candles.l[index],
-        close: close,
-        volume: candles.v[index] || 0
-      }));
-      
-      console.log('📊 Sample real data points:');
+      console.log(`📊 Generated ${historicalData.length} mock data points for O`);
+      console.log('📊 Sample mock data points:');
       historicalData.slice(0, 3).forEach((data, index) => {
         const dataTime = new Date(data.timestamp);
-        console.log(`  ${index + 1}. ${dataTime.toLocaleString("en-US", {timeZone: "America/New_York"})} ET: $${data.close} (Vol: ${data.volume})`);
+        console.log(`  ${index + 1}. ${dataTime.toLocaleString("en-US", {timeZone: "America/New_York"})} ET: $${data.close.toFixed(2)} (Vol: ${data.volume})`);
       });
       
-      // Store the real data
+      // Store the mock data
+      console.log('💾 Storing mock data in stock_prices_1d table...');
       const success = await this.storeHistoricalData(stockId, 'stock_prices_1d', historicalData);
       
       if (success) {
-        console.log('✅ Successfully stored real 1D data for O!');
+        console.log('✅ Successfully stored mock 1D data for O!');
       } else {
-        console.error('❌ Failed to store real data');
-        throw new Error('Failed to store real data in database');
+        console.error('❌ Failed to store mock data');
+        throw new Error('Failed to store mock data in database');
       }
 
       // Verify the data was inserted
@@ -804,10 +804,10 @@ class FinnhubService {
         console.error('❌ No data found in stock_prices_1d table after insertion!');
         throw new Error('No data found in table after insertion');
       } else {
-        console.log(`✅ SUCCESS! Found ${verifyData.length} records in stock_prices_1d table:`);
+        console.log(`✅ SUCCESS! Found ${verifyData.length} records in stock_prices_1d table for O:`);
         verifyData.forEach((record, index) => {
           const recordTime = new Date(record.timestamp);
-          console.log(`  ${index + 1}. ${recordTime.toLocaleString("en-US", {timeZone: "America/New_York"})} ET: $${record.close_price} (Vol: ${record.volume})`);
+          console.log(`  ${index + 1}. ${recordTime.toLocaleString("en-US", {timeZone: "America/New_York"})} ET: $${parseFloat(record.close_price).toFixed(2)} (Vol: ${record.volume})`);
         });
       }
       
@@ -903,45 +903,45 @@ class FinnhubService {
       }
       console.log('✅ Successfully updated current price for NVDA in database');
 
-      // Try to get real historical data from Finnhub
-      const now = Math.floor(Date.now() / 1000);
-      const oneDayAgo = now - (24 * 60 * 60);
+      // Generate mock historical data since Finnhub free tier doesn't include historical data
+      console.log('📊 Generating mock historical data for testing...');
+      const now = new Date();
+      const historicalData: HistoricalPriceData[] = [];
       
-      console.log('📊 Attempting to fetch real historical data from Finnhub...');
-      const candles = await this.getCandles('NVDA', '60', oneDayAgo, now);
-      
-      if (!candles || !candles.c || candles.c.length === 0) {
-        console.warn('⚠️ Unable to get real historical data from Finnhub API');
-        console.warn('⚠️ This usually means your Finnhub plan does not include historical data access');
-        throw new Error('Unable to get real historical data from Finnhub API. Historical data requires a paid Finnhub subscription.');
+      // Generate 24 hours of mock data (hourly intervals)
+      for (let i = 23; i >= 0; i--) {
+        const timestamp = new Date(now.getTime() - (i * 60 * 60 * 1000));
+        const basePrice = quote.c;
+        const volatility = 0.03; // 3% volatility for NVDA (higher than O)
+        const randomChange = (Math.random() - 0.5) * volatility * basePrice;
+        const price = Math.max(basePrice + randomChange, 1);
+        
+        historicalData.push({
+          timestamp: timestamp.toISOString(),
+          open: price * (0.995 + Math.random() * 0.01),
+          high: price * (1.002 + Math.random() * 0.015),
+          low: price * (0.990 - Math.random() * 0.015),
+          close: price,
+          volume: Math.floor(10000000 + Math.random() * 20000000) // Higher volume for NVDA
+        });
       }
       
-      console.log(`📊 Got ${candles.c.length} real data points from Finnhub for NVDA`);
-      
-      // Convert real Finnhub data to our format
-      const historicalData: HistoricalPriceData[] = candles.c.map((close, index) => ({
-        timestamp: new Date(candles.t[index] * 1000).toISOString(),
-        open: candles.o[index],
-        high: candles.h[index],
-        low: candles.l[index],
-        close: close,
-        volume: candles.v[index] || 0
-      }));
-      
-      console.log('📊 Sample real data points:');
+      console.log(`📊 Generated ${historicalData.length} mock data points for NVDA`);
+      console.log('📊 Sample mock data points:');
       historicalData.slice(0, 3).forEach((data, index) => {
         const dataTime = new Date(data.timestamp);
-        console.log(`  ${index + 1}. ${dataTime.toLocaleString("en-US", {timeZone: "America/New_York"})} ET: $${data.close} (Vol: ${data.volume})`);
+        console.log(`  ${index + 1}. ${dataTime.toLocaleString("en-US", {timeZone: "America/New_York"})} ET: $${data.close.toFixed(2)} (Vol: ${data.volume})`);
       });
       
-      // Store the real data
+      // Store the mock data
+      console.log('💾 Storing mock data in stock_prices_1d table...');
       const success = await this.storeHistoricalData(stockId, 'stock_prices_1d', historicalData);
       
       if (success) {
-        console.log('✅ Successfully stored real 1D data for NVDA!');
+        console.log('✅ Successfully stored mock 1D data for NVDA!');
       } else {
-        console.error('❌ Failed to store real data');
-        throw new Error('Failed to store real data in database');
+        console.error('❌ Failed to store mock data');
+        throw new Error('Failed to store mock data in database');
       }
 
       // Verify the data was inserted
@@ -960,10 +960,10 @@ class FinnhubService {
         console.error('❌ No data found in stock_prices_1d table after insertion!');
         throw new Error('No data found in table after insertion');
       } else {
-        console.log(`✅ SUCCESS! Found ${verifyData.length} records in stock_prices_1d table:`);
+        console.log(`✅ SUCCESS! Found ${verifyData.length} records in stock_prices_1d table for NVDA:`);
         verifyData.forEach((record, index) => {
           const recordTime = new Date(record.timestamp);
-          console.log(`  ${index + 1}. ${recordTime.toLocaleString("en-US", {timeZone: "America/New_York"})} ET: $${record.close_price} (Vol: ${record.volume})`);
+          console.log(`  ${index + 1}. ${recordTime.toLocaleString("en-US", {timeZone: "America/New_York"})} ET: $${parseFloat(record.close_price).toFixed(2)} (Vol: ${record.volume})`);
         });
       }
       

@@ -115,7 +115,12 @@ const Dashboard: React.FC = () => {
       alert('✅ NVIDIA test sync completed! Check console for details.');
     } catch (error) {
       console.error('❌ NVIDIA test sync failed:', error);
-      alert('❌ NVIDIA test sync failed: ' + (error as Error).message);
+      const errorMessage = (error as Error).message;
+      if (errorMessage.startsWith('FINNHUB_WARNING:')) {
+        alert('⚠️ NVIDIA test sync partially completed: ' + errorMessage.replace('FINNHUB_WARNING: ', ''));
+      } else {
+        alert('❌ NVIDIA test sync failed: ' + errorMessage);
+      }
     }
   };
   // Handle escape key for portfolio menu
