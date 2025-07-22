@@ -25,29 +25,22 @@ export const useStockPrices = () => {
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
   
   const isSupabaseConfigured = useMemo(() => {
-    console.log('🔍 Validating Supabase configuration...');
-    
     if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('❌ Missing required environment variables');
       return false;
     }
     
     if (supabaseUrl === 'https://placeholder.supabase.co' || supabaseAnonKey === 'placeholder-key') {
-      console.error('❌ Placeholder values detected - update .env file');
       return false;
     }
     
     if (!supabaseUrl.includes('supabase.co')) {
-      console.error('❌ Invalid URL format - must contain "supabase.co"');
       return false;
     }
     
     if (!supabaseAnonKey.startsWith('eyJ')) {
-      console.error('❌ Invalid anon key format - should start with "eyJ"');
       return false;
     }
     
-    console.log('✅ Supabase configuration is valid');
     return true;
   }, [supabaseUrl, supabaseAnonKey]);
 

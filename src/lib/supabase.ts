@@ -8,29 +8,6 @@ console.log('🔧 Initializing Supabase client...');
 console.log('📍 VITE_SUPABASE_URL:', supabaseUrl || '❌ MISSING');
 console.log('🔑 VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? `✅ SET (${supabaseAnonKey.substring(0, 20)}...)` : '❌ MISSING');
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('❌ CRITICAL: Supabase environment variables missing!');
-  console.error('');
-  console.error('📋 TO FIX THIS:');
-  console.error('1. Go to https://supabase.com/dashboard');
-  console.error('2. Select your project');
-  console.error('3. Go to Settings > API');
-  console.error('4. Copy your Project URL and anon public key');
-  console.error('5. Create/update .env file in project root:');
-  console.error('   VITE_SUPABASE_URL=https://your-project-ref.supabase.co');
-  console.error('   VITE_SUPABASE_ANON_KEY=your-anon-key');
-  console.error('6. Restart development server: npm run dev');
-  console.error('');
-}
-// Test connection if credentials look valid
-if (supabaseUrl && supabaseAnonKey && supabaseUrl.includes('supabase.co') && supabaseAnonKey.startsWith('eyJ')) {
-  console.log('✅ Supabase credentials appear valid');
-  console.log('🔗 Attempting connection to:', supabaseUrl);
-} else {
-  console.error('❌ Invalid Supabase configuration detected');
-  console.error('📋 REPLACE PLACEHOLDERS:');
-  console.error('1. Go to https://supabase.com/dashboard');
-}
 // Create Supabase client with enhanced error handling
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
