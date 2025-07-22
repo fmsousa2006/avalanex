@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, TrendingUp, TrendingDown, Calendar, DollarSign, BarChart3, ExternalLink, Building2 } from 'lucide-react';
+import { X, TrendingUp, TrendingDown, Calendar, DollarSign, BarChart3, ExternalLink, Building2, Database } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
 
@@ -47,7 +47,8 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
   const [stockData, setStockData] = useState<StockData | null>(null);
   const [tooltip, setTooltip] = useState<{ ballX: number; ballY: number; price: number; date: string; verticalLineX: number } | null>(null);
   const [chartDimensions, setChartDimensions] = useState({ width: 800, height: 300 });
-  const [isLoadingHistoricalData, setIsLoadingHistoricalData] = useState(false);
+  const [isLoadingHistoricalData, setIsLoadingHistoricalData] = useState(true);
+  const [hasHistoricalData, setHasHistoricalData] = useState(false);
   const chartRef = React.useRef<HTMLDivElement>(null);
 
   const periods = [
@@ -97,27 +98,93 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
     return () => window.removeEventListener('resize', updateDimensions);
   }, [isOpen]);
 
+  // Fetch real historical data from Supabase
+  const fetchHistoricalDataFromSupabase = async (stockSymbol: string) => {
+    try {
+      console.log(`Fetching historical data for ${stockSymbol} from Supabase...`);
+      
+      // First get the stock ID
+      const { data: stockInfo, error: stockError } = await supabase
+        .from('stocks')
+        .select('id, symbol, name, current_price, price_change_24h, price_change_percent_24h, market_cap, sector')
+        .eq('symbol', stockSymbol)
+        .single();
+
+      if (stockError || !stockInfo) {
+        console.warn(`No stock info found for ${stockSymbol}:`, stockError);
+        return null;
+      }
+
+      // Fetch 1-day historical data
+      const { data: priceData, error: priceError } = await supabase
+        .from('stock_prices_1d')
+        .select('timestamp, open_price, high_price, low_price, close_price, volume')
+        .eq('stock_id', stockInfo.id)
+        .order('timestamp', { ascending: true });
+
+      if (priceError) {
+        console.error(`Error fetching price data for ${stockSymbol}:`, priceError);
+        return null;
+      }
+
+      if (!priceData || priceData.length === 0) {
+        console.warn(`No historical price data found for ${stockSymbol}`);
+        return {
+          stockInfo,
+          historicalData: null
+        };
+      }
+
+      // Convert to chart format
+      const prices = priceData.map(d => parseFloat(d.close_price));
+      const dates = priceData.map(d => d.timestamp);
+      
+      const firstPrice = prices[0];
+      const lastPrice = prices[prices.length - 1];
+      const change = lastPrice - firstPrice;
+      const changePercent = (change / firstPrice) * 100;
+
+      const historicalData = {
+        '1d': {
+          prices,
+          dates,
+          change,
+          changePercent
+        }
+      };
+
+      console.log(`Successfully fetched ${priceData.length} data points for ${stockSymbol}`);
+      return {
+        stockInfo,
+        historicalData
+      };
+
+    } catch (error) {
+      console.error(`Error fetching historical data for ${stockSymbol}:`, error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     if (isOpen && stockSymbol) {
-      // Load real data from database or generate mock data
       const loadStockData = async () => {
         setIsLoadingHistoricalData(true);
+        setHasHistoricalData(false);
         
         try {
-          // Try to fetch real historical data from database
-          const { data: stockInfo, error } = await supabase
-            .from('stocks')
-            .select('*')
-            .eq('symbol', stockSymbol)
-            .single();
-
-          if (error || !stockInfo) {
+          // Try to fetch real historical data from Supabase
+          const result = await fetchHistoricalDataFromSupabase(stockSymbol);
+          
+          if (!result) {
             console.warn('No stock data found in database, using mock data');
             setStockData(generateMockData());
+            setHasHistoricalData(false);
             return;
           }
 
-          // Use real data if available
+          const { stockInfo, historicalData } = result;
+
+          // Build stock data object
           const realStockData: StockData = {
             symbol: stockInfo.symbol,
             name: stockInfo.name,
@@ -132,22 +199,26 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
             week52High: stockSymbol === 'O' ? 62.40 : 178.4,
             volume: stockSymbol === 'O' ? '3.2M' : '45.2M',
             avgVolume: stockSymbol === 'O' ? '4.1M' : '52.8M',
-            priceData: {},
+            priceData: historicalData || {},
             news: generateMockNews()
           };
 
-          // Use historical data from database if available
-          if (stockInfo.historical_data && typeof stockInfo.historical_data === 'object') {
-            realStockData.priceData = stockInfo.historical_data as any;
-          } else {
-            // Generate mock data for missing periods
+          // If no historical data, generate mock data for other periods
+          if (!historicalData) {
             realStockData.priceData = generateMockPriceData(realStockData.currentPrice);
+            setHasHistoricalData(false);
+          } else {
+            // Fill in missing periods with mock data
+            const allPeriods = generateMockPriceData(realStockData.currentPrice);
+            realStockData.priceData = { ...allPeriods, ...historicalData };
+            setHasHistoricalData(true);
           }
 
           setStockData(realStockData);
         } catch (error) {
           console.error('Error loading stock data:', error);
           setStockData(generateMockData());
+          setHasHistoricalData(false);
         } finally {
           setIsLoadingHistoricalData(false);
         }
@@ -569,86 +640,115 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
             </div>
           </div>
 
-          {/* Chart container with mouse event handling */}
-          <div 
-            className="bg-gray-800 rounded-lg p-4 relative" 
-            ref={chartRef}
-            onMouseLeave={() => setTooltip(null)}
-          >
-            <svg 
-              width={chartWidth} 
-              height={chartHeight} 
-              className="w-full h-auto cursor-crosshair"
-              viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-              preserveAspectRatio="xMidYMid meet"
-              onMouseMove={handleMouseMove}
-              onMouseLeave={handleMouseLeave}
-            >
-              {/* Grid */}
-              <defs>
-                <pattern id="grid" width="40" height="30" patternUnits="userSpaceOnUse">
-                  <path d="M 40 0 L 0 0 0 30" fill="none" stroke="#374151" strokeWidth="0.5" opacity="0.3"/>
-                </pattern>
-              </defs>
-              <rect width={chartWidth} height={chartHeight} fill="url(#grid)" />
-              
-              {/* Price line */}
-              <path
-                d={createPricePath()}
-                fill="none"
-                stroke={isPositive ? '#10b981' : '#ef4444'}
-                strokeWidth="3"
-                className="drop-shadow-sm"
-              />
-              
-              {/* Fill area */}
-              <path
-                d={`${createPricePath()} L ${chartWidth - padding},${chartHeight - padding} L ${padding},${chartHeight - padding} Z`}
-                fill={isPositive ? '#10b981' : '#ef4444'}
-                fillOpacity="0.1"
-              />
-              
-              {/* Tooltip indicator */}
-              {tooltip && (
-                <>
-                  <circle
-                    cx={tooltip.ballX}
-                    cy={tooltip.ballY}
-                    r="4"
-                    fill={isPositive ? '#10b981' : '#ef4444'}
-                    stroke="#1f2937"
-                    strokeWidth="2"
-                  />
-                  <line
-                    x1={tooltip.verticalLineX}
-                    y1={padding}
-                    x2={tooltip.verticalLineX}
-                    y2={chartHeight - padding}
-                    stroke="#6b7280"
-                    strokeWidth="1"
-                    strokeDasharray="2,2"
-                    opacity="0.7"
-                  />
-                </>
-              )}
-            </svg>
-            
-            {/* Tooltip */}
-            {tooltip && (
-              <div
-                className="absolute bg-gray-700 text-white p-2 rounded shadow-lg border border-gray-600 z-50 pointer-events-none"
-                style={{
-                  left: tooltip.ballX + 10,
-                  top: tooltip.ballY - 50,
-                  transform: tooltip.ballX > chartWidth - 80 ? 'translateX(-100%)' : 'none'
-                }}
-              >
-                <div className="text-xs font-semibold">{stockData.symbol}</div>
-                <div className="text-xs">${tooltip.price.toFixed(2)}</div>
-                <div className="text-xs text-gray-300">{formatTooltipDate(tooltip.date)}</div>
+          {/* Loading State */}
+          {isLoadingHistoricalData ? (
+            <div className="bg-gray-800 rounded-lg p-4 flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-400 mx-auto mb-4"></div>
+                <p className="text-gray-400">Loading historical data...</p>
               </div>
-            )}
-          </div>
+            </div>
+          ) : !currentPeriodData || !currentPeriodData.prices || currentPeriodData.prices.length === 0 ? (
+            /* No Data State */
+            <div className="bg-gray-800 rounded-lg p-4 flex items-center justify-center h-64">
+              <div className="text-center">
+                <Database className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-400 font-medium text-lg">No historical data available</p>
+                <p className="text-gray-500 text-sm mt-2">
+                  {selectedPeriod === '1d' && !hasHistoricalData 
+                    ? `No 1-day price data found for ${stockData?.symbol}. Use the Testing panel to sync historical data.`
+                    : `No ${selectedPeriod.toUpperCase()} price data available for ${stockData?.symbol}.`
+                  }
+                </p>
+                {selectedPeriod === '1d' && !hasHistoricalData && (
+                  <p className="text-blue-400 text-sm mt-2">
+                    💡 Tip: Run "Test {stockData?.symbol} 1D" from the Testing panel to populate data.
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* Chart container with mouse event handling */
+            <div 
+              className="bg-gray-800 rounded-lg p-4 relative" 
+              ref={chartRef}
+              onMouseLeave={() => setTooltip(null)}
+            >
+              <svg 
+                width={chartWidth} 
+                height={chartHeight} 
+                className="w-full h-auto cursor-crosshair"
+                viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+                preserveAspectRatio="xMidYMid meet"
+                onMouseMove={handleMouseMove}
+                onMouseLeave={handleMouseLeave}
+              >
+                {/* Grid */}
+                <defs>
+                  <pattern id="grid" width="40" height="30" patternUnits="userSpaceOnUse">
+                    <path d="M 40 0 L 0 0 0 30" fill="none" stroke="#374151" strokeWidth="0.5" opacity="0.3"/>
+                  </pattern>
+                </defs>
+                <rect width={chartWidth} height={chartHeight} fill="url(#grid)" />
+                
+                {/* Price line */}
+                <path
+                  d={createPricePath()}
+                  fill="none"
+                  stroke={isPositive ? '#10b981' : '#ef4444'}
+                  strokeWidth="3"
+                  className="drop-shadow-sm"
+                />
+                
+                {/* Fill area */}
+                <path
+                  d={`${createPricePath()} L ${chartWidth - padding},${chartHeight - padding} L ${padding},${chartHeight - padding} Z`}
+                  fill={isPositive ? '#10b981' : '#ef4444'}
+                  fillOpacity="0.1"
+                />
+                
+                {/* Tooltip indicator */}
+                {tooltip && (
+                  <>
+                    <circle
+                      cx={tooltip.ballX}
+                      cy={tooltip.ballY}
+                      r="4"
+                      fill={isPositive ? '#10b981' : '#ef4444'}
+                      stroke="#1f2937"
+                      strokeWidth="2"
+                    />
+                    <line
+                      x1={tooltip.verticalLineX}
+                      y1={padding}
+                      x2={tooltip.verticalLineX}
+                      y2={chartHeight - padding}
+                      stroke="#6b7280"
+                      strokeWidth="1"
+                      strokeDasharray="2,2"
+                      opacity="0.7"
+                    />
+                  </>
+                )}
+              </svg>
+              
+              {/* Tooltip */}
+              {tooltip && (
+                <div
+                  className="absolute bg-gray-700 text-white p-2 rounded shadow-lg border border-gray-600 z-50 pointer-events-none"
+                  style={{
+                    left: tooltip.ballX + 10,
+                    top: tooltip.ballY - 50,
+                    transform: tooltip.ballX > chartWidth - 80 ? 'translateX(-100%)' : 'none'
+                  }}
+                >
+                  <div className="text-xs font-semibold">{stockData.symbol}</div>
+                  <div className="text-xs">${tooltip.price.toFixed(2)}</div>
+                  <div className="text-xs text-gray-300">{formatTooltipDate(tooltip.date)}</div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* 52 Week Range */}
