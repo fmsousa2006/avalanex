@@ -89,32 +89,24 @@ Get credentials from: https://supabase.com/dashboard > Your Project > Settings >
     } catch (err) {
       console.error('❌ Error fetching stock prices:', err);
       
-      if (err instanceof Error) {
-        if (err.message.includes('NetworkError') || err.message.includes('Failed to fetch') || err.name === 'TypeError') {
-          const networkError = `🌐 NETWORK CONNECTION FAILED
+      // Handle network errors gracefully - fall back to empty state
+      console.warn('⚠️ Supabase connection failed, using empty stock prices');
+      setStockPrices([]);
+      setLastUpdate(new Date());
+      
+      // Set a user-friendly error message
+      const friendlyError = `🔧 Database Connection Issue
 
-📋 TROUBLESHOOTING STEPS:
+The app is running in offline mode. To enable live stock data:
 
-1. ✅ Check internet connection
-2. 🏠 Visit https://supabase.com/dashboard
-3. 🔍 Verify your project is ACTIVE (not paused/deleted)
-4. ⚙️  Go to Settings > API and verify:
-   - Project URL: ${supabaseUrl}
-   - anon key matches your .env file
-5. 🔄 Restart dev server after .env changes
-6. 🛡️  Check firewall/proxy settings
-7. 🌍 Try accessing ${supabaseUrl} directly in browser
+1. 📁 Create .env file in project root
+2. 🌐 Add: VITE_SUPABASE_URL=https://your-project.supabase.co  
+3. 🔑 Add: VITE_SUPABASE_ANON_KEY=your-anon-key
+4. 🔄 Restart dev server: npm run dev
 
-If project is paused, click "Resume" in dashboard.`;
-          setError(networkError);
-        } else if (err.message.includes('Invalid API key')) {
-          setError('🔑 Invalid Supabase API key. Check VITE_SUPABASE_ANON_KEY in .env file.');
-        } else {
-          setError(`❌ Supabase error: ${err.message}`);
-        }
-      } else {
-        setError('❓ Unknown error occurred while fetching stock prices');
-      }
+Get credentials from: https://supabase.com/dashboard > Your Project > Settings > API`;
+      
+      setError(friendlyError);
     }
   }, [isSupabaseConfigured]);
 
