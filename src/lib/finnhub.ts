@@ -752,42 +752,22 @@ class FinnhubService {
       const now = new Date();
       const historicalData: HistoricalPriceData[] = [];
       
-      // Generate market hours data only (9:30 AM - 4:00 PM ET, weekdays only)
-      const marketStartHour = 9; // 9 AM ET
-      const marketStartMinute = 30; // 9:30 AM ET
-      const marketEndHour = 16; // 4 PM ET (16:00)
-      
-      // Go back 25 hours and find market hours within that window
-      const startTime = new Date(now.getTime() - (25 * 60 * 60 * 1000));
-      
-      for (let current = new Date(startTime); current <= now; current.setHours(current.getHours() + 1)) {
-        // Convert to Eastern Time for market hour check
-        const etTime = new Date(current.toLocaleString("en-US", {timeZone: "America/New_York"}));
-        const dayOfWeek = etTime.getDay(); // 0 = Sunday, 6 = Saturday
-        const hour = etTime.getHours();
-        const minute = etTime.getMinutes();
+      // Generate 24 hours of mock data (hourly intervals)
+      for (let i = 23; i >= 0; i--) {
+        const timestamp = new Date(now.getTime() - (i * 60 * 60 * 1000));
+        const basePrice = quote.c;
+        const volatility = 0.02; // 2% volatility
+        const randomChange = (Math.random() - 0.5) * volatility * basePrice;
+        const price = Math.max(basePrice + randomChange, 1);
         
-        // Skip weekends
-        if (dayOfWeek === 0 || dayOfWeek === 6) continue;
-        
-        // Check if within market hours (9:30 AM - 4:00 PM ET)
-        const isMarketHours = (hour > marketStartHour || (hour === marketStartHour && minute >= marketStartMinute)) && hour < marketEndHour;
-        
-        if (isMarketHours) {
-          const basePrice = quote.c;
-          const volatility = 0.02; // 2% volatility for O
-          const randomChange = (Math.random() - 0.5) * volatility * basePrice;
-          const price = Math.max(basePrice + randomChange, 1);
-          
-          historicalData.push({
-            timestamp: current.toISOString(),
-            open: price * (0.995 + Math.random() * 0.01),
-            high: price * (1.001 + Math.random() * 0.01),
-            low: price * (0.995 - Math.random() * 0.01),
-            close: price,
-            volume: Math.floor(1000000 + Math.random() * 2000000)
-          });
-        }
+        historicalData.push({
+          timestamp: timestamp.toISOString(),
+          open: price * (0.995 + Math.random() * 0.01),
+          high: price * (1.001 + Math.random() * 0.01),
+          low: price * (0.995 - Math.random() * 0.01),
+          close: price,
+          volume: Math.floor(1000000 + Math.random() * 2000000)
+        });
       }
       
       console.log(`📊 Generated ${historicalData.length} mock data points for O`);
@@ -925,38 +905,40 @@ class FinnhubService {
 
       // Generate mock historical data since Finnhub free tier doesn't include historical data
       console.log('📊 Generating mock historical data for testing...');
+      
+      // Generate 25-hour rolling window with market hours (9:30 AM - 4:00 PM ET)
       const now = new Date();
+      const etNow = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
       const historicalData: HistoricalPriceData[] = [];
       
-      // Generate market hours data only (9:30 AM - 4:00 PM ET, weekdays only)
-      const marketStartHour = 9; // 9 AM ET
-      const marketStartMinute = 30; // 9:30 AM ET
-      const marketEndHour = 16; // 4 PM ET (16:00)
+      // Generate 25-hour rolling window with market hours only (9:30 AM - 4:00 PM ET)
+      let currentTime = new Date(now.getTime() - (25 * 60 * 60 * 1000)); // Start 25 hours ago
       
-      // Go back 25 hours and find market hours within that window
-      const startTime = new Date(now.getTime() - (25 * 60 * 60 * 1000));
-      
-      for (let current = new Date(startTime); current <= now; current.setHours(current.getHours() + 1)) {
-        // Convert to Eastern Time for market hour check
-        const etTime = new Date(current.toLocaleString("en-US", {timeZone: "America/New_York"}));
-        const dayOfWeek = etTime.getDay(); // 0 = Sunday, 6 = Saturday
+      while (currentTime <= now) {
+        const etTime = new Date(currentTime.toLocaleString("en-US", {timeZone: "America/New_York"}));
         const hour = etTime.getHours();
         const minute = etTime.getMinutes();
+        const dayOfWeek = etTime.getDay(); // 0 = Sunday, 6 = Saturday
         
-        // Skip weekends
-        if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+        // Only include market hours (9:30 AM - 4:00 PM ET) on weekdays
+        const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
+        const isMarketHours = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 16;
         
-        // Check if within market hours (9:30 AM - 4:00 PM ET)
-        const isMarketHours = (hour > marketStartHour || (hour === marketStartHour && minute >= marketStartMinute)) && hour < marketEndHour;
-        
-        if (isMarketHours) {
+        if (isWeekday && isMarketHours) {
+          // First read should be exactly 9:30 AM ET if we're starting the day
+          let adjustedTime = currentTime;
+          if (hour === 9 && minute < 30) {
+            adjustedTime = new Date(currentTime);
+            adjustedTime.setHours(9, 30, 0, 0);
+          }
+          
           const basePrice = quote.c;
           const volatility = 0.03; // 3% volatility for NVDA (higher than O)
           const randomChange = (Math.random() - 0.5) * volatility * basePrice;
           const price = Math.max(basePrice + randomChange, 1);
           
           historicalData.push({
-            timestamp: current.toISOString(),
+            timestamp: adjustedTime.toISOString(),
             open: price * (0.995 + Math.random() * 0.01),
             high: price * (1.002 + Math.random() * 0.015),
             low: price * (0.990 - Math.random() * 0.015),
@@ -964,7 +946,13 @@ class FinnhubService {
             volume: Math.floor(10000000 + Math.random() * 20000000) // Higher volume for NVDA
           });
         }
+        
+        // Move to next hour
+        currentTime = new Date(currentTime.getTime() + (60 * 60 * 1000));
       }
+      
+      // Sort by timestamp to ensure proper order
+      historicalData.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
       
       console.log(`📊 Generated ${historicalData.length} mock data points for NVDA`);
       console.log('📊 Sample mock data points:');
