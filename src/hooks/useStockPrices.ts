@@ -38,12 +38,6 @@ export const useStockPrices = () => {
     }
 
     try {
-      // Test connection first
-      const { error: connectionError } = await supabase.from('stocks').select('count').limit(1);
-      if (connectionError) {
-        throw new Error(`Supabase connection failed: ${connectionError.message}`);
-      }
-
       const { data, error } = await supabase
         .from('stocks')
         .select('symbol, current_price, price_change_24h, price_change_percent_24h, market_status, last_price_update')
@@ -58,8 +52,8 @@ export const useStockPrices = () => {
     } catch (err) {
       console.error('Error fetching stock prices:', err);
       if (err instanceof Error) {
-        if (err.message.includes('NetworkError') || err.message.includes('Failed to fetch')) {
-          setError('Network connection failed. Please check: 1) Internet connection, 2) Supabase project is active, 3) Firewall settings, 4) .env file configuration.');
+        if (err.message.includes('NetworkError') || err.message.includes('Failed to fetch') || err.name === 'TypeError') {
+          setError('Supabase connection failed. Please verify: 1) VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are correct in .env file, 2) Supabase project is active, 3) Internet connection is working.');
         } else if (err.message.includes('Invalid API key')) {
           setError('Invalid Supabase API key. Please check VITE_SUPABASE_ANON_KEY in your .env file.');
         } else {
