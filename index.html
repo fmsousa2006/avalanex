@@ -4,10 +4,27 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Investment Portfolio Dashboard App</title>
+    <title>Portfolio Dashboard</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Debug script to check if anything is loading
+      console.log('HTML loaded, checking for React...');
+      window.addEventListener('load', () => {
+        console.log('Window loaded');
+        const root = document.getElementById('root');
+        if (root) {
+          console.log('Root element found:', root);
+          if (root.innerHTML.trim() === '') {
+            console.error('React did not render - root is empty');
+            root.innerHTML = '<div style="color: white; background: #111; padding: 20px; font-family: Arial;">React failed to load. Check console for errors.</div>';
+          }
+        } else {
+          console.error('Root element not found!');
+        }
+      });
+    </script>
   </body>
 </html>
