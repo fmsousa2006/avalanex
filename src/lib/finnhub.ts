@@ -715,46 +715,32 @@ class FinnhubService {
         console.log('✅ Found existing O stock with ID:', stockId);
       }
 
-      // Calculate rolling 24-hour market window (excluding weekends)
+      // Calculate rolling 24-hour window based on current time
       console.log('📅 Calculating rolling 24-hour market window...');
       
-      // Get current time in UTC
-      const nowUTC = new Date();
+      const now = new Date();
+      console.log(`🕐 Current time (UTC): ${now.toISOString()}`);
+      console.log(`🕐 Current time (ET): ${now.toLocaleString("en-US", {timeZone: "America/New_York"})}`);
       
-      // Calculate current time rounded to nearest hour
-      let currentMarketTime = new Date(nowUTC);
-      currentMarketTime.setMinutes(0, 0, 0); // Round to nearest hour
+      // Calculate 24 hours ago from now
+      const twentyFourHoursAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
       
-      // Calculate 24 hours ago
-      let startTime = new Date(currentMarketTime.getTime() - (24 * 60 * 60 * 1000));
+      console.log(`🕐 24h ago (UTC): ${twentyFourHoursAgo.toISOString()}`);
+      console.log(`🕐 24h ago (ET): ${twentyFourHoursAgo.toLocaleString("en-US", {timeZone: "America/New_York"})}`);
       
-      // Skip weekends for start time - if weekend, move to Friday
-      while (startTime.getDay() === 0 || startTime.getDay() === 6) {
-        startTime.setDate(startTime.getDate() - 1);
-      }
-      
-      // Skip weekends for current time - if weekend, move to Monday  
-      while (currentMarketTime.getDay() === 0 || currentMarketTime.getDay() === 6) {
-        currentMarketTime.setDate(currentMarketTime.getDate() + 1);
-      }
-      
-      console.log(`🕐 Rolling 24h window (UTC): ${startTime.toISOString()} to ${currentMarketTime.toISOString()}`);
-      console.log(`🕐 Rolling 24h window (ET): ${startTime.toLocaleString("en-US", {timeZone: "America/New_York"})} to ${currentMarketTime.toLocaleString("en-US", {timeZone: "America/New_York"})}`);
-      
-      // Clear old data outside the 24-hour window
-      console.log('🧹 Clearing data outside 24-hour rolling window...');
+      // Clear data older than 24 hours
+      console.log('🧹 Clearing data older than 24 hours...');
       const { error: deleteError } = await supabase
         .from('stock_prices_1d')
         .delete()
         .eq('stock_id', stockId)
-        .lt('timestamp', startTime.toISOString());
+        .lt('timestamp', twentyFourHoursAgo.toISOString());
       
       if (deleteError) {
         console.warn('⚠️ Could not clear old data:', deleteError);
       } else {
-        console.log('✅ Cleared data outside 24-hour window');
+        console.log('✅ Cleared data older than 24 hours');
       }
-      
       // First, let's try to get current quote to verify API is working
       console.log('📊 Testing Finnhub API connection with quote...');
       const quote = await this.getQuote('O');
@@ -774,90 +760,85 @@ class FinnhubService {
         console.warn('⚠️ Failed to update current price, but continuing with historical data...');
       } else {
         console.log('✅ Successfully updated current price for O');
+      // Get existing data to determine what we need to add
+      console.log('🔍 Checking existing data...');
+      const { data: existingData, error: existingError } = await supabase
+        .from('stock_prices_1d')
+        .select('timestamp')
+        .eq('stock_id', stockId)
+        .gte('timestamp', twentyFourHoursAgo.toISOString())
+        .order('timestamp', { ascending: true });
+      
+      if (existingError) {
+        console.error('❌ Error fetching existing data:', existingError);
+        throw new Error(`Failed to fetch existing data: ${existingError.message}`);
       }
-
-      const from = Math.floor(startTime.getTime() / 1000);
-      const to = Math.floor(currentMarketTime.getTime() / 1000);
       
-      console.log(`🕐 Fetching candles from ${startTime.toISOString()} to ${currentMarketTime.toISOString()}`);
+      const existingTimestamps = new Set(existingData?.map(d => d.timestamp) || []);
+      console.log(`📊 Found ${existingTimestamps.size} existing records in the last 24 hours`);
       
-      const candles = await this.getCandles('O', '60', from, to);
+      // Generate missing data points for the rolling 24-hour window
+      console.log('💡 Generating missing data points...');
+      const mockData: HistoricalPriceData[] = [];
+      const basePrice = quote?.c || 58.25;
       
-      if (!candles || !candles.c || candles.c.length === 0) {
-        console.warn('⚠️ No candle data available for O - this is expected with free Finnhub plan');
-        console.log('💡 Generating mock rolling 24-hour data...');
+      // Start from 24 hours ago and generate 30-minute intervals
+      let currentTime = new Date(twentyFourHoursAgo);
+      // Round to nearest 30 minutes
+      const minutes = currentTime.getMinutes();
+      currentTime.setMinutes(minutes >= 30 ? 30 : 0, 0, 0);
+      
+      while (currentTime <= now) {
+        const dayOfWeek = currentTime.getDay();
         
-        const mockData: HistoricalPriceData[] = [];
-        const basePrice = quote?.c || 58.25; // Use quote price or fallback to default
-        
-        // Generate hourly data for the rolling 24-hour window (only during market hours)
-        let currentTime = new Date(startTime);
-        
-        while (currentTime <= currentMarketTime) {
-          // Only include data during market hours (9:30 AM - 4:00 PM ET) and weekdays
-          const dayOfWeek = currentTime.getDay();
-          
+        // Skip weekends
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
           // Convert to Eastern Time to check market hours
           const etTimeString = currentTime.toLocaleString("en-US", {timeZone: "America/New_York", hour12: false});
           const etHour = parseInt(etTimeString.split(', ')[1].split(':')[0]);
           const etMinutes = parseInt(etTimeString.split(', ')[1].split(':')[1]);
           
-          // Skip weekends
-          if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-            // Include market hours: 9:30 AM (9:30) to 4:00 PM (16:00) ET
-            if ((etHour > 9 || (etHour === 9 && etMinutes >= 30)) && etHour < 16) {
-              const price = basePrice + (Math.random() - 0.5) * 2; // Random variation of ±$1
+          // Include market hours: 9:30 AM to 4:00 PM ET
+          if ((etHour > 9 || (etHour === 9 && etMinutes >= 30)) && etHour < 16) {
+            const timestampISO = currentTime.toISOString();
+            
+            // Only add if we don't already have this timestamp
+            if (!existingTimestamps.has(timestampISO)) {
+              const seed = currentTime.getTime() / 1000000;
+              const price = basePrice + (Math.sin(seed) * 2);
               
               mockData.push({
-                timestamp: currentTime.toISOString(), // Store as UTC
+                timestamp: timestampISO,
                 open: price,
-                high: price + Math.random() * 0.5,
-                low: price - Math.random() * 0.5,
+                high: price + Math.abs(Math.sin(seed * 1.1)) * 0.5,
+                low: price - Math.abs(Math.sin(seed * 1.2)) * 0.5,
                 close: price,
-                volume: Math.floor(Math.random() * 1000000) + 500000
+                volume: Math.floor(Math.abs(Math.sin(seed * 2)) * 1000000) + 500000
               });
               
-              console.log(`📊 Added data point: ${currentTime.toISOString()} (${etTimeString} ET) - $${price.toFixed(2)}`);
+              console.log(`📊 Adding missing data point: ${timestampISO} (${etTimeString} ET) - $${price.toFixed(2)}`);
             }
           }
-          
-          // Move to next hour
-          currentTime.setHours(currentTime.getHours() + 1);
         }
         
-        console.log(`📊 Generated ${mockData.length} mock data points for rolling 24-hour window (market hours only)`);
-        
-        // Store the mock data
+        // Move to next 30 minutes
+        currentTime.setMinutes(currentTime.getMinutes() + 30);
+      }
+      
+      console.log(`📊 Generated ${mockData.length} new data points for rolling 24-hour window`);
+      
+      // Store the new data
+      if (mockData.length > 0) {
         const success = await this.storeHistoricalData(stockId, 'stock_prices_1d', mockData);
         
         if (success) {
-          console.log('✅ Successfully stored rolling 24-hour 1D data for O!');
+          console.log('✅ Successfully stored new 1D data for O!');
         } else {
           console.error('❌ Failed to store mock data');
           throw new Error('Failed to store mock data in database');
         }
       } else {
-        console.log(`📊 Got ${candles.c.length} real data points from Finnhub`);
-        
-        // Convert real data to our format
-        const historicalData: HistoricalPriceData[] = candles.c.map((close, index) => ({
-          timestamp: new Date(candles.t[index] * 1000).toISOString(),
-          open: candles.o[index],
-          high: candles.h[index],
-          low: candles.l[index],
-          close: close,
-          volume: candles.v[index] || 0
-        }));
-        
-        // Store real data
-        const success = await this.storeHistoricalData(stockId, 'stock_prices_1d', historicalData);
-        
-        if (success) {
-          console.log('✅ Successfully stored rolling 24-hour real 1D data for O!');
-        } else {
-          console.error('❌ Failed to store real data');
-          throw new Error('Failed to store real data in database');
-        }
+        console.log('✅ No new data points needed - already up to date!');
       }
 
       // Verify the data was inserted
@@ -866,6 +847,7 @@ class FinnhubService {
         .from('stock_prices_1d')
         .select('*')
         .eq('stock_id', stockId)
+        .gte('timestamp', twentyFourHoursAgo.toISOString())
         .order('timestamp', { ascending: false })
         .limit(5);
       
@@ -887,10 +869,11 @@ class FinnhubService {
       const { count, error: countError } = await supabase
         .from('stock_prices_1d')
         .select('*', { count: 'exact', head: true })
-        .eq('stock_id', stockId);
+        .eq('stock_id', stockId)
+        .gte('timestamp', twentyFourHoursAgo.toISOString());
         
       if (!countError) {
-        console.log(`📊 Total records for O in stock_prices_1d: ${count}`);
+        console.log(`📊 Total records for O in stock_prices_1d (last 24h): ${count}`);
       }
 
     } catch (error) {
@@ -1029,7 +1012,9 @@ class FinnhubService {
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
           // Include market hours: 9:30 AM (9:30) to 4:00 PM (16:00) ET
           if ((etHour > 9 || (etHour === 9 && etMinutes >= 30)) && etHour < 16) {
-            const price = basePrice + (Math.random() - 0.5) * 20; // Random variation of ±$10
+            // Use deterministic price based on timestamp for consistency
+            const seed = currentTime.getTime() / 1000000;
+            const price = basePrice + (Math.sin(seed) * 2); // Deterministic variation of ±$2
             
             mockData.push({
               timestamp: currentTime.toISOString(), // Store as UTC
@@ -1037,15 +1022,15 @@ class FinnhubService {
               high: price + Math.random() * 10,
               low: price - Math.random() * 10,
               close: price,
-              volume: Math.floor(Math.random() * 50000000) + 10000000 // Higher volume for NVDA
+              volume: Math.floor(Math.abs(Math.sin(seed * 2)) * 1000000) + 500000
             });
             
             console.log(`📊 Added data point: ${currentTime.toISOString()} (${etTimeString} ET) - $${price.toFixed(2)}`);
           }
         }
         
-        // Move to next hour
-        currentTime.setHours(currentTime.getHours() + 1);
+        // Move to next 30 minutes to match market data granularity
+        currentTime.setMinutes(currentTime.getMinutes() + 30);
       }
       
       console.log(`📊 Generated ${mockData.length} mock data points for rolling 24-hour window (market hours only)`);
