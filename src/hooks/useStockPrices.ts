@@ -29,7 +29,10 @@ export const useStockPrices = () => {
       return false;
     }
     
-    if (supabaseUrl === 'https://placeholder.supabase.co' || supabaseAnonKey === 'placeholder-key') {
+    if (supabaseUrl === 'https://placeholder.supabase.co' || 
+        supabaseUrl === 'https://your-project-ref.supabase.co' ||
+        supabaseAnonKey === 'placeholder-anon-key' ||
+        supabaseAnonKey === 'your-anon-key-here') {
       return false;
     }
     

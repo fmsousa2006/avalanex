@@ -5,10 +5,14 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 // Validate Supabase configuration
 if (supabaseUrl && supabaseAnonKey) {
-  if (!supabaseUrl.includes('supabase.co')) {
+  if (!supabaseUrl.includes('supabase.co') || 
+      supabaseUrl === 'https://placeholder.supabase.co' ||
+      supabaseUrl === 'https://your-project-ref.supabase.co') {
     console.warn('Invalid Supabase URL format detected');
   }
-  if (!supabaseAnonKey.startsWith('eyJ')) {
+  if (!supabaseAnonKey.startsWith('eyJ') ||
+      supabaseAnonKey === 'placeholder-anon-key' ||
+      supabaseAnonKey === 'your-anon-key-here') {
     console.warn('Invalid Supabase anon key format detected');
   }
 } else {

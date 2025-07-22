@@ -130,7 +130,9 @@ export const usePortfolio = () => {
       // Check if Supabase is configured before attempting connection
       if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY ||
           import.meta.env.VITE_SUPABASE_URL === 'https://your-project-ref.supabase.co' ||
-          import.meta.env.VITE_SUPABASE_ANON_KEY === 'your-anon-key-here') {
+          import.meta.env.VITE_SUPABASE_URL === 'https://placeholder.supabase.co' ||
+          import.meta.env.VITE_SUPABASE_ANON_KEY === 'your-anon-key-here' ||
+          import.meta.env.VITE_SUPABASE_ANON_KEY === 'placeholder-anon-key') {
         console.warn('Supabase not configured, using mock data');
         createMockPortfolio();
         return;
