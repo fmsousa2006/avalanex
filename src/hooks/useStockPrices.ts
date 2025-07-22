@@ -47,14 +47,12 @@ export const useStockPrices = () => {
   // Fetch current stock prices from database
   const fetchStockPrices = useCallback(async () => {
     if (!isSupabaseConfigured) {
-      setError(null);
       setStockPrices([]);
       setLastUpdate(new Date());
       return;
     }
 
     setError(null);
-
     try {
       const { data, error } = await supabase
         .from('stocks')
