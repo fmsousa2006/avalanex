@@ -748,7 +748,7 @@ class FinnhubService {
       console.log('✅ Successfully updated current price for O in database');
 
       // Try to get real historical data from Finnhub
-      const from = Math.floor(startTime.getTime() / 1000);
+      const now = Math.floor(Date.now() / 1000);
       const oneDayAgo = now - (24 * 60 * 60);
       
       console.log('📊 Attempting to fetch real historical data from Finnhub...');
