@@ -53,7 +53,16 @@ class FinnhubService {
       );
 
       if (!response.ok) {
-        throw new Error(`Finnhub API error: ${response.status}`);
+        if (response.status === 403) {
+          console.error(`Finnhub API 403 Forbidden for ${symbol}: Check API key permissions`);
+          return null;
+        }
+        if (response.status === 429) {
+          console.error(`Finnhub API rate limit exceeded for ${symbol}`);
+          return null;
+        }
+        console.error(`Finnhub API error ${response.status} for ${symbol}`);
+        return null;
       }
 
       const data = await response.json();
@@ -79,7 +88,16 @@ class FinnhubService {
       );
 
       if (!response.ok) {
-        throw new Error(`Finnhub API error: ${response.status}`);
+        if (response.status === 403) {
+          console.error(`Finnhub API 403 Forbidden for ${symbol}: Check API key permissions or subscription plan`);
+          return null;
+        }
+        if (response.status === 429) {
+          console.error(`Finnhub API rate limit exceeded for ${symbol}: Too many requests`);
+          return null;
+        }
+        console.error(`Finnhub API error ${response.status} for ${symbol}`);
+        return null;
       }
 
       const data = await response.json();
@@ -140,6 +158,7 @@ class FinnhubService {
         { key: '5y', days: 1825, resolution: 'W' }  // Weekly resolution for 5 years
       ];
 
+      let successfulPeriods = 0;
       for (const period of periods) {
         const from = now - (period.days * 24 * 60 * 60);
         const candles = await this.getCandles(symbol, period.resolution, from, now);
@@ -163,12 +182,22 @@ class FinnhubService {
             change,
             changePercent
           };
+          successfulPeriods++;
+        } else {
+          console.warn(`Failed to get ${period.key} data for ${symbol}`);
         }
         
         // Add delay between requests to respect rate limits
         await new Promise(resolve => setTimeout(resolve, 200));
       }
       
+      // Return data even if some periods failed, as long as we got some data
+      if (successfulPeriods === 0) {
+        console.error(`No historical data could be retrieved for ${symbol}`);
+        return null;
+      }
+      
+      console.log(`Retrieved ${successfulPeriods}/${periods.length} historical periods for ${symbol}`);
       return historicalData;
     } catch (error) {
       console.error(`Error fetching historical data for ${symbol}:`, error);
