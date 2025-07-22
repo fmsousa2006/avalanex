@@ -744,25 +744,45 @@ class FinnhubService {
         console.log('✅ Successfully updated current price for O');
       }
 
-      // Now try to get historical data manually for testing (always fetch fresh data)
-      console.log('📈 Attempting to fetch fresh 1D historical data from Finnhub...');
-      const now = Math.floor(Date.now() / 1000);
-      const from = now - (24 * 60 * 60); // 24 hours ago
+      // Calculate market hours aligned timestamps (Eastern Time)
+      console.log('📈 Calculating S&P 500 market hours aligned timestamps...');
+      const nowET = new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
+      const currentET = new Date(nowET);
       
-      console.log(`🕐 Fetching candles from ${new Date(from * 1000).toISOString()} to ${new Date(now * 1000).toISOString()}`);
+      // Get the most recent market close (4:00 PM ET)
+      const marketClose = new Date(currentET);
+      marketClose.setHours(16, 0, 0, 0); // 4:00 PM ET
       
-      const candles = await this.getCandles('O', '60', from, now);
+      // If current time is before 4 PM today, use yesterday's close
+      if (currentET.getHours() < 16) {
+        marketClose.setDate(marketClose.getDate() - 1);
+      }
+      
+      // Get market open for the same day (9:30 AM ET)
+      const marketOpen = new Date(marketClose);
+      marketOpen.setHours(9, 30, 0, 0); // 9:30 AM ET
+      
+      const from = Math.floor(marketOpen.getTime() / 1000);
+      const to = Math.floor(marketClose.getTime() / 1000);
+      
+      console.log(`🕐 Market hours: ${marketOpen.toLocaleString("en-US", {timeZone: "America/New_York"})} to ${marketClose.toLocaleString("en-US", {timeZone: "America/New_York"})} ET`);
+      console.log(`🕐 Fetching candles from ${new Date(from * 1000).toISOString()} to ${new Date(to * 1000).toISOString()}`);
+      
+      const candles = await this.getCandles('O', '60', from, to);
       
       if (!candles || !candles.c || candles.c.length === 0) {
         console.warn('⚠️ No candle data available for O - this is expected with free Finnhub plan');
-        console.log('💡 Generating mock data for demonstration...');
+        console.log('💡 Generating mock data aligned with market hours...');
         
-        // Generate some mock data for testing the database insertion
+        // Generate mock data aligned with S&P 500 market hours (9:30 AM - 4:00 PM ET)
         const mockData: HistoricalPriceData[] = [];
         const basePrice = quote.c;
+        const marketDurationHours = 6.5; // 9:30 AM to 4:00 PM = 6.5 hours
+        const intervalMinutes = 30; // 30-minute intervals
+        const totalIntervals = Math.floor((marketDurationHours * 60) / intervalMinutes);
         
-        for (let i = 0; i < 24; i++) {
-          const timestamp = new Date(now * 1000 - (23 - i) * 60 * 60 * 1000);
+        for (let i = 0; i < totalIntervals; i++) {
+          const timestamp = new Date(marketOpen.getTime() + (i * intervalMinutes * 60 * 1000));
           const price = basePrice + (Math.random() - 0.5) * 2; // Random variation of ±$1
           
           mockData.push({
@@ -775,13 +795,13 @@ class FinnhubService {
           });
         }
         
-        console.log(`📊 Generated ${mockData.length} mock data points`);
+        console.log(`📊 Generated ${mockData.length} mock data points for market hours (${intervalMinutes}-min intervals)`);
         
         // Store the mock data
         const success = await this.storeHistoricalData(stockId, 'stock_prices_1d', mockData);
         
         if (success) {
-          console.log('✅ Successfully stored mock 1D data for O!');
+          console.log('✅ Successfully stored mock 1D data for O aligned with S&P 500 market hours!');
         } else {
           console.error('❌ Failed to store mock data');
           return;
@@ -803,7 +823,7 @@ class FinnhubService {
         const success = await this.storeHistoricalData(stockId, 'stock_prices_1d', historicalData);
         
         if (success) {
-          console.log('✅ Successfully stored real 1D data for O!');
+          console.log('✅ Successfully stored real 1D data for O aligned with market hours!');
         } else {
           console.error('❌ Failed to store real data');
           return;
