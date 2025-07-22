@@ -555,7 +555,8 @@ const Dashboard: React.FC = () => {
       {/* Dividend Calendar Modal */}
       <DividendCalendar 
         isOpen={isCalendarOpen} 
-        onClose={() => setIsCalendarOpen(false)} 
+        onClose={() => setIsCalendarOpen(false)}
+        portfolioId={currentPortfolio?.id}
       />
       
       {/* Portfolio Modal */}

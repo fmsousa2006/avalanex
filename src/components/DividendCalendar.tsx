@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { X, Calendar, ChevronLeft, ChevronRight, Move } from 'lucide-react';
-import { dividendData } from '../data/mockData';
+import { supabase } from '../lib/supabase';
 
 interface DividendCalendarProps {
   isOpen: boolean;
   onClose: () => void;
+  portfolioId?: string;
 }
 
 interface CalendarDividend {
@@ -15,13 +16,134 @@ interface CalendarDividend {
   type: 'payment' | 'ex-dividend';
 }
 
-const DividendCalendar: React.FC<DividendCalendarProps> = ({ isOpen, onClose }) => {
+const DividendCalendar: React.FC<DividendCalendarProps> = ({ isOpen, onClose, portfolioId }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [calendarDividends, setCalendarDividends] = useState<CalendarDividend[]>([]);
+  const [loading, setLoading] = useState(false);
   const modalRef = React.useRef<HTMLDivElement>(null);
+
+  // Helper function to check if Supabase environment is properly configured
+  const isSupabaseEnvConfigured = () => {
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    return url && 
+           key && 
+           url !== 'https://your-project-ref.supabase.co' &&
+           url !== 'https://placeholder.supabase.co' &&
+           key !== 'your-anon-key-here' &&
+           key !== 'placeholder-anon-key';
+  };
+
+  // Fetch real dividend data from Supabase
+  const fetchDividendData = async (month: number, year: number) => {
+    const supabaseConfigured = isSupabaseEnvConfigured();
+    
+    if (!supabaseConfigured || !portfolioId) {
+      setCalendarDividends([]);
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Get the date range for the current month
+      const startDate = new Date(year, month, 1).toISOString().split('T')[0];
+      const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
+
+      // Get all stocks in the current portfolio
+      const { data: portfolioStocks, error: holdingsError } = await supabase
+        .from('portfolio_holdings')
+        .select(`
+          shares,
+          stock:stocks(id, symbol, name)
+        `)
+        .eq('portfolio_id', portfolioId)
+        .gt('shares', 0);
+
+      if (holdingsError) {
+        console.error('Error fetching portfolio holdings:', holdingsError);
+        setCalendarDividends([]);
+        return;
+      }
+
+      if (!portfolioStocks || portfolioStocks.length === 0) {
+        setCalendarDividends([]);
+        return;
+      }
+
+      // Get stock IDs from portfolio
+      const stockIds = portfolioStocks.map(holding => holding.stock?.id).filter(Boolean);
+
+      if (stockIds.length === 0) {
+        setCalendarDividends([]);
+        return;
+      }
+
+      // Get dividends for these stocks in the current month
+      const { data: dividends, error: dividendsError } = await supabase
+        .from('dividends')
+        .select(`
+          *,
+          stock:stocks(symbol, name)
+        `)
+        .in('stock_id', stockIds)
+        .or(`payment_date.gte.${startDate},payment_date.lte.${endDate},ex_dividend_date.gte.${startDate},ex_dividend_date.lte.${endDate}`)
+        .order('payment_date', { ascending: true });
+
+      if (dividendsError) {
+        console.error('Error fetching dividends:', dividendsError);
+        setCalendarDividends([]);
+        return;
+      }
+
+      if (!dividends || dividends.length === 0) {
+        setCalendarDividends([]);
+        return;
+      }
+
+      // Convert to calendar format
+      const calendarData: CalendarDividend[] = [];
+
+      dividends.forEach(dividend => {
+        const paymentDate = new Date(dividend.payment_date);
+        const exDividendDate = new Date(dividend.ex_dividend_date);
+
+        // Add payment date if it's in the current month
+        if (paymentDate.getMonth() === month && paymentDate.getFullYear() === year) {
+          calendarData.push({
+            date: dividend.payment_date,
+            symbol: dividend.stock?.symbol || 'Unknown',
+            name: dividend.stock?.name || 'Unknown Company',
+            amount: dividend.amount,
+            type: 'payment'
+          });
+        }
+
+        // Add ex-dividend date if it's in the current month
+        if (exDividendDate.getMonth() === month && exDividendDate.getFullYear() === year) {
+          calendarData.push({
+            date: dividend.ex_dividend_date,
+            symbol: dividend.stock?.symbol || 'Unknown',
+            name: dividend.stock?.name || 'Unknown Company',
+            amount: dividend.amount,
+            type: 'ex-dividend'
+          });
+        }
+      });
+
+      setCalendarDividends(calendarData);
+    } catch (error) {
+      console.error('Error fetching dividend data:', error);
+      setCalendarDividends([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Handle escape key
   React.useEffect(() => {
@@ -92,76 +214,14 @@ const DividendCalendar: React.FC<DividendCalendarProps> = ({ isOpen, onClose }) 
     }
   }, [isOpen]);
 
+  // Fetch dividend data when modal opens or month changes
+  React.useEffect(() => {
+    if (isOpen) {
+      fetchDividendData(currentDate.getMonth(), currentDate.getFullYear());
+    }
+  }, [isOpen, currentDate, portfolioId]);
+
   if (!isOpen) return null;
-
-  // Generate fixed calendar dividends for the current month
-  const generateFixedCalendarDividends = (month: number, year: number): CalendarDividend[] => {
-    const dividends: CalendarDividend[] = [];
-
-    // Add existing dividend data
-    dividendData.forEach(dividend => {
-      const paymentDate = new Date(dividend.paymentDate);
-      const exDividendDate = new Date(dividend.exDividendDate);
-
-      if (paymentDate.getMonth() === month && paymentDate.getFullYear() === year) {
-        dividends.push({
-          date: dividend.paymentDate,
-          symbol: dividend.symbol,
-          name: dividend.name,
-          amount: dividend.amount,
-          type: 'payment'
-        });
-      }
-
-      if (exDividendDate.getMonth() === month && exDividendDate.getFullYear() === year) {
-        dividends.push({
-          date: dividend.exDividendDate,
-          symbol: dividend.symbol,
-          name: dividend.name,
-          amount: dividend.amount,
-          type: 'ex-dividend'
-        });
-      }
-    });
-
-    // Generate additional fixed mock dividends using month/year as seed
-    const seed = month * 100 + year;
-    const mockStocks = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA'];
-    
-    mockStocks.forEach((symbol, index) => {
-      // Use deterministic "random" based on seed and index
-      const pseudoRandom1 = ((seed + index * 17) % 28) + 1;
-      const pseudoRandom2 = ((seed + index * 23) % 28) + 1;
-      const pseudoRandom3 = (seed + index * 13) % 100;
-      
-      const paymentDate = new Date(year, month, pseudoRandom1);
-      const exDividendDate = new Date(year, month, pseudoRandom2);
-      
-      if (pseudoRandom3 > 50) { // 50% chance to have a dividend this month
-        dividends.push({
-          date: paymentDate.toISOString().split('T')[0],
-          symbol: symbol,
-          name: `${symbol} Inc.`,
-          amount: ((pseudoRandom3 % 200) + 50) / 100, // Deterministic dividend amount
-          type: 'payment'
-        });
-      }
-      
-      if (pseudoRandom3 > 70) { // 30% chance to have an ex-dividend date
-        dividends.push({
-          date: exDividendDate.toISOString().split('T')[0],
-          symbol: symbol,
-          name: `${symbol} Inc.`,
-          amount: ((pseudoRandom3 % 200) + 50) / 100,
-          type: 'ex-dividend'
-        });
-      }
-    });
-
-    return dividends;
-  };
-
-  const calendarDividends = generateFixedCalendarDividends(currentDate.getMonth(), currentDate.getFullYear());
 
   const getDividendsForDate = (date: string): CalendarDividend[] => {
     return calendarDividends.filter(dividend => dividend.date === date);
@@ -327,6 +387,13 @@ const DividendCalendar: React.FC<DividendCalendarProps> = ({ isOpen, onClose }) 
 
         {/* Calendar Grid */}
         <div className="p-4">
+          {loading && (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-400 mr-3"></div>
+              <span className="text-gray-400">Loading dividend data...</span>
+            </div>
+          )}
+          
           {/* Day headers */}
           <div className="grid grid-cols-7 gap-0 mb-2">
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
@@ -379,29 +446,36 @@ const DividendCalendar: React.FC<DividendCalendarProps> = ({ isOpen, onClose }) 
         {/* Summary */}
         <div className="p-4 border-t border-gray-700">
           <h4 className="text-base font-semibold mb-3">This Month's Summary</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-gray-800 rounded-lg p-3">
-              <p className="text-gray-400 text-sm">Total Payments</p>
-              <p className="text-xl font-bold text-emerald-400">
-                ${calendarDividends
-                  .filter(d => d.type === 'payment')
-                  .reduce((sum, d) => sum + d.amount, 0)
-                  .toFixed(2)}
-              </p>
+          {loading ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-400 mr-2"></div>
+              <span className="text-gray-400 text-sm">Calculating summary...</span>
             </div>
-            <div className="bg-gray-800 rounded-lg p-3">
-              <p className="text-gray-400 text-sm">Payment Events</p>
-              <p className="text-xl font-bold">
-                {calendarDividends.filter(d => d.type === 'payment').length}
-              </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-gray-800 rounded-lg p-3">
+                <p className="text-gray-400 text-sm">Total Payments</p>
+                <p className="text-xl font-bold text-emerald-400">
+                  ${calendarDividends
+                    .filter(d => d.type === 'payment')
+                    .reduce((sum, d) => sum + d.amount, 0)
+                    .toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-gray-800 rounded-lg p-3">
+                <p className="text-gray-400 text-sm">Payment Events</p>
+                <p className="text-xl font-bold">
+                  {calendarDividends.filter(d => d.type === 'payment').length}
+                </p>
+              </div>
+              <div className="bg-gray-800 rounded-lg p-3">
+                <p className="text-gray-400 text-sm">Ex-Dividend Events</p>
+                <p className="text-xl font-bold">
+                  {calendarDividends.filter(d => d.type === 'ex-dividend').length}
+                </p>
+              </div>
             </div>
-            <div className="bg-gray-800 rounded-lg p-3">
-              <p className="text-gray-400 text-sm">Ex-Dividend Events</p>
-              <p className="text-xl font-bold">
-                {calendarDividends.filter(d => d.type === 'ex-dividend').length}
-              </p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
