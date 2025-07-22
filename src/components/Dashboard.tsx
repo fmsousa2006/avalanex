@@ -56,7 +56,7 @@ const Dashboard: React.FC = () => {
     try {
       console.log('Syncing portfolio stock prices:', portfolioSymbols);
       // Sync historical data incrementally (only missing data points)
-      const results = await updateStockPrices(portfolioSymbols);
+      const results = await updateStockPricesWithHistoricalData(portfolioSymbols);
       
       if (results.success.length > 0) {
         alert(`Successfully synced ${results.success.length} stocks!${results.failed.length > 0 ? ` Failed to sync: ${results.failed.join(', ')}` : ''}`);
