@@ -1015,7 +1015,7 @@ class FinnhubService {
       console.log('💡 Generating mock rolling 25-hour data...');
       
       const mockData: HistoricalPriceData[] = [];
-      const basePrice = quote?.c || 875.25; // Use quote price or fallback to realistic NVDA price
+      const basePrice = quote?.c || 168.25; // Use quote price or fallback to realistic NVDA price
       
       // Define market hours: 13:30 (market open), then hourly from 14:00 to 20:00 UTC
       const marketHours = [13.5, 14, 15, 16, 17, 18, 19, 20]; // 13.5 = 13:30
@@ -1059,9 +1059,9 @@ class FinnhubService {
               // Calculate price with realistic bounds
               let price = basePrice + dailyTrend + hourlyVolatility;
               
-              // Keep price within reasonable bounds (±10% of base)
-              const minPrice = basePrice * 0.90;
-              const maxPrice = basePrice * 1.10;
+              // Keep price within reasonable bounds (±5% of base for more realistic movement)
+              const minPrice = basePrice * 0.95;
+              const maxPrice = basePrice * 1.05;
               price = Math.max(minPrice, Math.min(maxPrice, price));
               
               // Round to 2 decimal places like real stock prices
