@@ -101,21 +101,21 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
   // Fetch real historical data from Supabase
   const fetchHistoricalDataFromSupabase = async (stockSymbol: string) => {
     try {
-      console.log(`Fetching historical data for ${stockSymbol} from Supabase...`);
+      console.log(`🔍 [StockDetailModal] Fetching historical data for ${stockSymbol} from Supabase...`);
       
       // First get the stock ID
       const { data: stockInfo, error: stockError } = await supabase
         .from('stocks')
         .select('id, symbol, name, current_price, price_change_24h, price_change_percent_24h, market_cap, sector')
         .eq('symbol', stockSymbol)
-        .single();
+        .maybeSingle();
 
       if (stockError || !stockInfo) {
-        console.warn(`No stock info found for ${stockSymbol}:`, stockError);
+        console.warn(`⚠️ [StockDetailModal] No stock info found for ${stockSymbol}:`, stockError);
         return null;
       }
 
-      console.log(`Found stock info for ${stockSymbol}:`, stockInfo);
+      console.log(`✅ [StockDetailModal] Found stock info for ${stockSymbol}:`, stockInfo);
 
       // Fetch 1-day historical data
       const { data: priceData, error: priceError } = await supabase
@@ -125,14 +125,17 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
         .order('timestamp', { ascending: true });
 
       if (priceError) {
-        console.error(`Error fetching price data for ${stockSymbol}:`, priceError);
+        console.error(`❌ [StockDetailModal] Error fetching price data for ${stockSymbol}:`, priceError);
         return null;
       }
 
-      console.log(`Fetched ${priceData?.length || 0} price records for ${stockSymbol}:`, priceData);
+      console.log(`📊 [StockDetailModal] Fetched ${priceData?.length || 0} price records for ${stockSymbol}`);
+      if (priceData && priceData.length > 0) {
+        console.log(`📊 [StockDetailModal] Sample data:`, priceData.slice(0, 3));
+      }
 
       if (!priceData || priceData.length === 0) {
-        console.warn(`No historical price data found for ${stockSymbol}`);
+        console.warn(`⚠️ [StockDetailModal] No historical price data found for ${stockSymbol}`);
         return {
           stockInfo,
           historicalData: null
@@ -143,12 +146,15 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
       const prices = priceData.map(d => parseFloat(d.close_price));
       const dates = priceData.map(d => d.timestamp);
       
+      console.log(`📈 [StockDetailModal] Converted prices:`, prices.slice(0, 5));
+      console.log(`📅 [StockDetailModal] Converted dates:`, dates.slice(0, 3));
+      
       const firstPrice = prices[0];
       const lastPrice = prices[prices.length - 1];
       const change = lastPrice - firstPrice;
       const changePercent = (change / firstPrice) * 100;
 
-      console.log(`Processed data for ${stockSymbol}: ${prices.length} prices, change: ${change.toFixed(2)} (${changePercent.toFixed(2)}%)`);
+      console.log(`📊 [StockDetailModal] Processed data for ${stockSymbol}: ${prices.length} prices, change: ${change.toFixed(2)} (${changePercent.toFixed(2)}%)`);
 
       const historicalData = {
         '1d': {
@@ -159,14 +165,14 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
         }
       };
 
-      console.log(`Successfully fetched ${priceData.length} data points for ${stockSymbol}`);
+      console.log(`✅ [StockDetailModal] Successfully processed historical data for ${stockSymbol}`);
       return {
         stockInfo,
         historicalData
       };
 
     } catch (error) {
-      console.error(`Error fetching historical data for ${stockSymbol}:`, error);
+      console.error(`❌ [StockDetailModal] Error fetching historical data for ${stockSymbol}:`, error);
       return null;
     }
   };
@@ -179,10 +185,11 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
         
         try {
           // Try to fetch real historical data from Supabase
+          console.log(`🚀 [StockDetailModal] Starting data load for ${stockSymbol}...`);
           const result = await fetchHistoricalDataFromSupabase(stockSymbol);
           
           if (!result) {
-            console.warn('No stock data found in database, using mock data');
+            console.warn('⚠️ [StockDetailModal] No stock data found in database, using mock data');
             setStockData(generateMockData());
             setHasHistoricalData(false);
             return;
@@ -190,7 +197,11 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
 
           const { stockInfo, historicalData } = result;
 
-          console.log('Processing result:', { stockInfo: stockInfo?.symbol, hasHistoricalData: !!historicalData });
+          console.log('🔄 [StockDetailModal] Processing result:', { 
+            stockSymbol: stockInfo?.symbol, 
+            hasHistoricalData: !!historicalData,
+            historicalDataKeys: historicalData ? Object.keys(historicalData) : []
+          });
 
           // Build stock data object
           const realStockData: StockData = {
@@ -215,21 +226,21 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
           if (!historicalData) {
             realStockData.priceData = generateMockPriceData(realStockData.currentPrice);
             setHasHistoricalData(false);
-            console.log('No historical data found, using mock data for all periods');
+            console.log('📊 [StockDetailModal] No historical data found, using mock data for all periods');
           } else {
             // Fill in missing periods with mock data
             const allPeriods = generateMockPriceData(realStockData.currentPrice);
             realStockData.priceData = { ...allPeriods, ...historicalData };
             setHasHistoricalData(true);
-            console.log('Using real 1D data + mock data for other periods');
+            console.log('📊 [StockDetailModal] Using real 1D data + mock data for other periods');
           }
 
-          console.log('Final stock data priceData keys:', Object.keys(realStockData.priceData));
-          console.log('1D data sample:', realStockData.priceData['1d']?.prices?.slice(0, 3));
+          console.log('🎯 [StockDetailModal] Final stock data priceData keys:', Object.keys(realStockData.priceData));
+          console.log('🎯 [StockDetailModal] 1D data sample:', realStockData.priceData['1d']?.prices?.slice(0, 3));
 
           setStockData(realStockData);
         } catch (error) {
-          console.error('Error loading stock data:', error);
+          console.error('❌ [StockDetailModal] Error loading stock data:', error);
           setStockData(generateMockData());
           setHasHistoricalData(false);
         } finally {
@@ -467,10 +478,10 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
     
     const { prices } = currentPeriodData;
     
-    console.log(`Creating price path for ${selectedPeriod}: ${prices?.length} prices`);
+    console.log(`📈 [StockDetailModal] Creating price path for ${selectedPeriod}: ${prices?.length} prices`);
     
     if (!prices || prices.length === 0) {
-      console.warn('No prices available for path creation');
+      console.warn('⚠️ [StockDetailModal] No prices available for path creation');
       return '';
     }
     
@@ -478,7 +489,7 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
     const maxPrice = Math.max(...prices);
     const priceRange = maxPrice - minPrice;
 
-    console.log(`Price range: ${minPrice.toFixed(2)} - ${maxPrice.toFixed(2)} (range: ${priceRange.toFixed(2)})`);
+    console.log(`📊 [StockDetailModal] Price range: ${minPrice.toFixed(2)} - ${maxPrice.toFixed(2)} (range: ${priceRange.toFixed(2)})`);
 
     if (priceRange === 0) return '';
 
@@ -489,7 +500,7 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
     });
 
     const path = `M ${points.join(' L ')}`;
-    console.log(`Generated path with ${points.length} points`);
+    console.log(`✅ [StockDetailModal] Generated path with ${points.length} points`);
     return path;
   };
 
