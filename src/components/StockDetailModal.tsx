@@ -42,7 +42,7 @@ interface StockData {
 }
 
 const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, stockSymbol, stockName }) => {
-  const [selectedPeriod, setSelectedPeriod] = useState('7d');
+  const [selectedPeriod, setSelectedPeriod] = useState('1d');
   const [stockData, setStockData] = useState<StockData | null>(null);
   const [tooltip, setTooltip] = useState<{ ballX: number; ballY: number; price: number; date: string; verticalLineX: number } | null>(null);
   const [chartDimensions, setChartDimensions] = useState({ width: 800, height: 300 });
