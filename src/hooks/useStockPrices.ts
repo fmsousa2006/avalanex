@@ -19,9 +19,21 @@ export const useStockPrices = () => {
 
   // Get Finnhub API key from environment variables
   const finnhubApiKey = import.meta.env.VITE_FINNHUB_API_KEY;
+  
+  // Get Supabase configuration
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const isSupabaseConfigured = supabaseUrl && supabaseAnonKey && 
+    supabaseUrl !== 'https://placeholder.supabase.co' && 
+    supabaseAnonKey !== 'your-anon-key-here';
 
   // Fetch current stock prices from database
   const fetchStockPrices = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      setError('Supabase is not properly configured. Please check your environment variables.');
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('stocks')
@@ -33,14 +45,24 @@ export const useStockPrices = () => {
 
       setStockPrices(data || []);
       setLastUpdate(new Date());
+      setError(null);
     } catch (err) {
       console.error('Error fetching stock prices:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch stock prices');
+      if (err instanceof Error && err.message.includes('NetworkError')) {
+        setError('Network connection failed. Please check your internet connection, firewall settings, or Supabase project status.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to fetch stock prices');
+      }
     }
-  }, []);
+  }, [isSupabaseConfigured]);
 
   // Update stock prices from Finnhub API
   const updateStockPrices = useCallback(async (symbols?: string[]) => {
+    if (!isSupabaseConfigured) {
+      setError('Supabase is not properly configured. Please check your environment variables.');
+      return { success: [], failed: [] };
+    }
+
     if (!finnhubApiKey) {
       setError('Finnhub API key not configured');
       return { success: [], failed: [] };
@@ -77,15 +99,24 @@ export const useStockPrices = () => {
       return results;
     } catch (err) {
       console.error('Error updating stock prices:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update stock prices');
+      if (err instanceof Error && err.message.includes('NetworkError')) {
+        setError('Network connection failed. Please check your internet connection, firewall settings, or Supabase project status.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to update stock prices');
+      }
       return { success: [], failed: [] };
     } finally {
       setLoading(false);
     }
-  }, [finnhubApiKey, fetchStockPrices]);
+  }, [isSupabaseConfigured, finnhubApiKey, fetchStockPrices]);
 
   // Update stock prices with historical data from Finnhub API
   const updateStockPricesWithHistoricalData = useCallback(async (symbols?: string[]) => {
+    if (!isSupabaseConfigured) {
+      setError('Supabase is not properly configured. Please check your environment variables.');
+      return { success: [], failed: [] };
+    }
+
     if (!finnhubApiKey) {
       setError('Finnhub API key not configured');
       return { success: [], failed: [] };
@@ -122,12 +153,16 @@ export const useStockPrices = () => {
       return results;
     } catch (err) {
       console.error('Error updating stock prices with historical data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update stock prices with historical data');
+      if (err instanceof Error && err.message.includes('NetworkError')) {
+        setError('Network connection failed. Please check your internet connection, firewall settings, or Supabase project status.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to update stock prices with historical data');
+      }
       return { success: [], failed: [] };
     } finally {
       setLoading(false);
     }
-  }, [finnhubApiKey, fetchStockPrices]);
+  }, [isSupabaseConfigured, finnhubApiKey, fetchStockPrices]);
 
   // Update a single stock price
   const updateSingleStockPrice = useCallback(async (symbol: string) => {
@@ -157,9 +192,13 @@ export const useStockPrices = () => {
 
   // Auto-refresh prices every 5 minutes during market hours
   useEffect(() => {
-    fetchStockPrices();
+    if (isSupabaseConfigured) {
+      fetchStockPrices();
+    }
 
     const interval = setInterval(() => {
+      if (!isSupabaseConfigured) return;
+      
       const now = new Date();
       const hour = now.getHours();
       const day = now.getDay();
@@ -173,7 +212,7 @@ export const useStockPrices = () => {
     }, 5 * 60 * 1000); // 5 minutes
 
     return () => clearInterval(interval);
-  }, [fetchStockPrices, updateStockPrices, arePricesStale]);
+  }, [isSupabaseConfigured, fetchStockPrices, updateStockPrices, arePricesStale]);
 
   return {
     stockPrices,
@@ -187,6 +226,7 @@ export const useStockPrices = () => {
     fetchStockPrices,
     arePricesStale,
     getStockPrice,
-    isConfigured: !!finnhubApiKey
+    isConfigured: !!finnhubApiKey,
+    isSupabaseConfigured
   };
 };
