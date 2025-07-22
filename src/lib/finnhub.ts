@@ -746,26 +746,29 @@ class FinnhubService {
 
       // Calculate market hours aligned timestamps (Eastern Time)
       console.log('📈 Calculating S&P 500 market hours aligned timestamps...');
-      const nowET = new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
-      const currentET = new Date(nowET);
+      
+      // Get current date in Eastern Time
+      const now = new Date();
+      const currentET = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
       
       // Get the most recent market close (4:00 PM ET)
-      const marketClose = new Date(currentET);
-      marketClose.setHours(16, 0, 0, 0); // 4:00 PM ET
+      const marketClose = new Date();
+      marketClose.setUTCHours(20, 0, 0, 0); // 4:00 PM ET = 20:00 UTC (during standard time)
       
       // If current time is before 4 PM today, use yesterday's close
-      if (currentET.getHours() < 16) {
+      const currentETHour = parseInt(currentET.toLocaleString("en-US", {timeZone: "America/New_York", hour12: false}).split(',')[1].trim().split(':')[0]);
+      if (currentETHour < 16) {
         marketClose.setDate(marketClose.getDate() - 1);
       }
       
       // Get market open for the same day (9:30 AM ET)
       const marketOpen = new Date(marketClose);
-      marketOpen.setHours(9, 30, 0, 0); // 9:30 AM ET
+      marketOpen.setUTCHours(13, 30, 0, 0); // 9:30 AM ET = 13:30 UTC (during standard time)
       
       const from = Math.floor(marketOpen.getTime() / 1000);
       const to = Math.floor(marketClose.getTime() / 1000);
       
-      console.log(`🕐 Market hours: ${marketOpen.toLocaleString("en-US", {timeZone: "America/New_York"})} to ${marketClose.toLocaleString("en-US", {timeZone: "America/New_York"})} ET`);
+      console.log(`🕐 Market hours: ${marketOpen.toLocaleString("en-US", {timeZone: "America/New_York", hour12: false})} to ${marketClose.toLocaleString("en-US", {timeZone: "America/New_York", hour12: false})} ET`);
       console.log(`🕐 Fetching candles from ${new Date(from * 1000).toISOString()} to ${new Date(to * 1000).toISOString()}`);
       
       const candles = await this.getCandles('O', '60', from, to);
