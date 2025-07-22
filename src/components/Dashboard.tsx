@@ -420,6 +420,18 @@ const Dashboard: React.FC = () => {
               >
                 Test NVIDIA 1D
               </button>
+              
+              {/* Test NVIDIA 1D Sync Button */}
+              <button
+                onClick={handleTestSyncNVDA1D}
+                disabled={pricesLoading}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  pricesLoading ? 'bg-gray-600 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+                }`}
+                title="Test sync NVIDIA stock 1D historical data"
+              >
+                Test NVIDIA 1D
+              </button>
             </div>
             <PortfolioChart 
               data={currentPortfolioData} 
