@@ -1020,52 +1020,61 @@ class FinnhubService {
       const mockData: HistoricalPriceData[] = [];
       const basePrice = quote?.c || 875.25; // Use quote price or fallback to NVDA typical price
       
-      // Generate hourly data for the rolling 24-hour window (only during market hours)
+      // Generate missing data points in the rolling 24-hour window
       let currentTime = new Date(startTime);
       
       while (currentTime <= currentMarketTime) {
-        // Only include data during market hours (9:30 AM - 4:00 PM ET) and weekdays
-        const dayOfWeek = currentTime.getDay();
-        
-        // Convert to Eastern Time to check market hours
-        const etTimeString = currentTime.toLocaleString("en-US", {timeZone: "America/New_York", hour12: false});
-        const etHour = parseInt(etTimeString.split(', ')[1].split(':')[0]);
-        const etMinutes = parseInt(etTimeString.split(', ')[1].split(':')[1]);
+        const dayOfWeek = currentTime.getUTCDay();
         
         // Skip weekends
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-          // Special handling for market open and hourly intervals
+          const utcHour = currentTime.getUTCHours();
+          const utcMinutes = currentTime.getUTCMinutes();
+          
+          // Check if this time should be included
           let shouldInclude = false;
           
-          // Always include market open at 9:30 AM ET (13:30 UTC)
-          if (etHour === 9 && etMinutes === 30) {
+          // Always include market open at 13:30 UTC (9:30 AM ET)
+          if (utcHour === 13 && utcMinutes === 30) {
             shouldInclude = true;
+            console.log(`🕘 Market open time: ${currentTime.toISOString()}`);
           }
-          // Then include hourly intervals from 10:00 AM to 4:00 PM ET (14:00-20:00 UTC)
-          else if (etHour >= 10 && etHour <= 15 && etMinutes === 0) {
+          // Hourly intervals from 14:00 to 20:00 UTC (10:00 AM to 4:00 PM ET)  
+          else if (utcHour >= 14 && utcHour <= 20 && utcMinutes === 0) {
             shouldInclude = true;
+            console.log(`🕐 Hourly interval: ${currentTime.toISOString()}`);
           }
           
           if (shouldInclude) {
-            // Use deterministic price based on timestamp for consistency
-            const seed = currentTime.getTime() / 1000000;
-            const price = basePrice + (Math.sin(seed) * 2); // Deterministic variation of ±$2
+            const timeKey = currentTime.toISOString();
             
-            mockData.push({
-              timestamp: currentTime.toISOString(), // Store as UTC
-              open: price,
-              high: price + Math.random() * 10,
-              low: price - Math.random() * 10,
-              close: price,
-              volume: Math.floor(Math.abs(Math.sin(seed * 2)) * 1000000) + 500000
-            });
-            
-            console.log(`📊 Added data point: ${currentTime.toISOString()} (${etTimeString} ET) - $${price.toFixed(2)}`);
+            // Only add if we don't already have this timestamp
+            if (!existingTimestamps.has(timeKey)) {
+              const etTimeString = currentTime.toLocaleString("en-US", {timeZone: "America/New_York", hour12: false});
+              const price = basePrice + (Math.sin(currentTime.getTime() / 1000000) * 1); // Deterministic variation
+              
+              mockData.push({
+                timestamp: timeKey,
+                open: price,
+                high: price + Math.random() * 0.5,
+                low: price - Math.random() * 0.5,
+                close: price,
+                volume: Math.floor(Math.random() * 1000000) + 500000
+              });
+              
+              console.log(`📊 Added data point: ${timeKey} (${etTimeString} ET) - $${price.toFixed(2)}`);
+            } else {
+              console.log(`⏭️ Skipping existing timestamp: ${timeKey}`);
+            }
           }
         }
         
-        // Move to next 30 minutes to catch both 13:30 and hourly intervals  
-        currentTime.setUTCMinutes(currentTime.getUTCMinutes() + 30);
+        // Smart increment: if we're at 13:30, jump to 14:00, otherwise increment by 1 hour
+        if (currentTime.getUTCHours() === 13 && currentTime.getUTCMinutes() === 30) {
+          currentTime.setUTCHours(14, 0, 0, 0); // Jump to 14:00
+        } else {
+          currentTime.setUTCHours(currentTime.getUTCHours() + 1, 0, 0, 0); // Next hour
+        }
       }
       
       console.log(`📊 Generated ${mockData.length} mock data points for rolling 24-hour window (market hours only)`);
