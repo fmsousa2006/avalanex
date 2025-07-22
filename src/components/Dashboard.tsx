@@ -203,6 +203,11 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleEditTransaction = async (transactionId: string) => {
+    // TODO: Implement edit transaction functionality
+    console.log('Edit transaction:', transactionId);
+    alert('Edit transaction functionality will be implemented soon!');
+  };
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
@@ -452,6 +457,7 @@ const Dashboard: React.FC = () => {
             <TransactionHistory 
               data={currentTransactionData} 
               onDeleteTransaction={handleDeleteTransaction}
+              onEditTransaction={handleEditTransaction}
             />
           </div>
 

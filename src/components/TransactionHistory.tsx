@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Trash2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Trash2, Edit3 } from 'lucide-react';
 
 interface Transaction {
   id: string;
@@ -15,10 +15,12 @@ interface Transaction {
 interface TransactionHistoryProps {
   data: Transaction[];
   onDeleteTransaction?: (transactionId: string) => void;
+  onEditTransaction?: (transactionId: string) => void;
 }
 
-const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteTransaction }) => {
+const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteTransaction, onEditTransaction }) => {
   const [swipedTransaction, setSwipedTransaction] = React.useState<string | null>(null);
+  const [swipeDirection, setSwipeDirection] = React.useState<'left' | 'right' | null>(null);
   const [startX, setStartX] = React.useState<number>(0);
   const [currentX, setCurrentX] = React.useState<number>(0);
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
@@ -53,22 +55,29 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteT
     setStartX(e.clientX);
     setCurrentX(e.clientX);
     setSwipedTransaction(transactionId);
+    setSwipeDirection(null);
     setIsDragging(true);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging || !swipedTransaction) return;
     setCurrentX(e.clientX);
+    
+    const deltaX = e.clientX - startX;
+    if (Math.abs(deltaX) > 10) {
+      setSwipeDirection(deltaX > 0 ? 'right' : 'left');
+    }
   };
 
   const handleMouseUp = () => {
     if (!isDragging || !swipedTransaction) return;
     
-    const deltaX = startX - currentX;
+    const deltaX = currentX - startX;
     
-    // If swiped left more than 100px, keep the delete button visible
-    if (deltaX < 100) {
+    // If swiped more than 100px, keep the button visible
+    if (Math.abs(deltaX) < 100) {
       setSwipedTransaction(null);
+      setSwipeDirection(null);
     }
     
     setIsDragging(false);
@@ -79,6 +88,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteT
     setStartX(touch.clientX);
     setCurrentX(touch.clientX);
     setSwipedTransaction(transactionId);
+    setSwipeDirection(null);
     setIsDragging(true);
   };
 
@@ -86,16 +96,22 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteT
     if (!isDragging || !swipedTransaction) return;
     const touch = e.touches[0];
     setCurrentX(touch.clientX);
+    
+    const deltaX = touch.clientX - startX;
+    if (Math.abs(deltaX) > 10) {
+      setSwipeDirection(deltaX > 0 ? 'right' : 'left');
+    }
   };
 
   const handleTouchEnd = () => {
     if (!isDragging || !swipedTransaction) return;
     
-    const deltaX = startX - currentX;
+    const deltaX = currentX - startX;
     
-    // If swiped left more than 100px, keep the delete button visible
-    if (deltaX < 100) {
+    // If swiped more than 100px, keep the button visible
+    if (Math.abs(deltaX) < 100) {
       setSwipedTransaction(null);
+      setSwipeDirection(null);
     }
     
     setIsDragging(false);
@@ -104,6 +120,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteT
   const handleDeleteClick = (transactionId: string) => {
     if (!confirm('Are you sure you want to delete this transaction?')) {
       setSwipedTransaction(null);
+      setSwipeDirection(null);
       return;
     }
     
@@ -111,18 +128,36 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteT
       onDeleteTransaction(transactionId);
     }
     setSwipedTransaction(null);
+    setSwipeDirection(null);
+  };
+
+  const handleEditClick = (transactionId: string) => {
+    if (onEditTransaction) {
+      onEditTransaction(transactionId);
+    }
+    setSwipedTransaction(null);
+    setSwipeDirection(null);
   };
 
   const getTransformX = (transactionId: string) => {
     if (swipedTransaction !== transactionId) return 0;
-    if (!isDragging) return -120;
+    if (!isDragging) {
+      return swipeDirection === 'left' ? -120 : swipeDirection === 'right' ? 120 : 0;
+    }
     
-    const deltaX = startX - currentX;
-    return Math.min(0, Math.max(-120, -deltaX));
+    const deltaX = currentX - startX;
+    return Math.max(-120, Math.min(120, deltaX));
   };
 
-  const shouldShowDeleteButton = (transactionId: string) => {
-    return swipedTransaction === transactionId && (isDragging || getTransformX(transactionId) === -120);
+  const shouldShowButton = (transactionId: string, buttonType: 'delete' | 'edit') => {
+    if (swipedTransaction !== transactionId) return false;
+    
+    const transform = getTransformX(transactionId);
+    if (buttonType === 'delete') {
+      return (isDragging && swipeDirection === 'left') || transform === -120;
+    } else {
+      return (isDragging && swipeDirection === 'right') || transform === 120;
+    }
   };
 
   return (
@@ -133,7 +168,9 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteT
           className="relative bg-gray-750 rounded-lg border border-gray-600 hover:border-gray-500 transition-colors overflow-hidden"
         >
           {/* Delete Button Background */}
-          <div className="absolute right-0 top-0 bottom-0 w-32 bg-red-600 rounded-r-lg flex items-center justify-center">
+          <div className={`absolute right-0 top-0 bottom-0 w-32 bg-red-600 rounded-r-lg flex items-center justify-center transition-opacity ${
+            shouldShowButton(transaction.id, 'delete') ? 'opacity-100' : 'opacity-0'
+          }`}>
             <button
               onClick={() => handleDeleteClick(transaction.id)}
               className="text-white hover:text-red-200 transition-colors p-2"
@@ -142,6 +179,17 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteT
             </button>
           </div>
 
+          {/* Edit Button Background */}
+          <div className={`absolute left-0 top-0 bottom-0 w-32 bg-blue-600 rounded-l-lg flex items-center justify-center transition-opacity ${
+            shouldShowButton(transaction.id, 'edit') ? 'opacity-100' : 'opacity-0'
+          }`}>
+            <button
+              onClick={() => handleEditClick(transaction.id)}
+              className="text-white hover:text-blue-200 transition-colors p-2"
+            >
+              <Edit3 className="w-6 h-6" />
+            </button>
+          </div>
           {/* Transaction Content */}
           <div 
             className="relative bg-gray-800 rounded-lg p-4 cursor-grab active:cursor-grabbing transition-transform duration-200 ease-out z-10"
@@ -195,7 +243,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteT
       {/* Instructions */}
       {data.length > 0 && (
         <div className="text-center text-xs text-gray-500 mt-4 p-2">
-          💡 Swipe left on any transaction to delete it
+          💡 Swipe left to delete • Swipe right to edit
         </div>
       )}
     </div>
