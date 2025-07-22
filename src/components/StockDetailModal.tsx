@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { X, TrendingUp, TrendingDown, Calendar, DollarSign, BarChart3, ExternalLink, Building2, Database } from 'lucide-react';
-
 import { supabase } from '../lib/supabase';
 
 interface StockDetailModalProps {
@@ -101,7 +100,7 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
   // Fetch real historical data from Supabase
   const fetchHistoricalDataFromSupabase = async (stockSymbol: string) => {
     try {
-      console.log(`🔍 [StockDetailModal] Fetching historical data for ${stockSymbol} from Supabase...`);
+      console.log(`🔍 [StockDetailModal] Starting data fetch for ${stockSymbol}...`);
       
       // First get the stock ID
       const { data: stockInfo, error: stockError } = await supabase
@@ -111,7 +110,7 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
         .maybeSingle();
 
       if (stockError || !stockInfo) {
-        console.warn(`⚠️ [StockDetailModal] No stock info found for ${stockSymbol}:`, stockError);
+        console.warn(`⚠️ [StockDetailModal] Stock ${stockSymbol} not found in database`);
         return null;
       }
 
@@ -125,7 +124,7 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
         .order('timestamp', { ascending: true });
 
       if (priceError) {
-        console.error(`❌ [StockDetailModal] Error fetching price data for ${stockSymbol}:`, priceError);
+        console.error(`❌ [StockDetailModal] Error fetching price data:`, priceError);
         return null;
       }
 
@@ -135,7 +134,6 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
       }
 
       if (!priceData || priceData.length === 0) {
-        console.warn(`⚠️ [StockDetailModal] No historical price data found for ${stockSymbol}`);
         return {
           stockInfo,
           historicalData: null
@@ -146,15 +144,10 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
       const prices = priceData.map(d => parseFloat(d.close_price));
       const dates = priceData.map(d => d.timestamp);
       
-      console.log(`📈 [StockDetailModal] Converted prices:`, prices.slice(0, 5));
-      console.log(`📅 [StockDetailModal] Converted dates:`, dates.slice(0, 3));
-      
       const firstPrice = prices[0];
       const lastPrice = prices[prices.length - 1];
       const change = lastPrice - firstPrice;
       const changePercent = (change / firstPrice) * 100;
-
-      console.log(`📊 [StockDetailModal] Processed data for ${stockSymbol}: ${prices.length} prices, change: ${change.toFixed(2)} (${changePercent.toFixed(2)}%)`);
 
       const historicalData = {
         '1d': {
@@ -165,14 +158,13 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
         }
       };
 
-      console.log(`✅ [StockDetailModal] Successfully processed historical data for ${stockSymbol}`);
       return {
         stockInfo,
         historicalData
       };
 
     } catch (error) {
-      console.error(`❌ [StockDetailModal] Error fetching historical data for ${stockSymbol}:`, error);
+      console.error(`❌ [StockDetailModal] Fetch error:`, error);
       return null;
     }
   };
@@ -185,7 +177,6 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
         
         try {
           // Try to fetch real historical data from Supabase
-          console.log(`🚀 [StockDetailModal] Starting data load for ${stockSymbol}...`);
           const result = await fetchHistoricalDataFromSupabase(stockSymbol);
           
           if (!result) {
@@ -196,12 +187,6 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
           }
 
           const { stockInfo, historicalData } = result;
-
-          console.log('🔄 [StockDetailModal] Processing result:', { 
-            stockSymbol: stockInfo?.symbol, 
-            hasHistoricalData: !!historicalData,
-            historicalDataKeys: historicalData ? Object.keys(historicalData) : []
-          });
 
           // Build stock data object
           const realStockData: StockData = {
@@ -226,17 +211,12 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
           if (!historicalData) {
             realStockData.priceData = generateMockPriceData(realStockData.currentPrice);
             setHasHistoricalData(false);
-            console.log('📊 [StockDetailModal] No historical data found, using mock data for all periods');
           } else {
             // Fill in missing periods with mock data
             const allPeriods = generateMockPriceData(realStockData.currentPrice);
             realStockData.priceData = { ...allPeriods, ...historicalData };
             setHasHistoricalData(true);
-            console.log('📊 [StockDetailModal] Using real 1D data + mock data for other periods');
           }
-
-          console.log('🎯 [StockDetailModal] Final stock data priceData keys:', Object.keys(realStockData.priceData));
-          console.log('🎯 [StockDetailModal] 1D data sample:', realStockData.priceData['1d']?.prices?.slice(0, 3));
 
           setStockData(realStockData);
         } catch (error) {
@@ -431,9 +411,6 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
   const currentPeriodData = stockData.priceData[selectedPeriod];
   const isPositive = currentPeriodData?.changePercent >= 0;
 
-  // Debug current period data
-  console.log(`Current period: ${selectedPeriod}, data:`, currentPeriodData);
-
   const chartWidth = chartDimensions.width;
   const chartHeight = chartDimensions.height;
   const padding = 40;
@@ -476,20 +453,14 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
   const createPricePath = () => {
     if (!currentPeriodData) return '';
     
-    const { prices } = currentPeriodData;
-    
-    console.log(`📈 [StockDetailModal] Creating price path for ${selectedPeriod}: ${prices?.length} prices`);
-    
+    const { prices } = currentPeriodData;    
     if (!prices || prices.length === 0) {
-      console.warn('⚠️ [StockDetailModal] No prices available for path creation');
       return '';
     }
     
     const minPrice = Math.min(...prices);
     const maxPrice = Math.max(...prices);
     const priceRange = maxPrice - minPrice;
-
-    console.log(`📊 [StockDetailModal] Price range: ${minPrice.toFixed(2)} - ${maxPrice.toFixed(2)} (range: ${priceRange.toFixed(2)})`);
 
     if (priceRange === 0) return '';
 
@@ -500,7 +471,6 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
     });
 
     const path = `M ${points.join(' L ')}`;
-    console.log(`✅ [StockDetailModal] Generated path with ${points.length} points`);
     return path;
   };
 
