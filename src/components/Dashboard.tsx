@@ -497,7 +497,21 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Transaction History */}
           <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-            <h2 className="text-xl font-semibold mb-6">Last Transactions</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold">Last Transactions</h2>
+              <button
+                onClick={() => setIsPortfolioModalOpen(true)}
+                disabled={!currentPortfolio && !isUsingMockData}
+                className={`p-2 rounded-lg transition-colors ${
+                  !currentPortfolio && !isUsingMockData
+                    ? 'bg-gray-600 cursor-not-allowed opacity-50'
+                    : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
+                title="Add Transaction"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
             <TransactionHistory 
               data={currentTransactionData} 
               onDeleteTransaction={handleDeleteTransaction}
