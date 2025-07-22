@@ -172,7 +172,10 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
   useEffect(() => {
     if (isOpen && stockSymbol) {
       const loadStockData = async () => {
-        setIsLoadingHistoricalData(true);
+        // Show message that real data is not available
+        const mockData = generateMockData();
+        mockData.name = `${stockName} (Unable to get real data from database)`;
+        setStockData(mockData);
         setHasHistoricalData(false);
         
         try {
