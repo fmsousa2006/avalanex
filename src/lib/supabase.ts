@@ -3,14 +3,23 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-// Validate environment variables with detailed logging
-if (!supabaseUrl || !supabaseAnonKey || 
-    supabaseUrl === 'https://placeholder.supabase.co' || 
-    supabaseAnonKey === 'placeholder-key') {
-  console.error('Invalid Supabase configuration detected:');
-  console.error('VITE_SUPABASE_URL:', supabaseUrl || 'MISSING');
-  console.error('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'SET' : 'MISSING');
-  console.error('Please check your .env file and ensure both variables are correctly set.');
+// Validate environment variables
+console.log('Initializing Supabase client...');
+console.log('URL configured:', !!supabaseUrl);
+console.log('Key configured:', !!supabaseAnonKey);
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('❌ Supabase environment variables missing!');
+  console.error('Please create a .env file in your project root with:');
+  console.error('VITE_SUPABASE_URL=your_supabase_project_url');
+  console.error('VITE_SUPABASE_ANON_KEY=your_supabase_anon_key');
+  console.error('Then restart your development server.');
+}
+
+if (supabaseUrl === 'https://placeholder.supabase.co' || supabaseAnonKey === 'placeholder-key') {
+  console.error('❌ Placeholder Supabase values detected!');
+  console.error('Please update your .env file with real Supabase credentials.');
+  console.error('Get them from: https://supabase.com/dashboard > Your Project > Settings > API');
 }
 
 // Create Supabase client with proper error handling
@@ -24,7 +33,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       'X-Client-Info': 'portfolio-dashboard'
     }
   }
-});
 // Database types
 export interface Portfolio {
   id: string;
