@@ -2,6 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { DollarSign, Calendar, Database } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
+// Helper function to check if Supabase environment is properly configured
+const isSupabaseEnvConfigured = () => {
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  
+  return url && 
+         key && 
+         url !== 'https://your-project-ref.supabase.co' &&
+         url !== 'https://placeholder.supabase.co' &&
+         key !== 'your-anon-key-here' &&
+         key !== 'placeholder-anon-key';
+};
+
 interface DividendPayment {
   year: number;
   amount: number;
@@ -46,6 +59,16 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
 
   // Fetch dividend data from Supabase
   const fetchDividendData = async () => {
+    // Check if Supabase is configured before attempting connection
+    const supabaseConfigured = isSupabaseEnvConfigured();
+    
+    if (!supabaseConfigured) {
+      console.warn('Supabase not configured, skipping dividend data fetch');
+      setDividendData([]);
+      setLoading(false);
+      return;
+    }
+
     if (!portfolioId) {
       setLoading(false);
       return;
