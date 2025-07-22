@@ -47,20 +47,15 @@ export const useStockPrices = () => {
   // Fetch current stock prices from database
   const fetchStockPrices = useCallback(async () => {
     if (!isSupabaseConfigured) {
-      console.warn('Supabase not configured, skipping stock price fetch');
       setError(null);
       setStockPrices([]);
       setLastUpdate(new Date());
       return;
     }
 
-    console.log('📊 Fetching stock prices from Supabase...');
     setError(null);
 
     try {
-      // Test connection first
-      console.log('🔗 Fetching stock prices from Supabase...');
-      
       const { data, error } = await supabase
         .from('stocks')
         .select('symbol, current_price, price_change_24h, price_change_percent_24h, market_status, last_price_update')
@@ -73,7 +68,6 @@ export const useStockPrices = () => {
       setLastUpdate(new Date());
       setError(null);
     } catch (err) {
-      console.warn('Failed to fetch stock prices from Supabase, using fallback mode:', err);
       setError(null);
       setStockPrices([]);
       setLastUpdate(new Date());
@@ -281,7 +275,7 @@ export const useStockPrices = () => {
           updateStockPrices();
         }
       }
-    }, 5 * 60 * 1000); // 5 minutes
+    }, 30 * 60 * 1000); // 30 minutes instead of 5 to reduce frequency
 
     return () => clearInterval(interval);
   }, [isSupabaseConfigured, fetchStockPrices, updateStockPrices, arePricesStale]);
