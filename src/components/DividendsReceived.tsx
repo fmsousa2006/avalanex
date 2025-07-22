@@ -172,9 +172,18 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
   if (loading) {
     return (
       <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-        <div className="flex items-center space-x-2 mb-6">
-          <DollarSign className="w-5 h-5 text-green-400" />
-          <h2 className="text-xl font-semibold">Dividends Received</h2>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-2">
+            <DollarSign className="w-5 h-5 text-green-400" />
+            <h2 className="text-xl font-semibold">Dividends Received</h2>
+          </div>
+          <button
+            onClick={() => alert('Add dividend functionality coming soon!')}
+            className="p-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+            title="Add Dividend"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
         </div>
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400"></div>
@@ -188,9 +197,18 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
   if (error) {
     return (
       <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-        <div className="flex items-center space-x-2 mb-6">
-          <DollarSign className="w-5 h-5 text-green-400" />
-          <h2 className="text-xl font-semibold">Dividends Received</h2>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-2">
+            <DollarSign className="w-5 h-5 text-green-400" />
+            <h2 className="text-xl font-semibold">Dividends Received</h2>
+          </div>
+          <button
+            onClick={() => alert('Add dividend functionality coming soon!')}
+            className="p-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+            title="Add Dividend"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
         </div>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
@@ -207,9 +225,18 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
   if (dividendData.length === 0) {
     return (
       <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-        <div className="flex items-center space-x-2 mb-6">
-          <DollarSign className="w-5 h-5 text-green-400" />
-          <h2 className="text-xl font-semibold">Dividends Received</h2>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-2">
+            <DollarSign className="w-5 h-5 text-green-400" />
+            <h2 className="text-xl font-semibold">Dividends Received</h2>
+          </div>
+          <button
+            onClick={() => alert('Add dividend functionality coming soon!')}
+            className="p-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+            title="Add Dividend"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
         </div>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
@@ -259,9 +286,18 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
 
   return (
     <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-      <div className="flex items-center space-x-2 mb-6">
-        <DollarSign className="w-5 h-5 text-green-400" />
-        <h2 className="text-xl font-semibold">Dividends Received</h2>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-2">
+          <DollarSign className="w-5 h-5 text-green-400" />
+          <h2 className="text-xl font-semibold">Dividends Received</h2>
+        </div>
+        <button
+          onClick={() => alert('Add dividend functionality coming soon!')}
+          className="p-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+          title="Add Dividend"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Summary Cards */}
