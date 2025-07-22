@@ -362,6 +362,8 @@ export const usePortfolio = () => {
   // Convert holdings to portfolio data format
   const getPortfolioData = (): PortfolioData[] => {
     return holdings.map(holding => {
+      // Use current_price from stock table if available, otherwise use holding current_price
+      const currentPrice = holding.stock?.current_price || holding.current_price;
       const value = holding.shares * holding.current_price;
       const cost = holding.shares * holding.average_cost;
       const change = value - cost;
@@ -371,7 +373,7 @@ export const usePortfolio = () => {
         symbol: holding.stock?.symbol || '',
         name: holding.stock?.name || '',
         shares: holding.shares,
-        price: holding.current_price,
+        price: currentPrice,
         value: value,
         cost: cost,
         change: change,

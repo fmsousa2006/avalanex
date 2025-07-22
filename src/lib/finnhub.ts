@@ -48,13 +48,14 @@ class FinnhubService {
   // Get real-time quote for a stock
   async getQuote(symbol: string): Promise<FinnhubQuote | null> {
     try {
+      console.log(`Fetching quote for ${symbol} from Finnhub...`);
       const response = await fetch(
         `${this.baseUrl}/quote?symbol=${symbol}&token=${this.apiKey}`
       );
 
       if (!response.ok) {
         if (response.status === 403) {
-          console.error(`Finnhub API 403 Forbidden for ${symbol}: Check API key permissions`);
+          console.error(`Finnhub API 403 Forbidden for ${symbol}: Check API key permissions or upgrade plan`);
           return null;
         }
         if (response.status === 429) {
@@ -66,6 +67,7 @@ class FinnhubService {
       }
 
       const data = await response.json();
+      console.log(`Finnhub response for ${symbol}:`, data);
       
       // Check if we got valid data
       if (data.c === 0 && data.d === 0 && data.dp === 0) {
@@ -73,6 +75,7 @@ class FinnhubService {
         return null;
       }
 
+      console.log(`Successfully fetched ${symbol}: $${data.c}`);
       return data;
     } catch (error) {
       console.error(`Error fetching quote for ${symbol}:`, error);

@@ -54,11 +54,20 @@ const Dashboard: React.FC = () => {
     }
     
     try {
-      console.log('Syncing portfolio stock prices with historical data:', portfolioSymbols);
-      const results = await updateStockPricesWithHistoricalData(portfolioSymbols);
+      console.log('Syncing portfolio stock prices:', portfolioSymbols);
+      // First try to sync current prices only (faster and more reliable)
+      const results = await updateStockPrices(portfolioSymbols);
       
       if (results.success.length > 0) {
-        alert(`Successfully synced ${results.success.length} stocks with historical data!${results.failed.length > 0 ? ` Failed to sync: ${results.failed.join(', ')}` : ''}`);
+        alert(`Successfully synced ${results.success.length} stocks!${results.failed.length > 0 ? ` Failed to sync: ${results.failed.join(', ')}` : ''}`);
+        
+        // Refresh portfolio data to show updated prices
+        if (currentPortfolio) {
+          await Promise.all([
+            fetchHoldings(currentPortfolio.id),
+            fetchTransactions(currentPortfolio.id)
+          ]);
+        }
       } else {
         alert('Failed to sync stock data. Check console for details.');
       }
