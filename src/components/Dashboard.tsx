@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal, RefreshCw } from 'lucide-react';
 import { usePortfolio } from '../hooks/usePortfolio';
 import { useStockPrices } from '../hooks/useStockPrices';
 import PortfolioChart from './PortfolioChart';
@@ -28,7 +28,6 @@ const Dashboard: React.FC = () => {
   // Add stock prices hook for real-time data
   const { 
     updateStockPrices, 
-    updateSingleStockPrice, 
     loading: pricesLoading,
     isConfigured: isFinnhubConfigured 
   } = useStockPrices();
@@ -39,20 +38,29 @@ const Dashboard: React.FC = () => {
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [isPortfolioMenuOpen, setIsPortfolioMenuOpen] = useState(false);
 
-  // Test function to update Realty Income (O) stock price
-  const handleUpdateRealtyIncomePrice = async () => {
+  // Function to sync all portfolio stock prices
+  const handleSyncPortfolioPrices = async () => {
     if (!isFinnhubConfigured) {
       alert('Finnhub API key not configured. Please add VITE_FINNHUB_API_KEY to your .env file.');
       return;
     }
     
+    // Get all unique stock symbols from current portfolio
+    const portfolioSymbols = currentPortfolioData.map(stock => stock.symbol);
+    
+    if (portfolioSymbols.length === 0) {
+      alert('No stocks in portfolio to sync.');
+      return;
+    }
+    
     try {
-      console.log('Updating Realty Income (O) stock price...');
-      const success = await updateSingleStockPrice('O');
-      if (success) {
-        alert('Successfully updated Realty Income (O) price from Finnhub!');
+      console.log('Syncing portfolio stock prices:', portfolioSymbols);
+      const results = await updateStockPrices(portfolioSymbols);
+      
+      if (results.success.length > 0) {
+        alert(`Successfully synced ${results.success.length} stock prices!${results.failed.length > 0 ? ` Failed to sync: ${results.failed.join(', ')}` : ''}`);
       } else {
-        alert('Failed to update Realty Income (O) price. Check console for details.');
+        alert('Failed to sync stock prices. Check console for details.');
       }
     } catch (error) {
       console.error('Error updating stock price:', error);
@@ -333,16 +341,16 @@ const Dashboard: React.FC = () => {
               </div>
               {/* Test Button for Realty Income Price Update */}
               <button
-                onClick={handleUpdateRealtyIncomePrice}
+                onClick={handleSyncPortfolioPrices}
                 disabled={pricesLoading}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   pricesLoading 
                     ? 'bg-gray-600 cursor-not-allowed' 
                     : 'bg-blue-600 hover:bg-blue-700'
                 }`}
-                title="Update Realty Income (O) stock price from Finnhub"
+                title="Sync all portfolio stock prices from Finnhub"
               >
-                {pricesLoading ? 'Updating...' : 'Update O Price'}
+                <RefreshCw className={`w-4 h-4 ${pricesLoading ? 'animate-spin' : ''}`} />
               </button>
             </div>
             <PortfolioChart 
