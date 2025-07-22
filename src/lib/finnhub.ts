@@ -85,6 +85,10 @@ class FinnhubService {
           console.error(`Finnhub API 403 Forbidden for ${symbol}: Check API key permissions or upgrade plan`);
           return null;
         }
+        if (response.status === 401) {
+          console.error(`Finnhub API 401 Unauthorized for ${symbol}: Invalid or missing API key`);
+          return null;
+        }
         if (response.status === 429) {
           console.error(`Finnhub API rate limit exceeded for ${symbol}`);
           return null;
@@ -122,6 +126,10 @@ class FinnhubService {
           console.error(`Finnhub API 403 Forbidden for ${symbol}: Check API key permissions or subscription plan`);
           return null;
         }
+        if (response.status === 401) {
+          console.error(`Finnhub API 401 Unauthorized for ${symbol}: Invalid or missing API key`);
+          return null;
+        }
         if (response.status === 429) {
           console.error(`Finnhub API rate limit exceeded for ${symbol}: Too many requests`);
           return null;
@@ -153,7 +161,16 @@ class FinnhubService {
       );
 
       if (!response.ok) {
-        throw new Error(`Finnhub API error: ${response.status}`);
+        if (response.status === 401) {
+          console.error(`Finnhub API 401 Unauthorized for ${symbol}: Invalid or missing API key`);
+          return null;
+        }
+        if (response.status === 403) {
+          console.error(`Finnhub API 403 Forbidden for ${symbol}: Check API key permissions`);
+          return null;
+        }
+        console.error(`Finnhub API error ${response.status} for ${symbol}`);
+        return null;
       }
 
       const data = await response.json();

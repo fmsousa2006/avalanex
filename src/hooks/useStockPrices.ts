@@ -162,7 +162,12 @@ export const useStockPrices = () => {
     }
 
     if (!finnhubApiKey) {
-      setError('Finnhub API key not configured');
+      setError('Finnhub API key not configured. Please add VITE_FINNHUB_API_KEY to your .env file and restart the development server.');
+      return { success: [], failed: [] };
+    }
+
+    if (finnhubApiKey === 'your-finnhub-api-key-here' || finnhubApiKey.length < 10) {
+      setError('Invalid Finnhub API key detected. Please update VITE_FINNHUB_API_KEY in your .env file with a valid key from finnhub.io and restart the development server.');
       return { success: [], failed: [] };
     }
 
