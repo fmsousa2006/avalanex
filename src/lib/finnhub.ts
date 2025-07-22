@@ -760,6 +760,7 @@ class FinnhubService {
         console.warn('⚠️ Failed to update current price, but continuing with historical data...');
       } else {
         console.log('✅ Successfully updated current price for O');
+      }
       // Get existing data to determine what we need to add
       console.log('🔍 Checking existing data...');
       const { data: existingData, error: existingError } = await supabase
