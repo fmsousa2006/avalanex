@@ -189,7 +189,7 @@ class FinnhubService {
   }
 
   // Get the last timestamp for a stock in a specific period table
-  private async getLastTimestamp(stockId: string, tableName: string): Promise<Date | null> {
+  async getLastTimestamp(stockId: string, tableName: string): Promise<Date | null> {
     try {
       const { data, error } = await supabase
         .from(tableName)
@@ -212,7 +212,7 @@ class FinnhubService {
   }
 
   // Store historical price data in the appropriate table
-  private async storeHistoricalData(
+  async storeHistoricalData(
     stockId: string, 
     tableName: string, 
     priceData: HistoricalPriceData[]
@@ -251,12 +251,12 @@ class FinnhubService {
   }
 
   // Sync historical data for a specific period (incremental)
-  private async syncPeriodData(stockId: string, symbol: string, config: PeriodConfig): Promise<boolean> {
+  async syncPeriodData(stockId: string, symbol: string, config: PeriodConfig): Promise<boolean> {
     try {
       console.log(`Syncing ${config.table} data for ${symbol}...`);
       
       // Get the last timestamp we have for this stock and period
-      const lastTimestamp = await getLastTimestamp(stockId, config.table);
+      const lastTimestamp = await this.getLastTimestamp(stockId, config.table);
       
       const now = Math.floor(Date.now() / 1000);
       let fromTimestamp: number;
@@ -663,6 +663,82 @@ class FinnhubService {
     } catch (error) {
       console.error(`Error in enrichStockData for ${symbol}:`, error);
       return false;
+    }
+  }
+
+  // Test sync for O stock 1d data
+  async testSyncO1D(): Promise<void> {
+    try {
+      console.log('🧪 Testing sync for O (Realty Income) 1D data...');
+      
+      // First, ensure O stock exists in database
+      const { data: stockData, error: stockError } = await supabase
+        .from('stocks')
+        .select('id, symbol')
+        .eq('symbol', 'O')
+        .maybeSingle();
+
+      if (stockError) {
+        console.error('Error fetching O stock:', stockError);
+        return;
+      }
+
+      let stockId: string;
+      
+      if (!stockData) {
+        console.log('Creating O stock entry...');
+        const { data: newStock, error: createError } = await supabase
+          .from('stocks')
+          .insert([{
+            symbol: 'O',
+            name: 'Realty Income Corporation',
+            sector: 'Real Estate',
+            is_active: true
+          }])
+          .select('id')
+          .single();
+
+        if (createError) {
+          console.error('Error creating O stock:', createError);
+          return;
+        }
+        stockId = newStock.id;
+      } else {
+        stockId = stockData.id;
+      }
+
+      console.log(`Found/Created O stock with ID: ${stockId}`);
+
+      // Sync 1D data for O
+      const config: PeriodConfig = {
+        table: 'stock_prices_1d',
+        days: 1,
+        resolution: '60', // 1 hour resolution
+        granularity: 'hour'
+      };
+
+      const success = await this.syncPeriodData(stockId, 'O', config);
+      
+      if (success) {
+        console.log('✅ Successfully synced O 1D historical data!');
+        
+        // Check how many records we have
+        const { data: records, error: countError } = await supabase
+          .from('stock_prices_1d')
+          .select('*')
+          .eq('stock_id', stockId)
+          .order('timestamp', { ascending: false })
+          .limit(5);
+
+        if (!countError && records) {
+          console.log(`📊 Latest 5 records for O:`, records);
+        }
+      } else {
+        console.log('❌ Failed to sync O 1D historical data');
+      }
+
+    } catch (error) {
+      console.error('Error in testSyncO1D:', error);
     }
   }
 }

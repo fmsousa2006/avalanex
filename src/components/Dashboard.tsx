@@ -29,7 +29,8 @@ const Dashboard: React.FC = () => {
   const { 
     updateStockPricesWithHistoricalData, 
     loading: pricesLoading,
-    isConfigured: isFinnhubConfigured 
+    isConfigured: isFinnhubConfigured,
+    testSyncO1D
   } = useStockPrices();
 
   const [hoveredStock, setHoveredStock] = useState<string | null>(null);
@@ -74,6 +75,23 @@ const Dashboard: React.FC = () => {
     } catch (error) {
       console.error('Error syncing stock data:', error);
       alert('Error syncing stock data: ' + (error as Error).message);
+    }
+  };
+
+  // Test sync O 1D data
+  const handleTestSyncO1D = async () => {
+    if (!isFinnhubConfigured) {
+      alert('Finnhub API key not configured. Please add VITE_FINNHUB_API_KEY to your .env file.');
+      return;
+    }
+    
+    try {
+      console.log('🧪 Starting test sync for O 1D data...');
+      await testSyncO1D();
+      alert('✅ Test sync completed! Check console for details.');
+    } catch (error) {
+      console.error('❌ Test sync failed:', error);
+      alert('❌ Test sync failed: ' + (error as Error).message);
     }
   };
 
@@ -360,6 +378,18 @@ const Dashboard: React.FC = () => {
                 title="Sync all portfolio stock prices from Finnhub"
               >
                 <RefreshCw className={`w-4 h-4 ${pricesLoading ? 'animate-spin' : ''}`} />
+              </button>
+              
+              {/* Test O 1D Sync Button */}
+              <button
+                onClick={handleTestSyncO1D}
+                disabled={pricesLoading}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  pricesLoading ? 'bg-gray-600 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'
+                }`}
+                title="Test sync O stock 1D historical data"
+              >
+                Test O 1D
               </button>
             </div>
             <PortfolioChart 

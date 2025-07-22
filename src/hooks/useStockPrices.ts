@@ -231,6 +231,33 @@ If project is paused, click "Resume" in dashboard.`;
     }
   }, [isSupabaseConfigured, finnhubApiKey, fetchStockPrices]);
 
+  // Test sync O 1D data
+  const testSyncO1D = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      setError('Supabase is not properly configured. Please check your environment variables.');
+      return;
+    }
+
+    if (!finnhubApiKey) {
+      setError('Finnhub API key not configured. Please add VITE_FINNHUB_API_KEY to your .env file.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const finnhub = createFinnhubService(finnhubApiKey);
+      await finnhub.testSyncO1D();
+      console.log('✅ Test sync completed for O 1D data');
+    } catch (err) {
+      console.error('❌ Error in test sync:', err);
+      setError(err instanceof Error ? err.message : 'Failed to test sync O 1D data');
+    } finally {
+      setLoading(false);
+    }
+  }, [isSupabaseConfigured, finnhubApiKey]);
+
   // Update a single stock price
   const updateSingleStockPrice = useCallback(async (symbol: string) => {
     const results = await updateStockPrices([symbol]);
@@ -294,6 +321,7 @@ If project is paused, click "Resume" in dashboard.`;
     arePricesStale,
     getStockPrice,
     isConfigured: !!finnhubApiKey,
-    isSupabaseConfigured
+    isSupabaseConfigured,
+    testSyncO1D
   };
 };
