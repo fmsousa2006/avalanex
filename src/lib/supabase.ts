@@ -3,9 +3,14 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-// Validate environment variables
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables. Please check your .env file.');
+// Validate environment variables with detailed logging
+if (!supabaseUrl || !supabaseAnonKey || 
+    supabaseUrl === 'https://placeholder.supabase.co' || 
+    supabaseAnonKey === 'placeholder-key') {
+  console.error('Invalid Supabase configuration detected:');
+  console.error('VITE_SUPABASE_URL:', supabaseUrl || 'MISSING');
+  console.error('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'SET' : 'MISSING');
+  console.error('Please check your .env file and ensure both variables are correctly set.');
 }
 
 // Create Supabase client with proper error handling
