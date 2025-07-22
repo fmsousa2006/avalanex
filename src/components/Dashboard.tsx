@@ -23,6 +23,7 @@ const Dashboard: React.FC = () => {
     holdings,
     transactions,
     dividends,
+    nextDividend,
     loading,
     error,
     isUsingMockData,
@@ -363,8 +364,31 @@ const Dashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">Next Dividend</p>
-                <p className="text-2xl font-bold">${dividendData[0]?.amount || '0'}</p>
-                <p className="text-xs text-gray-400">{dividendData[0]?.date || 'N/A'}</p>
+                <div className="flex items-baseline space-x-2">
+                  <p className="text-2xl font-bold">
+                    ${nextDividend?.totalAmount.toFixed(2) || '0.00'}
+                  </p>
+                  {nextDividend && (
+                    <p className="text-sm text-gray-400">
+                      ({nextDividend.symbol})
+                    </p>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400">
+                  {nextDividend ? 
+                    new Date(nextDividend.date).toLocaleDateString('en-US', { 
+                      month: 'short', 
+                      day: 'numeric',
+                      year: 'numeric'
+                    }) : 
+                    'No upcoming dividends'
+                  }
+                </p>
+                {nextDividend && (
+                  <p className="text-xs text-gray-500">
+                    ${nextDividend.amount}/share
+                  </p>
+                )}
               </div>
               <Calendar 
                 className="w-8 h-8 text-yellow-400 cursor-pointer hover:text-yellow-300 transition-colors" 

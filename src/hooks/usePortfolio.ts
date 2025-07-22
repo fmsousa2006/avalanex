@@ -24,6 +24,12 @@ export const usePortfolio = () => {
   const [error, setError] = useState<string | null>(null);
   const [isUsingMockData, setIsUsingMockData] = useState(false);
   const [isSupabaseConfiguredForRealData, setIsSupabaseConfiguredForRealData] = useState(false);
+  const [nextDividend, setNextDividend] = useState<{
+    symbol: string;
+    amount: number;
+    date: string;
+    totalAmount: number;
+  } | null>(null);
 
   // Fixed portfolio ID for single portfolio setup
   const FIXED_PORTFOLIO_ID = '550e8400-e29b-41d4-a716-446655440000';
@@ -262,6 +268,83 @@ export const usePortfolio = () => {
     setDividends(data || []);
   };
 
+  // Fetch next dividend based on portfolio holdings
+  const fetchNextDividend = async (portfolioId: string) => {
+    if (!isSupabaseConfiguredForRealData) {
+      return; // Skip if using mock data
+    }
+
+    try {
+      // Get all stocks in the current portfolio
+      const { data: portfolioStocks, error: holdingsError } = await supabase
+        .from('portfolio_holdings')
+        .select(`
+          shares,
+          stock:stocks(id, symbol)
+        `)
+        .eq('portfolio_id', portfolioId)
+        .gt('shares', 0); // Only stocks with shares > 0
+
+      if (holdingsError) throw holdingsError;
+
+      if (!portfolioStocks || portfolioStocks.length === 0) {
+        setNextDividend(null);
+        return;
+      }
+
+      // Get stock IDs from portfolio
+      const stockIds = portfolioStocks.map(holding => holding.stock?.id).filter(Boolean);
+
+      if (stockIds.length === 0) {
+        setNextDividend(null);
+        return;
+      }
+
+      // Get upcoming dividends for these stocks
+      const today = new Date().toISOString().split('T')[0];
+      const { data: upcomingDividends, error: dividendsError } = await supabase
+        .from('dividends')
+        .select(`
+          *,
+          stock:stocks(symbol, name)
+        `)
+        .in('stock_id', stockIds)
+        .in('status', ['upcoming', 'ex-dividend'])
+        .gte('payment_date', today)
+        .order('payment_date', { ascending: true })
+        .limit(1);
+
+      if (dividendsError) throw dividendsError;
+
+      if (!upcomingDividends || upcomingDividends.length === 0) {
+        setNextDividend(null);
+        return;
+      }
+
+      const nextDiv = upcomingDividends[0];
+      const holding = portfolioStocks.find(h => h.stock?.id === nextDiv.stock_id);
+      
+      if (!holding || !holding.stock) {
+        setNextDividend(null);
+        return;
+      }
+
+      // Calculate total dividend amount (dividend per share * number of shares)
+      const totalAmount = nextDiv.amount * holding.shares;
+
+      setNextDividend({
+        symbol: holding.stock.symbol,
+        amount: nextDiv.amount,
+        date: nextDiv.payment_date,
+        totalAmount: totalAmount
+      });
+
+    } catch (error) {
+      console.error('Error fetching next dividend:', error);
+      setNextDividend(null);
+    }
+  };
+
   // Add or update stock
   const upsertStock = async (symbol: string, name: string) => {
     // First, try to get existing stock data
@@ -393,7 +476,8 @@ export const usePortfolio = () => {
     // Refresh data
     await Promise.all([
       fetchHoldings(currentPortfolio.id),
-      fetchTransactions(currentPortfolio.id)
+      fetchTransactions(currentPortfolio.id),
+      fetchNextDividend(currentPortfolio.id)
     ]);
 
     return transaction;
@@ -528,7 +612,8 @@ export const usePortfolio = () => {
     // Refresh data
     await Promise.all([
       fetchHoldings(currentPortfolio.id),
-      fetchTransactions(currentPortfolio.id)
+      fetchTransactions(currentPortfolio.id),
+      fetchNextDividend(currentPortfolio.id)
     ]);
 
     return updatedTransaction;
@@ -614,7 +699,8 @@ export const usePortfolio = () => {
     // Refresh data
     await Promise.all([
       fetchHoldings(currentPortfolio.id),
-      fetchTransactions(currentPortfolio.id)
+      fetchTransactions(currentPortfolio.id),
+      fetchNextDividend(currentPortfolio.id)
     ]);
 
     return true;
@@ -676,7 +762,8 @@ export const usePortfolio = () => {
         try {
           await Promise.all([
             fetchHoldings(currentPortfolio.id),
-            fetchTransactions(currentPortfolio.id)
+            fetchTransactions(currentPortfolio.id),
+            fetchNextDividend(currentPortfolio.id)
           ]);
         } catch (err) {
           setError(err instanceof Error ? err.message : 'An error occurred');
@@ -693,6 +780,7 @@ export const usePortfolio = () => {
     holdings,
     transactions,
     dividends,
+    nextDividend,
     loading,
     error,
     isUsingMockData,
