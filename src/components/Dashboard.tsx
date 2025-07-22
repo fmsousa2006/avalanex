@@ -12,7 +12,11 @@ import Sidebar from './Sidebar';
 import PortfolioModal from './PortfolioModal';
 import TestingModal from './TestingModal';
 
+console.log('🏠 Dashboard.tsx loading...');
+
 const Dashboard: React.FC = () => {
+  console.log('🏠 Dashboard component rendering...');
+  
   const {
     portfolios,
     currentPortfolio,
