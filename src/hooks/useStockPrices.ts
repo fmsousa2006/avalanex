@@ -25,47 +25,55 @@ export const useStockPrices = () => {
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
   
   const isSupabaseConfigured = useMemo(() => {
-    console.log('Checking Supabase configuration:');
-    console.log('VITE_SUPABASE_URL:', supabaseUrl || 'MISSING');
-    console.log('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'SET' : 'MISSING');
+    console.log('🔍 Validating Supabase configuration...');
     
     if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('Missing Supabase environment variables');
+      console.error('❌ Missing required environment variables');
       return false;
     }
     
     if (supabaseUrl === 'https://placeholder.supabase.co' || supabaseAnonKey === 'placeholder-key') {
-      console.error('Placeholder Supabase values detected - please update .env file');
+      console.error('❌ Placeholder values detected - update .env file');
       return false;
     }
     
     if (!supabaseUrl.includes('supabase.co')) {
-      console.error('Invalid Supabase URL format');
+      console.error('❌ Invalid URL format - must contain "supabase.co"');
       return false;
     }
     
     if (!supabaseAnonKey.startsWith('eyJ')) {
-      console.error('Invalid Supabase anon key format (should be JWT token)');
+      console.error('❌ Invalid anon key format - should start with "eyJ"');
       return false;
     }
     
-    console.log('Supabase configuration appears valid');
+    console.log('✅ Supabase configuration is valid');
     return true;
   }, [supabaseUrl, supabaseAnonKey]);
 
   // Fetch current stock prices from database
   const fetchStockPrices = useCallback(async () => {
     if (!isSupabaseConfigured) {
-      const errorMsg = 'Supabase not configured. Please check: 1) .env file exists with VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, 2) Values are not placeholders, 3) Restart dev server after .env changes';
+      const errorMsg = `🔧 SUPABASE SETUP REQUIRED:
+
+1. 📁 Create .env file in project root
+2. 🌐 Add: VITE_SUPABASE_URL=https://your-project.supabase.co
+3. 🔑 Add: VITE_SUPABASE_ANON_KEY=your-anon-key
+4. 🔄 Restart dev server: npm run dev
+
+Get credentials from: https://supabase.com/dashboard > Your Project > Settings > API`;
       console.error(errorMsg);
       setError(errorMsg);
       return;
     }
 
-    console.log('Attempting to fetch stock prices from Supabase...');
+    console.log('📊 Fetching stock prices from Supabase...');
     setError(null);
 
     try {
+      // Test connection first
+      console.log('🔗 Testing Supabase connection...');
+      
       const { data, error } = await supabase
         .from('stocks')
         .select('symbol, current_price, price_change_24h, price_change_percent_24h, market_status, last_price_update')
@@ -74,28 +82,38 @@ export const useStockPrices = () => {
 
       if (error) throw error;
 
-      console.log('Successfully fetched stock prices:', data?.length || 0, 'stocks');
+      console.log('✅ Successfully fetched', data?.length || 0, 'stock prices');
       setStockPrices(data || []);
       setLastUpdate(new Date());
       setError(null);
     } catch (err) {
-      console.error('Error fetching stock prices:', err);
+      console.error('❌ Error fetching stock prices:', err);
+      
       if (err instanceof Error) {
         if (err.message.includes('NetworkError') || err.message.includes('Failed to fetch') || err.name === 'TypeError') {
-          const networkError = `Network connection to Supabase failed. Please check:
-1) Internet connection is working
-2) Supabase project is active (check dashboard at supabase.com)
-3) .env file has correct VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
-4) No firewall/proxy blocking ${supabaseUrl}
-5) Restart development server after .env changes`;
+          const networkError = `🌐 NETWORK CONNECTION FAILED
+
+📋 TROUBLESHOOTING STEPS:
+
+1. ✅ Check internet connection
+2. 🏠 Visit https://supabase.com/dashboard
+3. 🔍 Verify your project is ACTIVE (not paused/deleted)
+4. ⚙️  Go to Settings > API and verify:
+   - Project URL: ${supabaseUrl}
+   - anon key matches your .env file
+5. 🔄 Restart dev server after .env changes
+6. 🛡️  Check firewall/proxy settings
+7. 🌍 Try accessing ${supabaseUrl} directly in browser
+
+If project is paused, click "Resume" in dashboard.`;
           setError(networkError);
         } else if (err.message.includes('Invalid API key')) {
-          setError('Invalid Supabase API key. Please check VITE_SUPABASE_ANON_KEY in your .env file.');
+          setError('🔑 Invalid Supabase API key. Check VITE_SUPABASE_ANON_KEY in .env file.');
         } else {
-          setError(`Supabase error: ${err.message}`);
+          setError(`❌ Supabase error: ${err.message}`);
         }
       } else {
-        setError('Unknown error occurred while fetching stock prices');
+        setError('❓ Unknown error occurred while fetching stock prices');
       }
     }
   }, [isSupabaseConfigured]);
