@@ -890,7 +890,7 @@ class FinnhubService {
       throw error; // Re-throw so the UI can show the error
     }
   }
-}
+
   // Test sync for NVIDIA stock 1d data
   async testSyncNVDA1D(): Promise<void> {
     try {
@@ -1107,6 +1107,8 @@ class FinnhubService {
       throw error; // Re-throw so the UI can show the error
     }
   }
+}
+}
 
 // Export a function to create the service with API key
 export const createFinnhubService = (apiKey: string) => {
