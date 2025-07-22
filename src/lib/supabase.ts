@@ -30,6 +30,7 @@ if (supabaseUrl && supabaseAnonKey && supabaseUrl.includes('supabase.co') && sup
   console.error('❌ Invalid Supabase configuration detected');
   console.error('📋 REPLACE PLACEHOLDERS:');
   console.error('1. Go to https://supabase.com/dashboard');
+}
 // Create Supabase client with enhanced error handling
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -50,6 +51,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       eventsPerSecond: 10
     }
   }
+}
+)
 // Database types
 export interface Portfolio {
   id: string;
