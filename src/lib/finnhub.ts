@@ -1015,7 +1015,7 @@ class FinnhubService {
       console.log('💡 Generating mock rolling 25-hour data...');
       
       const mockData: HistoricalPriceData[] = [];
-      const basePrice = quote?.c || 875.25; // Use quote price or fallback to NVDA typical price
+      const basePrice = quote?.c || 875.25; // Use quote price or fallback to realistic NVDA price
       
       // Define market hours: 13:30 (market open), then hourly from 14:00 to 20:00 UTC
       const marketHours = [13.5, 14, 15, 16, 17, 18, 19, 20]; // 13.5 = 13:30
@@ -1039,15 +1039,21 @@ class FinnhubService {
             
             // Only include if within our rolling window
             if (dataTime >= startTime && dataTime <= currentMarketTime) {
-              const price = basePrice + (Math.sin(dataTime.getTime() / 1000000) * 2); // Deterministic variation
+              // Generate realistic NVIDIA price movement
+              const timeOffset = (dataTime.getTime() - startTime.getTime()) / (1000 * 60 * 60); // Hours since start
+              const dailyTrend = Math.sin(timeOffset * 0.1) * 5; // Gentle daily trend ±$5
+              const hourlyVolatility = (Math.sin(timeOffset * 0.5) + Math.cos(timeOffset * 0.3)) * 3; // Hourly volatility ±$3
+              const randomNoise = (Math.random() - 0.5) * 2; // Small random noise ±$1
+              
+              const price = Math.max(basePrice + dailyTrend + hourlyVolatility + randomNoise, basePrice * 0.95); // Don't go below 95% of base
               
               mockData.push({
                 timestamp: dataTime.toISOString(),
                 open: price,
-                high: price + Math.random() * 1.0,
-                low: price - Math.random() * 1.0,
+                high: price + Math.random() * 2.5, // Higher volatility for NVDA
+                low: price - Math.random() * 2.5,
                 close: price,
-                volume: Math.floor(Math.random() * 2000000) + 1000000 // Higher volume for NVDA
+                volume: Math.floor(Math.random() * 5000000) + 2000000 // Much higher volume for NVDA (2M-7M)
               });
               
               const etTimeString = dataTime.toLocaleString("en-US", {timeZone: "America/New_York", hour12: false});
