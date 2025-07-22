@@ -783,11 +783,10 @@ class FinnhubService {
       const mockData: HistoricalPriceData[] = [];
       const basePrice = quote?.c || 58.25;
       
-      // Start from 24 hours ago and generate 30-minute intervals
+      // Start from 24 hours ago and generate 1-hour intervals
       let currentTime = new Date(twentyFourHoursAgo);
-      // Round to nearest 30 minutes
-      const minutes = currentTime.getMinutes();
-      currentTime.setMinutes(minutes >= 30 ? 30 : 0, 0, 0);
+      // Round to nearest hour
+      currentTime.setMinutes(0, 0, 0);
       
       while (currentTime <= now) {
         const dayOfWeek = currentTime.getDay();
@@ -822,8 +821,8 @@ class FinnhubService {
           }
         }
         
-        // Move to next 30 minutes
-        currentTime.setMinutes(currentTime.getMinutes() + 30);
+        // Move to next hour
+        currentTime.setHours(currentTime.getHours() + 1);
       }
       
       console.log(`📊 Generated ${mockData.length} new data points for rolling 24-hour window`);
