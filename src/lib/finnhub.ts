@@ -796,13 +796,17 @@ class FinnhubService {
         
         while (currentTime <= currentMarketTime) {
           // Only include data during market hours (9:30 AM - 4:00 PM ET) and weekdays
-          const dayOfWeek = currentTime.getDay();
+          // Market hours in UTC: 13:30-20:00 (9:30 AM - 4:00 PM ET)
+          // Always include 13:30 (market open), then hourly intervals
+          let shouldInclude = false;
           
-          // Convert to Eastern Time to check market hours
-          const etTimeString = currentTime.toLocaleString("en-US", {timeZone: "America/New_York", hour12: false});
-          const etHour = parseInt(etTimeString.split(', ')[1].split(':')[0]);
+          if (utcHour === 13 && utcMinutes === 30) {
+            shouldInclude = true; // Market open
+          } else if (utcHour >= 14 && utcHour <= 20 && utcMinutes === 0) {
+            shouldInclude = true; // Hourly intervals
+          }
           const etMinutes = parseInt(etTimeString.split(', ')[1].split(':')[1]);
-          
+          if (shouldInclude) {
           // Skip weekends
           if (dayOfWeek !== 0 && dayOfWeek !== 6) {
             // Include market hours: 9:30 AM (9:30) to 4:00 PM (16:00) ET
@@ -1059,8 +1063,8 @@ class FinnhubService {
           }
         }
         
-        // Move to next 30 minutes to catch both 9:30 AM and hourly intervals
-        currentTime.setMinutes(currentTime.getMinutes() + 30);
+        // Move to next 30 minutes to catch both 13:30 and hourly intervals  
+        currentTime.setUTCMinutes(currentTime.getUTCMinutes() + 30);
       }
       
       console.log(`📊 Generated ${mockData.length} mock data points for rolling 24-hour window (market hours only)`);
