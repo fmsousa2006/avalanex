@@ -23,9 +23,23 @@ export const usePortfolio = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUsingMockData, setIsUsingMockData] = useState(false);
+  const [isSupabaseConfiguredForRealData, setIsSupabaseConfiguredForRealData] = useState(false);
 
   // Fixed portfolio ID for single portfolio setup
   const FIXED_PORTFOLIO_ID = '550e8400-e29b-41d4-a716-446655440000';
+
+  // Helper function to check if Supabase environment is properly configured
+  const isSupabaseEnvConfigured = () => {
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    return url && 
+           key && 
+           url !== 'https://your-project-ref.supabase.co' &&
+           url !== 'https://placeholder.supabase.co' &&
+           key !== 'your-anon-key-here' &&
+           key !== 'placeholder-anon-key';
+  };
 
   // Get current user
   const getCurrentUser = async () => {
@@ -128,11 +142,10 @@ export const usePortfolio = () => {
   const fetchPortfolios = async () => {
     try {
       // Check if Supabase is configured before attempting connection
-      if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY ||
-          import.meta.env.VITE_SUPABASE_URL === 'https://your-project-ref.supabase.co' ||
-          import.meta.env.VITE_SUPABASE_URL === 'https://placeholder.supabase.co' ||
-          import.meta.env.VITE_SUPABASE_ANON_KEY === 'your-anon-key-here' ||
-          import.meta.env.VITE_SUPABASE_ANON_KEY === 'placeholder-anon-key') {
+      const supabaseConfigured = isSupabaseEnvConfigured();
+      setIsSupabaseConfiguredForRealData(supabaseConfigured);
+      
+      if (!supabaseConfigured) {
         console.warn('Supabase not configured, using mock data');
         createMockPortfolio();
         return;
@@ -195,6 +208,10 @@ export const usePortfolio = () => {
 
   // Fetch holdings for current portfolio
   const fetchHoldings = async (portfolioId: string) => {
+    if (!isSupabaseConfiguredForRealData) {
+      return; // Skip if using mock data
+    }
+
     const { data, error } = await supabase
       .from('portfolio_holdings')
       .select(`
@@ -209,6 +226,10 @@ export const usePortfolio = () => {
 
   // Fetch transactions for current portfolio
   const fetchTransactions = async (portfolioId: string) => {
+    if (!isSupabaseConfiguredForRealData) {
+      return; // Skip if using mock data
+    }
+
     const { data, error } = await supabase
       .from('transactions')
       .select(`
@@ -225,6 +246,10 @@ export const usePortfolio = () => {
 
   // Fetch dividends
   const fetchDividends = async () => {
+    if (!isSupabaseConfiguredForRealData) {
+      return; // Skip if using mock data
+    }
+
     const { data, error } = await supabase
       .from('dividends')
       .select(`
@@ -274,6 +299,10 @@ export const usePortfolio = () => {
     currency: string;
     fee: string;
   }) => {
+    if (!isSupabaseConfiguredForRealData) {
+      throw new Error('Cannot add transactions when using mock data. Please configure Supabase.');
+    }
+
     if (!currentPortfolio) throw new Error('No current portfolio');
 
     const shares = parseInt(transactionData.shares);
