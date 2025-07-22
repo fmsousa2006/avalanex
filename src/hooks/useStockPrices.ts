@@ -47,16 +47,10 @@ export const useStockPrices = () => {
   // Fetch current stock prices from database
   const fetchStockPrices = useCallback(async () => {
     if (!isSupabaseConfigured) {
-      const errorMsg = `🔧 SUPABASE SETUP REQUIRED:
-
-1. 📁 Create .env file in project root
-2. 🌐 Add: VITE_SUPABASE_URL=https://your-project.supabase.co
-3. 🔑 Add: VITE_SUPABASE_ANON_KEY=your-anon-key
-4. 🔄 Restart dev server: npm run dev
-
-Get credentials from: https://supabase.com/dashboard > Your Project > Settings > API`;
-      console.error(errorMsg);
-      setError(errorMsg);
+      console.warn('Supabase not configured, skipping stock price fetch');
+      setError(null);
+      setStockPrices([]);
+      setLastUpdate(new Date());
       return;
     }
 
@@ -65,9 +59,7 @@ Get credentials from: https://supabase.com/dashboard > Your Project > Settings >
 
     try {
       // Test connection first
-      console.log('🔗 Testing Supabase connection...');
-      console.log('🌐 Supabase URL:', supabaseUrl);
-      console.log('🔑 Anon Key (first 20 chars):', supabaseAnonKey?.substring(0, 20) + '...');
+      console.log('🔗 Fetching stock prices from Supabase...');
       
       const { data, error } = await supabase
         .from('stocks')
@@ -77,38 +69,12 @@ Get credentials from: https://supabase.com/dashboard > Your Project > Settings >
 
       if (error) throw error;
 
-      console.log('✅ Successfully fetched', data?.length || 0, 'stock prices');
       setStockPrices(data || []);
       setLastUpdate(new Date());
       setError(null);
     } catch (err) {
-      console.error('❌ Error fetching stock prices:', err);
-      
-      // Provide specific error messages based on error type
-      let friendlyError = '';
-      
-      if (err instanceof Error && err.message.includes('NetworkError')) {
-        friendlyError = `🔧 SUPABASE CONNECTION FAILED
-
-Your Supabase project may be:
-• 🚫 Paused/Inactive - Check your Supabase dashboard
-• 🔑 Invalid API key - Verify your anon key is correct
-• 🌐 Wrong URL - Double-check your project URL
-
-TO FIX:
-1. 🌐 Go to https://supabase.com/dashboard
-2. 📋 Select your project: szhhlldwpfpysbvgzcwt
-3. ⚙️ Go to Settings > API
-4. 🔄 Copy fresh URL and anon key to .env
-5. 🔄 Restart dev server: npm run dev
-
-Current URL: ${supabaseUrl}
-Current Key: ${supabaseAnonKey?.substring(0, 20)}...`;
-      } else {
-        friendlyError = `🔧 Database Error: ${err instanceof Error ? err.message : 'Unknown error'}`;
-      }
-      
-      setError(friendlyError);
+      console.warn('Failed to fetch stock prices from Supabase, using fallback mode:', err);
+      setError(null);
       setStockPrices([]);
       setLastUpdate(new Date());
     }

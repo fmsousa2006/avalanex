@@ -3,22 +3,16 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-// Enhanced validation and logging
-console.log('🔧 Initializing Supabase client...');
-console.log('📍 VITE_SUPABASE_URL:', supabaseUrl || '❌ MISSING');
-console.log('🔑 VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? `✅ SET (${supabaseAnonKey.substring(0, 20)}...)` : '❌ MISSING');
-
 // Validate Supabase configuration
 if (supabaseUrl && supabaseAnonKey) {
   if (!supabaseUrl.includes('supabase.co')) {
-    console.error('❌ Invalid Supabase URL format. Should be: https://your-project.supabase.co');
+    console.warn('Invalid Supabase URL format detected');
   }
   if (!supabaseAnonKey.startsWith('eyJ')) {
-    console.error('❌ Invalid Supabase anon key format. Should start with "eyJ"');
+    console.warn('Invalid Supabase anon key format detected');
   }
-  console.log('✅ Supabase configuration appears valid');
 } else {
-  console.error('❌ Missing Supabase configuration in .env file');
+  console.warn('Supabase configuration missing - app will run in offline mode');
 }
 
 // Create Supabase client with enhanced error handling
