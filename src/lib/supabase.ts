@@ -8,6 +8,19 @@ console.log('🔧 Initializing Supabase client...');
 console.log('📍 VITE_SUPABASE_URL:', supabaseUrl || '❌ MISSING');
 console.log('🔑 VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? `✅ SET (${supabaseAnonKey.substring(0, 20)}...)` : '❌ MISSING');
 
+// Validate Supabase configuration
+if (supabaseUrl && supabaseAnonKey) {
+  if (!supabaseUrl.includes('supabase.co')) {
+    console.error('❌ Invalid Supabase URL format. Should be: https://your-project.supabase.co');
+  }
+  if (!supabaseAnonKey.startsWith('eyJ')) {
+    console.error('❌ Invalid Supabase anon key format. Should start with "eyJ"');
+  }
+  console.log('✅ Supabase configuration appears valid');
+} else {
+  console.error('❌ Missing Supabase configuration in .env file');
+}
+
 // Create Supabase client with enhanced error handling
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {

@@ -66,6 +66,8 @@ Get credentials from: https://supabase.com/dashboard > Your Project > Settings >
     try {
       // Test connection first
       console.log('🔗 Testing Supabase connection...');
+      console.log('🌐 Supabase URL:', supabaseUrl);
+      console.log('🔑 Anon Key (first 20 chars):', supabaseAnonKey?.substring(0, 20) + '...');
       
       const { data, error } = await supabase
         .from('stocks')
@@ -82,24 +84,33 @@ Get credentials from: https://supabase.com/dashboard > Your Project > Settings >
     } catch (err) {
       console.error('❌ Error fetching stock prices:', err);
       
-      // Handle network errors gracefully - fall back to empty state
-      console.warn('⚠️ Supabase connection failed, using empty stock prices');
-      setStockPrices([]);
-      setLastUpdate(new Date());
+      // Provide specific error messages based on error type
+      let friendlyError = '';
       
-      // Set a user-friendly error message
-      const friendlyError = `🔧 Database Connection Issue
+      if (err instanceof Error && err.message.includes('NetworkError')) {
+        friendlyError = `🔧 SUPABASE CONNECTION FAILED
 
-The app is running in offline mode. To enable live stock data:
+Your Supabase project may be:
+• 🚫 Paused/Inactive - Check your Supabase dashboard
+• 🔑 Invalid API key - Verify your anon key is correct
+• 🌐 Wrong URL - Double-check your project URL
 
-1. 📁 Create .env file in project root
-2. 🌐 Add: VITE_SUPABASE_URL=https://your-project.supabase.co  
-3. 🔑 Add: VITE_SUPABASE_ANON_KEY=your-anon-key
-4. 🔄 Restart dev server: npm run dev
+TO FIX:
+1. 🌐 Go to https://supabase.com/dashboard
+2. 📋 Select your project: szhhlldwpfpysbvgzcwt
+3. ⚙️ Go to Settings > API
+4. 🔄 Copy fresh URL and anon key to .env
+5. 🔄 Restart dev server: npm run dev
 
-Get credentials from: https://supabase.com/dashboard > Your Project > Settings > API`;
+Current URL: ${supabaseUrl}
+Current Key: ${supabaseAnonKey?.substring(0, 20)}...`;
+      } else {
+        friendlyError = `🔧 Database Error: ${err instanceof Error ? err.message : 'Unknown error'}`;
+      }
       
       setError(friendlyError);
+      setStockPrices([]);
+      setLastUpdate(new Date());
     }
   }, [isSupabaseConfigured]);
 
