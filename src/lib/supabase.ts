@@ -25,6 +25,12 @@ export interface Stock {
   sector?: string;
   market_cap?: string;
   created_at: string;
+  current_price?: number;
+  price_change_24h?: number;
+  price_change_percent_24h?: number;
+  market_status?: string;
+  last_price_update?: string;
+  is_active?: boolean;
 }
 
 export interface PortfolioHolding {
