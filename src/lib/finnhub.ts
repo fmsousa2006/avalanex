@@ -752,22 +752,42 @@ class FinnhubService {
       const now = new Date();
       const historicalData: HistoricalPriceData[] = [];
       
-      // Generate 24 hours of mock data (hourly intervals)
-      for (let i = 23; i >= 0; i--) {
-        const timestamp = new Date(now.getTime() - (i * 60 * 60 * 1000));
-        const basePrice = quote.c;
-        const volatility = 0.02; // 2% volatility
-        const randomChange = (Math.random() - 0.5) * volatility * basePrice;
-        const price = Math.max(basePrice + randomChange, 1);
+      // Generate market hours data only (9:30 AM - 4:00 PM ET, weekdays only)
+      const marketStartHour = 9; // 9 AM ET
+      const marketStartMinute = 30; // 9:30 AM ET
+      const marketEndHour = 16; // 4 PM ET (16:00)
+      
+      // Go back 25 hours and find market hours within that window
+      const startTime = new Date(now.getTime() - (25 * 60 * 60 * 1000));
+      
+      for (let current = new Date(startTime); current <= now; current.setHours(current.getHours() + 1)) {
+        // Convert to Eastern Time for market hour check
+        const etTime = new Date(current.toLocaleString("en-US", {timeZone: "America/New_York"}));
+        const dayOfWeek = etTime.getDay(); // 0 = Sunday, 6 = Saturday
+        const hour = etTime.getHours();
+        const minute = etTime.getMinutes();
         
-        historicalData.push({
-          timestamp: timestamp.toISOString(),
-          open: price * (0.995 + Math.random() * 0.01),
-          high: price * (1.001 + Math.random() * 0.01),
-          low: price * (0.995 - Math.random() * 0.01),
-          close: price,
-          volume: Math.floor(1000000 + Math.random() * 2000000)
-        });
+        // Skip weekends
+        if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+        
+        // Check if within market hours (9:30 AM - 4:00 PM ET)
+        const isMarketHours = (hour > marketStartHour || (hour === marketStartHour && minute >= marketStartMinute)) && hour < marketEndHour;
+        
+        if (isMarketHours) {
+          const basePrice = quote.c;
+          const volatility = 0.02; // 2% volatility for O
+          const randomChange = (Math.random() - 0.5) * volatility * basePrice;
+          const price = Math.max(basePrice + randomChange, 1);
+          
+          historicalData.push({
+            timestamp: current.toISOString(),
+            open: price * (0.995 + Math.random() * 0.01),
+            high: price * (1.001 + Math.random() * 0.01),
+            low: price * (0.995 - Math.random() * 0.01),
+            close: price,
+            volume: Math.floor(1000000 + Math.random() * 2000000)
+          });
+        }
       }
       
       console.log(`📊 Generated ${historicalData.length} mock data points for O`);
@@ -908,22 +928,42 @@ class FinnhubService {
       const now = new Date();
       const historicalData: HistoricalPriceData[] = [];
       
-      // Generate 24 hours of mock data (hourly intervals)
-      for (let i = 23; i >= 0; i--) {
-        const timestamp = new Date(now.getTime() - (i * 60 * 60 * 1000));
-        const basePrice = quote.c;
-        const volatility = 0.03; // 3% volatility for NVDA (higher than O)
-        const randomChange = (Math.random() - 0.5) * volatility * basePrice;
-        const price = Math.max(basePrice + randomChange, 1);
+      // Generate market hours data only (9:30 AM - 4:00 PM ET, weekdays only)
+      const marketStartHour = 9; // 9 AM ET
+      const marketStartMinute = 30; // 9:30 AM ET
+      const marketEndHour = 16; // 4 PM ET (16:00)
+      
+      // Go back 25 hours and find market hours within that window
+      const startTime = new Date(now.getTime() - (25 * 60 * 60 * 1000));
+      
+      for (let current = new Date(startTime); current <= now; current.setHours(current.getHours() + 1)) {
+        // Convert to Eastern Time for market hour check
+        const etTime = new Date(current.toLocaleString("en-US", {timeZone: "America/New_York"}));
+        const dayOfWeek = etTime.getDay(); // 0 = Sunday, 6 = Saturday
+        const hour = etTime.getHours();
+        const minute = etTime.getMinutes();
         
-        historicalData.push({
-          timestamp: timestamp.toISOString(),
-          open: price * (0.995 + Math.random() * 0.01),
-          high: price * (1.002 + Math.random() * 0.015),
-          low: price * (0.990 - Math.random() * 0.015),
-          close: price,
-          volume: Math.floor(10000000 + Math.random() * 20000000) // Higher volume for NVDA
-        });
+        // Skip weekends
+        if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+        
+        // Check if within market hours (9:30 AM - 4:00 PM ET)
+        const isMarketHours = (hour > marketStartHour || (hour === marketStartHour && minute >= marketStartMinute)) && hour < marketEndHour;
+        
+        if (isMarketHours) {
+          const basePrice = quote.c;
+          const volatility = 0.03; // 3% volatility for NVDA (higher than O)
+          const randomChange = (Math.random() - 0.5) * volatility * basePrice;
+          const price = Math.max(basePrice + randomChange, 1);
+          
+          historicalData.push({
+            timestamp: current.toISOString(),
+            open: price * (0.995 + Math.random() * 0.01),
+            high: price * (1.002 + Math.random() * 0.015),
+            low: price * (0.990 - Math.random() * 0.015),
+            close: price,
+            volume: Math.floor(10000000 + Math.random() * 20000000) // Higher volume for NVDA
+          });
+        }
       }
       
       console.log(`📊 Generated ${historicalData.length} mock data points for NVDA`);
