@@ -1039,21 +1039,41 @@ class FinnhubService {
             
             // Only include if within our rolling window
             if (dataTime >= startTime && dataTime <= currentMarketTime) {
-              // Generate realistic NVIDIA price movement
-              const timeOffset = (dataTime.getTime() - startTime.getTime()) / (1000 * 60 * 60); // Hours since start
-              const dailyTrend = Math.sin(timeOffset * 0.1) * 5; // Gentle daily trend ±$5
-              const hourlyVolatility = (Math.sin(timeOffset * 0.5) + Math.cos(timeOffset * 0.3)) * 3; // Hourly volatility ±$3
-              const randomNoise = (Math.random() - 0.5) * 2; // Small random noise ±$1
+              // Generate realistic NVIDIA price movement using deterministic seed
+              const seed = stockId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+              const timeIndex = Math.floor((dataTime.getTime() - startTime.getTime()) / (1000 * 60 * 60));
               
-              const price = Math.max(basePrice + dailyTrend + hourlyVolatility + randomNoise, basePrice * 0.95); // Don't go below 95% of base
+              // Create deterministic "random" values using seed + time
+              let random1 = (seed + timeIndex * 17) % 1000;
+              random1 = (random1 * 9301 + 49297) % 233280;
+              const normalizedRandom1 = (random1 / 233280 - 0.5) * 2; // -1 to 1
+              
+              let random2 = (seed + timeIndex * 23) % 1000;
+              random2 = (random2 * 9301 + 49297) % 233280;
+              const normalizedRandom2 = (random2 / 233280 - 0.5) * 2; // -1 to 1
+              
+              // Generate realistic price movement
+              const dailyTrend = normalizedRandom1 * 8; // ±$8 daily trend
+              const hourlyVolatility = normalizedRandom2 * 4; // ±$4 hourly volatility
+              
+              // Calculate price with realistic bounds
+              let price = basePrice + dailyTrend + hourlyVolatility;
+              
+              // Keep price within reasonable bounds (±10% of base)
+              const minPrice = basePrice * 0.90;
+              const maxPrice = basePrice * 1.10;
+              price = Math.max(minPrice, Math.min(maxPrice, price));
+              
+              // Round to 2 decimal places like real stock prices
+              price = Math.round(price * 100) / 100;
               
               mockData.push({
                 timestamp: dataTime.toISOString(),
-                open: price,
-                high: price + Math.random() * 2.5, // Higher volatility for NVDA
-                low: price - Math.random() * 2.5,
+                open: Math.round((price + normalizedRandom1 * 0.5) * 100) / 100,
+                high: Math.round((price + Math.abs(normalizedRandom1) * 1.5) * 100) / 100,
+                low: Math.round((price - Math.abs(normalizedRandom2) * 1.5) * 100) / 100,
                 close: price,
-                volume: Math.floor(Math.random() * 5000000) + 2000000 // Much higher volume for NVDA (2M-7M)
+                volume: Math.floor(Math.abs(normalizedRandom1 * normalizedRandom2) * 5000000) + 2000000 // 2M-7M volume
               });
               
               const etTimeString = dataTime.toLocaleString("en-US", {timeZone: "America/New_York", hour12: false});
