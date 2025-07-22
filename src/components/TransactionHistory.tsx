@@ -144,7 +144,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteT
 
           {/* Transaction Content */}
           <div 
-            className="relative bg-gray-750 rounded-lg p-4 cursor-grab active:cursor-grabbing transition-transform duration-200 ease-out z-10"
+            className="relative bg-gray-800 rounded-lg p-4 cursor-grab active:cursor-grabbing transition-transform duration-200 ease-out z-10"
             style={{ transform: `translateX(${getTransformX(transaction.id)}px)` }}
             onMouseDown={(e) => handleMouseDown(e, transaction.id)}
             onMouseMove={handleMouseMove}
