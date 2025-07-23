@@ -1010,3 +1010,33 @@ export const usePortfolio = () => {
     fetchTransactions
   };
 };
+      // Get current authenticated user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.warn('No authenticated user found, attempting to create anonymous user...');
+        
+        // Try to sign in anonymously
+        const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+        
+        if (authError || !authData.user) {
+          console.warn('Failed to create anonymous user, using mock data');
+          createMockPortfolio();
+          return;
+        }
+        
+        // Use the newly created anonymous user
+        const anonymousUser = authData.user;
+        
+        // Create default portfolio for the anonymous user
+        const defaultPortfolio = await createDefaultPortfolio(anonymousUser.id);
+        
+        if (defaultPortfolio) {
+          setPortfolios([defaultPortfolio]);
+          setCurrentPortfolio(defaultPortfolio);
+        } else {
+          console.warn('Failed to create default portfolio, using mock data');
+          createMockPortfolio();
+        }
+        return;
+      }
