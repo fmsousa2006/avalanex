@@ -30,6 +30,10 @@ export const usePortfolio = () => {
     date: string;
     totalAmount: number;
   } | null>(null);
+  const [todaysChange, setTodaysChange] = useState<{
+    value: number;
+    percentage: number;
+  }>({ value: 0, percentage: 0 });
 
   // Fixed portfolio ID for single portfolio setup
   const FIXED_PORTFOLIO_ID = '550e8400-e29b-41d4-a716-446655440000';
@@ -349,6 +353,82 @@ export const usePortfolio = () => {
     }
   };
 
+  // Calculate today's change based on portfolio holdings and current stock prices
+  const calculateTodaysChange = async (portfolioId: string) => {
+    if (!isSupabaseConfiguredForRealData) {
+      setTodaysChange({ value: 0, percentage: 0 });
+      return;
+    }
+
+    try {
+      // Get all holdings with current stock prices
+      const { data: holdingsWithPrices, error } = await supabase
+        .from('portfolio_holdings')
+        .select(`
+          shares,
+          average_cost,
+          stock:stocks(
+            symbol,
+            current_price,
+            price_change_24h,
+            price_change_percent_24h
+          )
+        `)
+        .eq('portfolio_id', portfolioId)
+        .gt('shares', 0);
+
+      if (error) {
+        console.error('Error fetching holdings for today\'s change:', error);
+        setTodaysChange({ value: 0, percentage: 0 });
+        return;
+      }
+
+      if (!holdingsWithPrices || holdingsWithPrices.length === 0) {
+        setTodaysChange({ value: 0, percentage: 0 });
+        return;
+      }
+
+      let totalTodaysChange = 0;
+      let totalCurrentValue = 0;
+      let totalPreviousValue = 0;
+
+      holdingsWithPrices.forEach(holding => {
+        if (!holding.stock) return;
+
+        const shares = holding.shares;
+        const currentPrice = holding.stock.current_price || 0;
+        const priceChange24h = holding.stock.price_change_24h || 0;
+        
+        // Calculate previous price (current price - 24h change)
+        const previousPrice = currentPrice - priceChange24h;
+        
+        // Calculate values
+        const currentValue = shares * currentPrice;
+        const previousValue = shares * previousPrice;
+        const holdingChange = currentValue - previousValue;
+        
+        totalTodaysChange += holdingChange;
+        totalCurrentValue += currentValue;
+        totalPreviousValue += previousValue;
+      });
+
+      // Calculate percentage change
+      const percentageChange = totalPreviousValue > 0 
+        ? (totalTodaysChange / totalPreviousValue) * 100 
+        : 0;
+
+      setTodaysChange({
+        value: totalTodaysChange,
+        percentage: percentageChange
+      });
+
+      console.log(`📊 Today's Change: $${totalTodaysChange.toFixed(2)} (${percentageChange.toFixed(2)}%)`);
+    } catch (error) {
+      console.error('Error calculating today\'s change:', error);
+      setTodaysChange({ value: 0, percentage: 0 });
+    }
+  };
+
   // Add or update stock
   const upsertStock = async (symbol: string, name: string) => {
     // First, try to get existing stock data
@@ -471,7 +551,10 @@ export const usePortfolio = () => {
             average_cost: price,
             current_price: price,
             last_updated: new Date().toISOString()
-          }
+          fetchNextDividend(currentPortfolio.id),
+          fetchNextDividend(currentPortfolio.id),
+          fetchNextDividend(currentPortfolio.id),
+          calculateTodaysChange(currentPortfolio.id)
         ]);
 
       if (insertError) throw insertError;
@@ -768,7 +851,8 @@ export const usePortfolio = () => {
             fetchHoldings(currentPortfolio.id),
             fetchTransactions(currentPortfolio.id),
             fetchDividends(),
-            fetchNextDividend(currentPortfolio.id)
+            fetchNextDividend(currentPortfolio.id),
+            calculateTodaysChange(currentPortfolio.id)
           ]);
         } catch (err) {
           setError(err instanceof Error ? err.message : 'An error occurred');
@@ -786,6 +870,7 @@ export const usePortfolio = () => {
     transactions,
     dividends,
     nextDividend,
+    todaysChange,
     loading,
     error,
     isUsingMockData,

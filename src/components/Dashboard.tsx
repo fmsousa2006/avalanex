@@ -24,6 +24,7 @@ const Dashboard: React.FC = () => {
     transactions,
     dividends,
     nextDividend,
+    todaysChange,
     loading,
     error,
     isUsingMockData,
@@ -188,8 +189,6 @@ const Dashboard: React.FC = () => {
   const totalGain = currentPortfolioData.reduce((sum, stock) => sum + (stock.value - stock.cost), 0);
   const gainPercentage = (totalGain / (totalValue - totalGain)) * 100;
 
-  const dayChange = 2847.32;
-  const dayChangePercent = 1.24;
 
   const handlePortfolioTransaction = async (transactionData: {
     ticker: string;
@@ -306,13 +305,13 @@ const Dashboard: React.FC = () => {
             <div className="text-right">
               <p className="text-sm text-gray-400">Today's Change</p>
               <div className="flex items-center space-x-1">
-                {dayChange >= 0 ? (
+                {todaysChange.value >= 0 ? (
                   <TrendingUp className="w-4 h-4 text-emerald-400" />
                 ) : (
                   <TrendingDown className="w-4 h-4 text-red-400" />
                 )}
-                <span className={`text-lg font-semibold ${dayChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  ${Math.abs(dayChange).toLocaleString()} ({dayChangePercent >= 0 ? '+' : ''}{dayChangePercent}%)
+                <span className={`text-lg font-semibold ${todaysChange.value >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {todaysChange.value >= 0 ? '+' : ''}${todaysChange.value.toLocaleString()} ({todaysChange.percentage >= 0 ? '+' : ''}{todaysChange.percentage.toFixed(2)}%)
                 </span>
               </div>
             </div>
