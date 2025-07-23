@@ -1,11 +1,49 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { supabase } from './lib/supabase';
 import { Dashboard } from './components/Dashboard';
 import { usePortfolio } from './hooks/usePortfolio';
 
 function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const portfolioData = usePortfolio();
 
-  if (portfolioData.loading) {
+  useEffect(() => {
+    // Check if user is already signed in
+    const checkUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setUser(user);
+        } else {
+          // Sign in anonymously to create a user session
+          const { data, error } = await supabase.auth.signInAnonymously();
+          if (error) {
+            console.error('Error signing in anonymously:', error);
+          } else {
+            setUser(data.user);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking user:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkUser();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (loading || portfolioData.loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
