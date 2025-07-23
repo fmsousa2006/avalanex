@@ -804,11 +804,44 @@ export const usePortfolio = () => {
       }
     }
 
+    // Check if this was the last transaction for this stock and update dividends accordingly
+    if (transaction.stock_id) {
+      // Check if there are any remaining transactions for this stock in the portfolio
+      const { data: remainingTransactions, error: remainingError } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('portfolio_id', currentPortfolio.id)
+        .eq('stock_id', transaction.stock_id)
+        .neq('type', 'dividend'); // Don't count dividend transactions
+
+      if (remainingError) throw remainingError;
+
+      // If no remaining buy/sell transactions for this stock, it means we no longer hold it
+      if (!remainingTransactions || remainingTransactions.length === 0) {
+        // Check if there's still a holding (shouldn't be, but double-check)
+        const { data: remainingHolding, error: holdingCheckError } = await supabase
+          .from('portfolio_holdings')
+          .select('shares')
+          .eq('portfolio_id', currentPortfolio.id)
+          .eq('stock_id', transaction.stock_id)
+          .maybeSingle();
+
+        if (holdingCheckError) throw holdingCheckError;
+
+        // If no holding exists or shares are 0, we no longer own this stock
+        if (!remainingHolding || remainingHolding.shares === 0) {
+          console.log(`🔄 Stock ${transaction.stock_id} no longer held in portfolio, refreshing dividends...`);
+          
+          // Refresh dividends to exclude this stock
+          await fetchDividends();
+          await fetchNextDividend(currentPortfolio.id);
+        }
+      }
+    }
     // Refresh data
     await Promise.all([
       fetchHoldings(currentPortfolio.id),
       fetchTransactions(currentPortfolio.id),
-      fetchNextDividend(currentPortfolio.id),
       calculateTodaysChange(currentPortfolio.id)
     ]);
 
