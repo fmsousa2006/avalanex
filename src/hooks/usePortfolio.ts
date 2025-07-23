@@ -309,10 +309,6 @@ export const usePortfolio = () => {
     }
   };
 
-    if (error) throw error;
-    setDividends(data || []);
-  };
-
   // Fetch next dividend based on portfolio holdings
   const fetchNextDividend = async (portfolioId: string) => {
     if (!isSupabaseConfiguredForRealData) {
