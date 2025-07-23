@@ -182,76 +182,23 @@ export const usePortfolio = () => {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !user) {
-        console.warn('No authenticated user found, using mock data');
-        createMockPortfolio();
-        return;
-      }
-
-      // Try to fetch portfolio for the authenticated user
-      const { data, error } = await supabase
-        .from('portfolios')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (error) {
-        console.warn('Error fetching portfolio from Supabase:', error);
-        // Fall back to mock data
-        createMockPortfolio();
-        return;
-      }
-
-      if (data) {
-        setPortfolios([data]);
-        setCurrentPortfolio(data);
-      } else {
-        // Create default portfolio for the user
-        const { data: newPortfolio, error: createError } = await supabase
-          .from('portfolios')
-          .insert([
-            {
-              user_id: user.id,
-              name: 'My Portfolio',
-              description: 'Default portfolio'
-            }
-          ])
-          .select()
-          .single();
-
-        if (createError) {
-          console.warn('Error creating portfolio, using mock data:', createError);
+        console.warn('No authenticated user found, attempting to create anonymous user...');
+        
+        // Try to sign in anonymously
+        const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+        
+        if (authError || !authData.user) {
+          console.warn('Failed to create anonymous user, using mock data');
           createMockPortfolio();
           return;
         }
-
-        setPortfolios([newPortfolio]);
-        setCurrentPortfolio(newPortfolio);
-      }
-    } catch (err) {
-      console.warn('Failed to connect to Supabase, using mock data:', err);
-      createMockPortfolio();
-    }
-  };
-
-  // Fetch holdings for current portfolio
-  const fetchHoldings = async (portfolioId: string) => {
-    if (!isSupabaseConfiguredForRealData) {
-      return; // Skip if using mock data
-    }
-
-    const { data, error } = await supabase
-      .from('portfolio_holdings')
-      .select(`
-        *,
-        stock:stocks(*)
-      `)
-      .eq('portfolio_id', portfolioId);
-
-    if (error) throw error;
-    setHoldings(data || []);
-  };
-
-  // Fetch transactions for current portfolio
+        
+        // Use the newly created anonymous user
+        const anonymousUser = authData.user;
+        
+        // Create default portfolio for the anonymous user
+        const defaultPortfolio = await createDefaultPortfolio(anonymousUser.id);
+        
   const fetchTransactions = async (portfolioId: string) => {
     if (!isSupabaseConfiguredForRealData) {
       return; // Skip if using mock data
@@ -988,3 +935,33 @@ export const usePortfolio = () => {
     fetchTransactions
   };
 };
+      // Get current authenticated user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.warn('No authenticated user found, attempting to create anonymous user...');
+        
+        // Try to sign in anonymously
+        const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+        
+        if (authError || !authData.user) {
+          console.warn('Failed to create anonymous user, using mock data');
+          createMockPortfolio();
+          return;
+        }
+        
+        // Use the newly created anonymous user
+        const anonymousUser = authData.user;
+        
+        // Create default portfolio for the anonymous user
+        const defaultPortfolio = await createDefaultPortfolio(anonymousUser.id);
+        
+        if (defaultPortfolio) {
+          setPortfolios([defaultPortfolio]);
+          setCurrentPortfolio(defaultPortfolio);
+        } else {
+          console.warn('Failed to create default portfolio, using mock data');
+          createMockPortfolio();
+        }
+        return;
+      }
