@@ -1,250 +1,1050 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase, Portfolio, PortfolioHolding, Transaction, Dividend, Stock, PortfolioData } from '../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+import { portfolioData, transactionData, dividendData } from '../data/mockData';
 
-interface PortfolioData {
-  symbol: string;
-  name: string;
-  shares: number;
-  price: number;
-  value: number;
-  cost: number;
-  change: number;
-  changePercent: number;
-}
-
-interface StockTrendsProps {
-  data: PortfolioData[];
-}
-
-interface StockTrendData {
-  symbol: string;
-  name: string;
-  currentPrice: number;
-  weight: number;
-  change: number;
-  changePercent: number;
-}
-
-const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; value: number; symbol: string; date: string } | null>(null);
-  const [chartDimensions, setChartDimensions] = useState({ width: 400, height: 180 });
-  const chartRef = React.useRef<HTMLDivElement>(null);
-
-  // Update chart dimensions on resize
-  React.useEffect(() => {
-    const updateDimensions = () => {
-      if (chartRef.current) {
-        const containerWidth = chartRef.current.offsetWidth;
-        const containerHeight = Math.max(180, containerWidth * 0.4); // Maintain aspect ratio
-        setChartDimensions({
-          width: Math.max(300, containerWidth - 20), // Minimum width with padding
-          height: Math.min(containerHeight, 250) // Maximum height
-        });
-      }
-    };
-
-    updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    
-    return () => window.removeEventListener('resize', updateDimensions);
-  }, []);
-
-  // Calculate total portfolio value and get top 3 holdings by weight
-  const totalValue = data.reduce((sum, stock) => sum + stock.value, 0);
-  const top3Holdings = [...data]
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 3)
-    .map(stock => ({
-      symbol: stock.symbol,
-      name: stock.name,
-      currentPrice: stock.price,
-      weight: ((stock.value / totalValue) * 100),
-      change: stock.change,
-      changePercent: stock.changePercent
-    }));
-
-  const chartWidth = chartDimensions.width;
-  const chartHeight = chartDimensions.height;
-  const padding = 10;
-
-  const createPath = (prices: number[], minPrice: number, maxPrice: number) => {
-    if (maxPrice === minPrice) {
-      const y = chartHeight / 2;
-      return `M ${padding} ${y} L ${chartWidth - padding} ${y}`;
-    }
-    
-    const points = prices.map((price, index) => {
-      const x = padding + (index / (prices.length - 1)) * (chartWidth - 2 * padding);
-      const y = padding + ((maxPrice - price) / (maxPrice - minPrice)) * (chartHeight - 2 * padding);
-      return `${x},${y}`;
-    });
-    return `M ${points.join(' L ')}`;
-  };
-
-  const generateFixedPriceHistory = (currentPrice: number, symbol: string) => {
-    const prices: number[] = [];
-    let price = currentPrice * 0.95; // Start 30 days ago at 95% of current price
-    
-    // Use symbol as seed for consistent data generation
-    const seed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    let random = seed;
-    
-    // Generate 29 historical prices (30 days total including current)
-    for (let i = 0; i < 29; i++) {
-      // Simple pseudo-random number generator for consistent results
-      random = (random * 9301 + 49297) % 233280;
-      const normalizedRandom = random / 233280;
-      
-      const volatility = (normalizedRandom - 0.5) * 0.03; // 3% daily volatility
-      const trend = (currentPrice - price) / 29; // Calculate trend to reach current price
-      price = price + trend + (price * volatility);
-      prices.push(Math.max(price, 1));
-    }
-    
-    // Ensure the last price is exactly the current price
-    prices.push(currentPrice);
-    
-    return prices;
-  };
-
-  const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>, stock: StockTrendData) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const mouseX = event.clientX - rect.left;
-    
-    const chartAreaWidth = chartWidth - 2 * padding;
-    const relativeX = Math.max(0, Math.min(chartAreaWidth, mouseX - padding));
-    const dataIndex = Math.round((relativeX / chartAreaWidth) * 29); // 30 days = 0-29 index
-    
-    // Use the fixed price history for this stock
-    const priceHistory = generateFixedPriceHistory(stock.currentPrice, stock.symbol);
-    
-    if (dataIndex >= 0 && dataIndex < priceHistory.length) {
-      const value = priceHistory[dataIndex];
-      const minPrice = Math.min(...priceHistory);
-      const maxPrice = Math.max(...priceHistory);
-      
-      const x = padding + (dataIndex / 29) * chartAreaWidth;
-      const y = padding + ((maxPrice - value) / (maxPrice - minPrice)) * (chartHeight - 2 * padding);
-      
-      const date = new Date();
-      date.setDate(date.getDate() - (29 - dataIndex));
-      
-      setTooltip({ 
-        x, 
-        y, 
-        value, 
-        symbol: stock.symbol,
-        date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-      });
-    }
-  };
-
-  const handleMouseLeave = () => {
-    setTooltip(null);
-  };
-  
-  return (
-    <div className="space-y-6">
-      {top3Holdings.map((stock) => {
-        const priceHistory = generateFixedPriceHistory(stock.currentPrice, stock.symbol);
-        const minPrice = Math.min(...priceHistory);
-        const maxPrice = Math.max(...priceHistory);
-        const path = createPath(priceHistory, minPrice, maxPrice);
-        const isPositive = stock.change >= 0;
-
-        return (
-          <div key={stock.symbol} className="bg-gray-750 rounded-lg p-4 border border-gray-600">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <div className="flex items-center space-x-2">
-                  <h3 className="font-semibold">{stock.symbol}</h3>
-                  <span className="text-xs bg-blue-600/20 text-blue-400 px-2 py-1 rounded border border-blue-600/30">
-                    {stock.weight.toFixed(1)}%
-                  </span>
-                </div>
-                <p className="text-xs text-gray-400">{stock.name}</p>
-              </div>
-              <div className="text-right">
-                <p className="font-semibold">${stock.currentPrice.toFixed(2)}</p>
-                <p className={`text-sm ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {isPositive ? '+' : ''}${stock.change.toFixed(2)} ({isPositive ? '+' : ''}{stock.changePercent.toFixed(2)}%)
-                </p>
-              </div>
-            </div>
-            
-            <div className="relative">
-              <div ref={chartRef} className="w-full">
-              <svg 
-                width={chartWidth} 
-                height={chartHeight} 
-                className="w-full h-auto cursor-crosshair"
-                viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-                preserveAspectRatio="xMidYMid meet"
-                onMouseMove={(e) => handleMouseMove(e, stock)}
-                onMouseLeave={handleMouseLeave}
-              >
-                {/* Price line */}
-                <path
-                  d={path}
-                  fill="none"
-                  stroke={isPositive ? '#10b981' : '#ef4444'}
-                  strokeWidth="2"
-                  className="drop-shadow-sm"
-                />
-                
-                {/* Tooltip indicator */}
-                {tooltip && tooltip.symbol === stock.symbol && (
-                  <>
-                    <circle
-                      cx={tooltip.x}
-                      cy={tooltip.y}
-                      r="4"
-                      fill={isPositive ? '#10b981' : '#ef4444'}
-                      stroke="#1f2937"
-                      strokeWidth="2"
-                    />
-                    <line
-                      x1={tooltip.x}
-                      y1={padding}
-                      x2={tooltip.x}
-                      y2={chartHeight - padding}
-                      stroke="#6b7280"
-                      strokeWidth="1"
-                      strokeDasharray="2,2"
-                      opacity="0.7"
-                    />
-                  </>
-                )}
-                
-                {/* Fill area under the line */}
-                <path
-                  d={`${path} L ${chartWidth - padding},${chartHeight - padding} L ${padding},${chartHeight - padding} Z`}
-                  fill={isPositive ? '#10b981' : '#ef4444'}
-                  fillOpacity="0.1"
-                />
-              </svg>
-              
-              {/* Tooltip */}
-              {tooltip && tooltip.symbol === stock.symbol && (
-                <div
-                  className="absolute bg-gray-700 text-white p-2 rounded shadow-lg border border-gray-600 z-50 pointer-events-none"
-                  style={{
-                    left: tooltip.x + 10,
-                    top: tooltip.y - 50,
-                    transform: tooltip.x > chartWidth - 80 ? 'translateX(-100%)' : 'none'
-                  }}
-                >
-                  <div className="text-xs font-semibold">{stock.symbol}</div>
-                  <div className="text-xs">${tooltip.value.toFixed(2)}</div>
-                  <div className="text-xs text-gray-300">{tooltip.date}</div>
-                </div>
-              )}
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
+// Create admin client for bypassing RLS when creating default portfolio
+const getAdminClient = () => {
+  if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY) {
+    return null;
+  }
+  return createClient(
+    import.meta.env.VITE_SUPABASE_URL,
+    import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY
   );
 };
 
-export default StockTrends;
+export const usePortfolio = () => {
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [currentPortfolio, setCurrentPortfolio] = useState<Portfolio | null>(null);
+  const [holdings, setHoldings] = useState<PortfolioHolding[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [dividends, setDividends] = useState<Dividend[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isUsingMockData, setIsUsingMockData] = useState(false);
+  const [isSupabaseConfiguredForRealData, setIsSupabaseConfiguredForRealData] = useState(false);
+  const [nextDividend, setNextDividend] = useState<{
+    symbol: string;
+    amount: number;
+    date: string;
+    totalAmount: number;
+  } | null>(null);
+  const [todaysChange, setTodaysChange] = useState<{
+    value: number;
+    percentage: number;
+  }>({ value: 0, percentage: 0 });
+
+  // Fixed portfolio ID for single portfolio setup
+  const FIXED_PORTFOLIO_ID = '550e8400-e29b-41d4-a716-446655440000';
+
+  // Helper function to check if Supabase environment is properly configured
+  const isSupabaseEnvConfigured = () => {
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    return url && 
+           key && 
+           url !== 'https://your-project-ref.supabase.co' &&
+           url !== 'https://placeholder.supabase.co' &&
+           key !== 'your-anon-key-here' &&
+           key !== 'placeholder-anon-key';
+  };
+
+  // Get current user
+  const getCurrentUser = async () => {
+    // Return null if Supabase is not properly configured
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      return null;
+    }
+    const { data: { user } } = await supabase.auth.getUser();
+    return user;
+  };
+
+  // Create mock portfolio when Supabase is not available
+  const createMockPortfolio = () => {
+    const mockPortfolio: Portfolio = {
+      id: FIXED_PORTFOLIO_ID,
+      user_id: '49be5272-a0ba-4d3a-9b17-c119181bb0e9',
+      name: 'Demo Portfolio',
+      description: 'Sample portfolio with demo data',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const mockHoldings: PortfolioHolding[] = portfolioData.map((stock, index) => ({
+      id: `mock-holding-${index}`,
+      portfolio_id: mockPortfolio.id,
+      stock_id: `mock-stock-${index}`,
+      shares: stock.shares,
+      average_cost: stock.cost / stock.shares,
+      current_price: stock.price,
+      last_updated: new Date().toISOString(),
+      stock: {
+        id: `mock-stock-${index}`,
+        symbol: stock.symbol,
+        name: stock.name,
+        sector: 'Technology',
+        market_cap: '1T+',
+        created_at: new Date().toISOString()
+      }
+    }));
+
+    const mockTransactions: Transaction[] = transactionData.map((tx, index) => ({
+      id: tx.id,
+      portfolio_id: mockPortfolio.id,
+      stock_id: `mock-stock-${index}`,
+      type: tx.type,
+      shares: tx.shares,
+      price: tx.price,
+      amount: tx.amount,
+      fee: 0,
+      currency: 'USD',
+      transaction_date: tx.date,
+      status: tx.status,
+      created_at: new Date().toISOString(),
+      stock: {
+        id: `mock-stock-${index}`,
+        symbol: tx.symbol,
+        name: `${tx.symbol} Inc.`,
+        sector: 'Technology',
+        market_cap: '1T+',
+        created_at: new Date().toISOString()
+      }
+    }));
+
+    const mockDividends: Dividend[] = dividendData.map((div, index) => ({
+      id: div.id,
+      stock_id: `mock-stock-${index}`,
+      amount: div.amount,
+      ex_dividend_date: div.exDividendDate,
+      payment_date: div.paymentDate,
+      record_date: div.exDividendDate,
+      dividend_yield: div.yield,
+      frequency: div.frequency as 'Monthly' | 'Quarterly' | 'Semi-Annual' | 'Annual',
+      status: div.status,
+      created_at: new Date().toISOString(),
+      stock: {
+        id: `mock-stock-${index}`,
+        symbol: div.symbol,
+        name: div.name,
+        sector: 'Technology',
+        market_cap: '1T+',
+        created_at: new Date().toISOString()
+      }
+    }));
+
+    setPortfolios([mockPortfolio]);
+    setCurrentPortfolio(mockPortfolio);
+    setHoldings(mockHoldings);
+    setTransactions(mockTransactions);
+    setDividends(mockDividends);
+    setIsUsingMockData(true);
+  };
+
+  // Create default portfolio for new users
+  const createDefaultPortfolio = async (userId: string) => {
+    // This function is no longer needed as we handle portfolio creation in fetchPortfolios
+    return null;
+  };
+
+  // Fetch portfolios
+  const fetchPortfolios = async () => {
+    try {
+      // Check if Supabase is configured before attempting connection
+      const supabaseConfigured = isSupabaseEnvConfigured();
+      setIsSupabaseConfiguredForRealData(supabaseConfigured);
+      
+      if (!supabaseConfigured) {
+        console.warn('Supabase not configured, using mock data');
+        createMockPortfolio();
+        return;
+      }
+
+      // Get current authenticated user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.warn('No authenticated user found, using mock data');
+        createMockPortfolio();
+        return;
+      }
+
+      // Try to fetch portfolio for the authenticated user
+      const { data, error } = await supabase
+        .from('portfolios')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.warn('Error fetching portfolio from Supabase:', error);
+        // Fall back to mock data
+        createMockPortfolio();
+        return;
+      }
+
+      if (data) {
+        setPortfolios([data]);
+        setCurrentPortfolio(data);
+      } else {
+        // Create default portfolio for the user
+        const { data: newPortfolio, error: createError } = await supabase
+          .from('portfolios')
+          .insert([
+            {
+              user_id: user.id,
+              name: 'My Portfolio',
+              description: 'Default portfolio'
+            }
+          ])
+          .select()
+          .single();
+
+        if (createError) {
+          console.warn('Error creating portfolio, using mock data:', createError);
+          createMockPortfolio();
+          return;
+        }
+
+        setPortfolios([newPortfolio]);
+        setCurrentPortfolio(newPortfolio);
+      }
+    } catch (err) {
+      console.warn('Failed to connect to Supabase, using mock data:', err);
+      createMockPortfolio();
+    }
+  };
+
+  // Fetch holdings for current portfolio
+  const fetchHoldings = async (portfolioId: string) => {
+    if (!isSupabaseConfiguredForRealData) {
+      return; // Skip if using mock data
+    }
+
+    const { data, error } = await supabase
+      .from('portfolio_holdings')
+      .select(`
+        *,
+        stock:stocks(*)
+      `)
+      .eq('portfolio_id', portfolioId);
+
+    if (error) throw error;
+    setHoldings(data || []);
+  };
+
+  // Fetch transactions for current portfolio
+  const fetchTransactions = async (portfolioId: string) => {
+    if (!isSupabaseConfiguredForRealData) {
+      return; // Skip if using mock data
+    }
+
+    const { data, error } = await supabase
+      .from('transactions')
+      .select(`
+        *,
+        stock:stocks(*)
+      `)
+      .eq('portfolio_id', portfolioId)
+      .order('transaction_date', { ascending: false })
+      .limit(20);
+
+    if (error) throw error;
+    setTransactions(data || []);
+  };
+
+  // Fetch dividends
+  const fetchDividends = async () => {
+    if (!isSupabaseConfiguredForRealData) {
+      return; // Skip if using mock data
+    }
+
+    if (!currentPortfolio) {
+      setDividends([]);
+      return;
+    }
+
+    try {
+      // First get all stocks in the current portfolio
+      const { data: portfolioStocks, error: holdingsError } = await supabase
+        .from('portfolio_holdings')
+        .select('stock_id')
+        .eq('portfolio_id', currentPortfolio.id)
+        .gt('shares', 0); // Only stocks with shares > 0
+
+      if (holdingsError) throw holdingsError;
+
+      if (!portfolioStocks || portfolioStocks.length === 0) {
+        setDividends([]);
+        return;
+      }
+
+      // Get stock IDs from portfolio
+      const stockIds = portfolioStocks.map(holding => holding.stock_id).filter(Boolean);
+
+      if (stockIds.length === 0) {
+        setDividends([]);
+        return;
+      }
+
+      // Only fetch upcoming dividends for stocks we actually own
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('dividends')
+        .select(`
+          *,
+          stock:stocks(*)
+        `)
+        .in('stock_id', stockIds) // Only dividends for stocks we own
+        .eq('status', 'upcoming')
+        .gte('payment_date', today)
+        .order('payment_date', { ascending: true });
+
+      if (error) throw error;
+      setDividends(data || []);
+    } catch (error) {
+      console.error('Error fetching dividends:', error);
+      setDividends([]);
+    }
+  };
+
+  // Fetch next dividend based on portfolio holdings
+  const fetchNextDividend = async (portfolioId: string) => {
+    if (!isSupabaseConfiguredForRealData) {
+      return; // Skip if using mock data
+    }
+
+    try {
+      // Get all stocks in the current portfolio
+      const { data: portfolioStocks, error: holdingsError } = await supabase
+        .from('portfolio_holdings')
+        .select(`
+          shares,
+          stock:stocks(id, symbol)
+        `)
+        .eq('portfolio_id', portfolioId)
+        .gt('shares', 0); // Only stocks with shares > 0
+
+      if (holdingsError) throw holdingsError;
+
+      if (!portfolioStocks || portfolioStocks.length === 0) {
+        setNextDividend(null);
+        return;
+      }
+
+      // Get stock IDs from portfolio
+      const stockIds = portfolioStocks.map(holding => holding.stock?.id).filter(Boolean);
+
+      if (stockIds.length === 0) {
+        setNextDividend(null);
+        return;
+      }
+
+      // Get upcoming dividends for these stocks
+      const today = new Date().toISOString().split('T')[0];
+      const { data: upcomingDividends, error: dividendsError } = await supabase
+        .from('dividends')
+        .select(`
+          *,
+          stock:stocks(symbol, name)
+        `)
+        .in('stock_id', stockIds)
+        .in('status', ['upcoming', 'ex-dividend'])
+        .gte('payment_date', today)
+        .order('payment_date', { ascending: true })
+        .limit(1);
+
+      if (dividendsError) throw dividendsError;
+
+      if (!upcomingDividends || upcomingDividends.length === 0) {
+        setNextDividend(null);
+        return;
+      }
+
+      const nextDiv = upcomingDividends[0];
+      const holding = portfolioStocks.find(h => h.stock?.id === nextDiv.stock_id);
+      
+      if (!holding || !holding.stock) {
+        setNextDividend(null);
+        return;
+      }
+
+      // Calculate total dividend amount (dividend per share * number of shares)
+      const totalAmount = nextDiv.amount * holding.shares;
+
+      setNextDividend({
+        symbol: holding.stock.symbol,
+        amount: nextDiv.amount,
+        date: nextDiv.payment_date,
+        totalAmount: totalAmount
+      });
+
+    } catch (error) {
+      console.error('Error fetching next dividend:', error);
+      setNextDividend(null);
+    }
+  };
+
+  // Calculate today's change based on portfolio holdings and current stock prices
+  const calculateTodaysChange = async (portfolioId: string) => {
+    if (!isSupabaseConfiguredForRealData) {
+      setTodaysChange({ value: 0, percentage: 0 });
+      return;
+    }
+
+    try {
+      console.log('🔍 [DEBUG] Starting Today\'s Change calculation for portfolio:', portfolioId);
+      
+      // Get all holdings with current stock prices
+      const { data: holdingsWithPrices, error } = await supabase
+        .from('portfolio_holdings')
+        .select(`
+          shares,
+          average_cost,
+          stock:stocks(
+            symbol,
+            current_price,
+            price_change_24h,
+            price_change_percent_24h
+          )
+        `)
+        .eq('portfolio_id', portfolioId)
+        .gt('shares', 0);
+
+      if (error) {
+        console.error('Error fetching holdings for today\'s change:', error);
+        setTodaysChange({ value: 0, percentage: 0 });
+        return;
+      }
+
+      if (!holdingsWithPrices || holdingsWithPrices.length === 0) {
+        console.log('🔍 [DEBUG] No holdings found for portfolio');
+        setTodaysChange({ value: 0, percentage: 0 });
+        return;
+      }
+
+      console.log('🔍 [DEBUG] Found holdings:', holdingsWithPrices.length);
+      
+      let totalTodaysChange = 0;
+      let totalCurrentValue = 0;
+      let totalPreviousValue = 0;
+
+      holdingsWithPrices.forEach(holding => {
+        if (!holding.stock) return;
+
+        const shares = holding.shares;
+        const currentPrice = holding.stock.current_price || 0;
+        const priceChange24h = holding.stock.price_change_24h || 0;
+        
+        // Calculate previous price (current price - 24h change)
+        const previousPrice = currentPrice - priceChange24h;
+        
+        // Calculate values
+        const currentValue = shares * currentPrice;
+        const previousValue = shares * previousPrice;
+        const holdingChange = currentValue - previousValue;
+        
+        console.log(`🔍 [DEBUG] ${holding.stock.symbol}:`, {
+          shares,
+          currentPrice: `$${currentPrice}`,
+          priceChange24h: `$${priceChange24h}`,
+          previousPrice: `$${previousPrice.toFixed(2)}`,
+          currentValue: `$${currentValue.toFixed(2)}`,
+          previousValue: `$${previousValue.toFixed(2)}`,
+          holdingChange: `$${holdingChange.toFixed(2)}`
+        });
+        
+        totalTodaysChange += holdingChange;
+        totalCurrentValue += currentValue;
+        totalPreviousValue += previousValue;
+      });
+
+      // Calculate percentage change
+      const percentageChange = totalPreviousValue > 0 
+        ? (totalTodaysChange / totalPreviousValue) * 100 
+        : 0;
+
+      console.log('🔍 [DEBUG] Portfolio Totals:', {
+        totalCurrentValue: `$${totalCurrentValue.toFixed(2)}`,
+        totalPreviousValue: `$${totalPreviousValue.toFixed(2)}`,
+        totalTodaysChange: `$${totalTodaysChange.toFixed(2)}`,
+        percentageChange: `${percentageChange.toFixed(4)}%`
+      });
+
+      setTodaysChange({
+        value: totalTodaysChange,
+        percentage: percentageChange
+      });
+
+      console.log(`📊 Final Today's Change: $${totalTodaysChange.toFixed(2)} (${percentageChange.toFixed(2)}%)`);
+    } catch (error) {
+      console.error('Error calculating today\'s change:', error);
+      setTodaysChange({ value: 0, percentage: 0 });
+    }
+  };
+
+  // Add or update stock
+  const upsertStock = async (symbol: string, name: string) => {
+    // First, try to get existing stock data
+    const { data: existingStock, error: fetchError } = await supabase
+      .from('stocks')
+      .select('*')
+      .eq('symbol', symbol)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
+
+    // If stock exists, return it
+    if (existingStock) {
+      return existingStock;
+    }
+
+    // If stock doesn't exist, create it with the provided name
+    const { data, error } = await supabase
+      .from('stocks')
+      .insert([{ symbol, name }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  };
+
+  // Add transaction
+  const addTransaction = async (transactionData: {
+    ticker: string;
+    operation: 'buy' | 'sell';
+    date: string;
+    shares: string;
+    price: string;
+    currency: string;
+    fee: string;
+  }) => {
+    if (!isSupabaseConfiguredForRealData) {
+      throw new Error('Cannot add transactions when using mock data. Please configure Supabase.');
+    }
+
+    if (!currentPortfolio) throw new Error('No current portfolio');
+
+    const shares = parseInt(transactionData.shares);
+    const price = parseFloat(transactionData.price);
+    const fee = parseFloat(transactionData.fee || '0');
+    const amount = shares * price;
+
+    // Ensure stock exists
+    const stock = await upsertStock(transactionData.ticker, `${transactionData.ticker} Inc.`);
+
+    // Add transaction
+    const { data: transaction, error: transactionError } = await supabase
+      .from('transactions')
+      .insert([
+        {
+          portfolio_id: currentPortfolio.id,
+          stock_id: stock.id,
+          type: transactionData.operation,
+          shares: shares,
+          price: price,
+          amount: amount,
+          fee: fee,
+          currency: transactionData.currency,
+          transaction_date: transactionData.date,
+          status: 'completed'
+        }
+      ])
+      .select()
+      .single();
+
+    if (transactionError) throw transactionError;
+
+    // Update or create holding
+    const existingHolding = holdings.find(h => h.stock_id === stock.id);
+
+    if (existingHolding) {
+      let newShares: number;
+      let newAverageCost: number;
+
+      if (transactionData.operation === 'buy') {
+        newShares = existingHolding.shares + shares;
+        const totalCost = (existingHolding.shares * existingHolding.average_cost) + amount;
+        newAverageCost = totalCost / newShares;
+      } else {
+        newShares = Math.max(0, existingHolding.shares - shares);
+        newAverageCost = existingHolding.average_cost; // Keep same average cost
+      }
+
+      if (newShares > 0) {
+        const { error: updateError } = await supabase
+          .from('portfolio_holdings')
+          .update({
+            shares: newShares,
+            average_cost: newAverageCost,
+            current_price: price,
+            last_updated: new Date().toISOString()
+          })
+          .eq('id', existingHolding.id);
+
+        if (updateError) throw updateError;
+      } else {
+        // Remove holding if no shares left
+        const { error: deleteError } = await supabase
+          .from('portfolio_holdings')
+          .delete()
+          .eq('id', existingHolding.id);
+
+        if (deleteError) throw deleteError;
+      }
+    } else if (transactionData.operation === 'buy') {
+      // Create new holding
+      const { error: insertError } = await supabase
+        .from('portfolio_holdings')
+        .insert([
+          {
+            portfolio_id: currentPortfolio.id,
+            stock_id: stock.id,
+            shares: shares,
+            average_cost: price,
+            current_price: price,
+            last_updated: new Date().toISOString()
+          }
+        ]);
+
+      if (insertError) throw insertError;
+    }
+
+    // Refresh data
+    await Promise.all([
+      fetchHoldings(currentPortfolio.id),
+      fetchTransactions(currentPortfolio.id),
+      fetchNextDividend(currentPortfolio.id),
+      calculateTodaysChange(currentPortfolio.id)
+    ]);
+
+    return transaction;
+  };
+
+  // Update transaction
+  const updateTransaction = async (
+    transactionId: string,
+    transactionData: {
+      ticker: string;
+      operation: 'buy' | 'sell';
+      date: string;
+      shares: string;
+      price: string;
+      currency: string;
+      fee: string;
+    }
+  ) => {
+    if (!isSupabaseConfiguredForRealData) {
+      throw new Error('Cannot update transactions when using mock data. Please configure Supabase.');
+    }
+
+    if (!currentPortfolio) throw new Error('No current portfolio');
+
+    // Get the original transaction data before updating
+    const { data: originalTransaction, error: fetchError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('id', transactionId)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!originalTransaction) throw new Error('Original transaction not found');
+    const shares = parseInt(transactionData.shares);
+    const price = parseFloat(transactionData.price);
+    const fee = parseFloat(transactionData.fee || '0');
+    const amount = shares * price;
+
+    // Ensure stock exists
+    const stock = await upsertStock(transactionData.ticker, `${transactionData.ticker} Inc.`);
+
+    // Update the transaction
+    const { data: updatedTransaction, error: updateError } = await supabase
+      .from('transactions')
+      .update({
+        stock_id: stock.id,
+        type: transactionData.operation,
+        shares: shares,
+        price: price,
+        amount: amount,
+        fee: fee,
+        currency: transactionData.currency,
+        transaction_date: transactionData.date
+      })
+      .eq('id', transactionId)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    // Update portfolio holdings if the transaction affects holdings
+    if (originalTransaction.type !== 'dividend' && originalTransaction.shares) {
+      const existingHolding = holdings.find(h => h.stock_id === originalTransaction.stock_id);
+      
+      if (existingHolding) {
+        // Calculate the effect of removing the original transaction
+        let adjustedShares = existingHolding.shares;
+        let adjustedTotalCost = existingHolding.shares * existingHolding.average_cost;
+        
+        // Reverse the original transaction
+        if (originalTransaction.type === 'buy') {
+          adjustedShares -= originalTransaction.shares;
+          adjustedTotalCost -= originalTransaction.amount;
+        } else if (originalTransaction.type === 'sell') {
+          adjustedShares += originalTransaction.shares;
+          // For sells, we don't adjust cost basis
+        }
+        
+        // Apply the new transaction
+        if (transactionData.operation === 'buy') {
+          adjustedShares += shares;
+          adjustedTotalCost += amount;
+        } else if (transactionData.operation === 'sell') {
+          adjustedShares -= shares;
+          // For sells, we don't adjust cost basis
+        }
+        
+        // Calculate new average cost
+        const newAverageCost = adjustedShares > 0 ? adjustedTotalCost / adjustedShares : 0;
+        
+        if (adjustedShares > 0) {
+          // Update existing holding
+          const { error: updateHoldingError } = await supabase
+            .from('portfolio_holdings')
+            .update({
+              shares: adjustedShares,
+              average_cost: newAverageCost,
+              current_price: price,
+              last_updated: new Date().toISOString()
+            })
+            .eq('id', existingHolding.id);
+            
+          if (updateHoldingError) throw updateHoldingError;
+        } else {
+          // Remove holding if no shares left
+          const { error: deleteHoldingError } = await supabase
+            .from('portfolio_holdings')
+            .delete()
+            .eq('id', existingHolding.id);
+            
+          if (deleteHoldingError) throw deleteHoldingError;
+        }
+      } else if (transactionData.operation === 'buy') {
+        // Create new holding if it's a buy transaction and no existing holding
+        const { error: insertHoldingError } = await supabase
+          .from('portfolio_holdings')
+          .insert([
+            {
+              portfolio_id: currentPortfolio.id,
+              stock_id: stock.id,
+              shares: shares,
+              average_cost: price,
+              current_price: price,
+              last_updated: new Date().toISOString()
+            }
+          ]);
+          
+        if (insertHoldingError) throw insertHoldingError;
+      }
+    }
+
+    // Refresh data
+    await Promise.all([
+      fetchHoldings(currentPortfolio.id),
+      fetchTransactions(currentPortfolio.id),
+      fetchNextDividend(currentPortfolio.id),
+      calculateTodaysChange(currentPortfolio.id)
+    ]);
+
+    return updatedTransaction;
+  };
+
+  // Delete transaction
+  const deleteTransaction = async (transactionId: string) => {
+    if (!isSupabaseConfiguredForRealData) {
+      throw new Error('Cannot delete transactions when using mock data. Please configure Supabase.');
+    }
+
+    if (!currentPortfolio) throw new Error('No current portfolio');
+
+    // Get transaction details before deletion for portfolio updates
+    const { data: transaction, error: fetchError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('id', transactionId)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!transaction) throw new Error('Transaction not found');
+
+    // Delete the transaction
+    const { error: deleteError } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('id', transactionId);
+
+    if (deleteError) throw deleteError;
+
+    // Update portfolio holdings based on the deleted transaction
+    const existingHolding = holdings.find(h => h.stock_id === transaction.stock_id);
+
+    if (existingHolding && transaction.shares) {
+      let newShares: number;
+      let newAverageCost: number;
+
+      if (transaction.type === 'buy') {
+        // Reverse the buy: subtract shares and recalculate average cost
+        newShares = Math.max(0, existingHolding.shares - transaction.shares);
+        if (newShares > 0) {
+          const totalCost = (existingHolding.shares * existingHolding.average_cost) - transaction.amount;
+          newAverageCost = totalCost / newShares;
+        } else {
+          newAverageCost = 0;
+        }
+      } else if (transaction.type === 'sell') {
+        // Reverse the sell: add shares back
+        newShares = existingHolding.shares + transaction.shares;
+        newAverageCost = existingHolding.average_cost; // Keep same average cost
+      } else {
+        // For dividend transactions, no holding changes needed
+        newShares = existingHolding.shares;
+        newAverageCost = existingHolding.average_cost;
+      }
+
+      if (transaction.type !== 'dividend') {
+        if (newShares > 0) {
+          // Update existing holding
+          const { error: updateError } = await supabase
+            .from('portfolio_holdings')
+            .update({
+              shares: newShares,
+              average_cost: newAverageCost,
+              last_updated: new Date().toISOString()
+            })
+            .eq('id', existingHolding.id);
+
+          if (updateError) throw updateError;
+        } else {
+          // Remove holding if no shares left
+          const { error: deleteHoldingError } = await supabase
+            .from('portfolio_holdings')
+            .delete()
+            .eq('id', existingHolding.id);
+
+          if (deleteHoldingError) throw deleteHoldingError;
+        }
+      }
+    }
+
+    // Check if this was the last transaction for this stock and update dividends accordingly
+    if (transaction.stock_id) {
+      // Check if there are any remaining transactions for this stock in the portfolio
+      const { data: remainingTransactions, error: remainingError } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('portfolio_id', currentPortfolio.id)
+        .eq('stock_id', transaction.stock_id)
+        .neq('type', 'dividend'); // Don't count dividend transactions
+
+      if (remainingError) throw remainingError;
+
+      // If no remaining buy/sell transactions for this stock, it means we no longer hold it
+      if (!remainingTransactions || remainingTransactions.length === 0) {
+        // Check if there's still a holding (shouldn't be, but double-check)
+        const { data: remainingHolding, error: holdingCheckError } = await supabase
+          .from('portfolio_holdings')
+          .select('shares')
+          .eq('portfolio_id', currentPortfolio.id)
+          .eq('stock_id', transaction.stock_id)
+          .maybeSingle();
+
+        if (holdingCheckError) throw holdingCheckError;
+
+        // If no holding exists or shares are 0, we no longer own this stock
+        if (!remainingHolding || remainingHolding.shares === 0) {
+          console.log(`🔄 Stock ${transaction.stock_id} no longer held in portfolio, refreshing dividends...`);
+          
+          // Refresh dividends to exclude this stock
+          await fetchDividends();
+          await fetchNextDividend(currentPortfolio.id);
+        }
+      }
+    }
+    // Refresh data
+    await Promise.all([
+      fetchHoldings(currentPortfolio.id),
+      fetchTransactions(currentPortfolio.id),
+      calculateTodaysChange(currentPortfolio.id)
+    ]);
+
+    return true;
+  };
+
+  // Convert holdings to portfolio data format
+  const getPortfolioData = (): PortfolioData[] => {
+    return holdings.map(holding => {
+      // Use current_price from stock table if available, otherwise use holding current_price
+      const currentPrice = holding.stock?.current_price || holding.current_price;
+      const value = holding.shares * holding.current_price;
+      const cost = holding.shares * holding.average_cost;
+      const change = value - cost;
+      const changePercent = cost > 0 ? (change / cost) * 100 : 0;
+
+      return {
+        symbol: holding.stock?.symbol || '',
+        name: holding.stock?.name || '',
+        shares: holding.shares,
+        price: currentPrice,
+        value: value,
+        cost: cost,
+        change: change,
+        changePercent: changePercent
+      };
+    });
+  };
+
+  // Initialize data
+  useEffect(() => {
+    const initializeData = async () => {
+      try {
+        setLoading(true);
+        
+        // Check if Supabase is configured
+        if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+          // Use mock data when Supabase is not configured
+          createMockPortfolio();
+          setLoading(false);
+          return;
+        }
+        
+        await fetchPortfolios();
+  const [realPriceData, setRealPriceData] = useState<{ [symbol: string]: number[] }>({});
+  const [isLoadingRealData, setIsLoadingRealData] = useState(false);
+        await fetchDividends();
+      } catch (err) {
+  // Helper function to check if Supabase environment is properly configured
+  const isSupabaseEnvConfigured = () => {
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    return url && 
+           key && 
+           url !== 'https://your-project-ref.supabase.co' &&
+           url !== 'https://placeholder.supabase.co' &&
+           key !== 'your-anon-key-here' &&
+           key !== 'placeholder-anon-key';
+  };
+
+  // Fetch real 30-day price data from Supabase
+  const fetchReal30DayData = async (symbols: string[]) => {
+    if (!isSupabaseEnvConfigured()) {
+      console.log('📊 [StockTrends] Supabase not configured, using mock data');
+      return;
+    }
+
+    setIsLoadingRealData(true);
+    
+    try {
+      const realData: { [symbol: string]: number[] } = {};
+      
+      for (const symbol of symbols) {
+        // Get stock ID
+        const { data: stock, error: stockError } = await supabase
+          .from('stocks')
+          .select('id')
+          .eq('symbol', symbol)
+          .maybeSingle();
+
+        if (stockError || !stock) {
+          console.warn(`⚠️ [StockTrends] Stock ${symbol} not found in database`);
+          continue;
+        }
+
+        // Get 30-day price data
+        const { data: priceData, error: priceError } = await supabase
+          .from('stock_prices_30d')
+          .select('close_price, timestamp')
+          .eq('stock_id', stock.id)
+          .order('timestamp', { ascending: true });
+
+        if (priceError) {
+          console.error(`❌ [StockTrends] Error fetching 30d data for ${symbol}:`, priceError);
+          continue;
+        }
+
+        if (priceData && priceData.length > 0) {
+          realData[symbol] = priceData.map(d => parseFloat(d.close_price));
+          console.log(`✅ [StockTrends] Loaded ${priceData.length} data points for ${symbol}`);
+        } else {
+          console.warn(`⚠️ [StockTrends] No 30d data found for ${symbol}`);
+        }
+      }
+      
+      setRealPriceData(realData);
+    } catch (error) {
+      console.error('❌ [StockTrends] Error fetching real 30d data:', error);
+    } finally {
+      setIsLoadingRealData(false);
+    }
+  };
+
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeData();
+  }, []);
+
+  // Fetch holdings and transactions when current portfolio changes
+  useEffect(() => {
+    if (currentPortfolio) {
+      const fetchPortfolioData = async () => {
+        try {
+          await Promise.all([
+            fetchHoldings(currentPortfolio.id),
+            fetchTransactions(currentPortfolio.id),
+            fetchDividends(),
+            fetchNextDividend(currentPortfolio.id),
+  // Fetch real data when component mounts or data changes
+  React.useEffect(() => {
+    if (top3Holdings.length > 0) {
+      const symbols = top3Holdings.map(stock => stock.symbol);
+      fetchReal30DayData(symbols);
+    }
+  }, [data]); // Re-fetch when portfolio data changes
+
+            calculateTodaysChange(currentPortfolio.id)
+          ]);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'An error occurred');
+        }
+      };
+
+      fetchPortfolioData();
+    }
+  }, [currentPortfolio]);
+
+  return {
+    portfolios,
+    currentPortfolio,
+    holdings,
+    transactions,
+    dividends,
+    nextDividend,
+    todaysChange,
+    loading,
+    error,
+    isUsingMockData,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
+    getPortfolioData,
+    setCurrentPortfolio,
+    fetchHoldings,
+import { supabase } from '../lib/supabase';
+    fetchTransactions
+  };
+};
