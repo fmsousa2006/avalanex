@@ -199,6 +199,9 @@ export const usePortfolio = () => {
         // Create default portfolio for the anonymous user
         const defaultPortfolio = await createDefaultPortfolio(anonymousUser.id);
         
+      }
+    }
+  }
   const fetchTransactions = async (portfolioId: string) => {
     if (!isSupabaseConfiguredForRealData) {
       return; // Skip if using mock data
