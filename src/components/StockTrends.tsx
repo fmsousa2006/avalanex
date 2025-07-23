@@ -32,7 +32,53 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
   };
 
   // Fetch real 30-day price data from Supabase
-  const fetchReal30DayData = async (symbols: string[]) => {
+  const fetchReal30DayData = async (symbol: string): Promise<number[]> => {
+    if (!isSupabaseEnvConfigured()) {
+      console.log(`📊 [StockTrends] Supabase not configured, using mock data for ${symbol}`);
+      return [];
+    }
+
+    try {
+      // Get stock ID
+      const { data: stock, error: stockError } = await supabase
+        .from('stocks')
+        .select('id')
+        .eq('symbol', symbol)
+        .maybeSingle();
+
+      if (stockError || !stock) {
+        console.warn(`⚠️ [StockTrends] Stock ${symbol} not found in database`);
+        return [];
+      }
+
+      // Get 30-day price data
+      const { data: priceData, error: priceError } = await supabase
+        .from('stock_prices_30d')
+        .select('close_price, timestamp')
+        .eq('stock_id', stock.id)
+        .order('timestamp', { ascending: true });
+
+      if (priceError) {
+        console.error(`❌ [StockTrends] Error fetching 30d data for ${symbol}:`, priceError);
+        return [];
+      }
+
+      if (priceData && priceData.length > 0) {
+        const prices = priceData.map(d => parseFloat(d.close_price));
+        console.log(`✅ [StockTrends] Loaded ${priceData.length} data points for ${symbol}`);
+        return prices;
+      } else {
+        console.warn(`⚠️ [StockTrends] No 30d data found for ${symbol}`);
+        return [];
+      }
+    } catch (error) {
+      console.error(`❌ [StockTrends] Error fetching real 30d data for ${symbol}:`, error);
+      return [];
+    }
+  };
+
+  // Fetch real data for multiple symbols
+  const fetchReal30DayDataForSymbols = async (symbols: string[]) => {
     if (!isSupabaseEnvConfigured()) {
       console.log('📊 [StockTrends] Supabase not configured, using mock data');
       return;
@@ -44,35 +90,9 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
       const realData: { [symbol: string]: number[] } = {};
       
       for (const symbol of symbols) {
-        // Get stock ID
-        const { data: stock, error: stockError } = await supabase
-          .from('stocks')
-          .select('id')
-          .eq('symbol', symbol)
-          .maybeSingle();
-
-        if (stockError || !stock) {
-          console.warn(`⚠️ [StockTrends] Stock ${symbol} not found in database`);
-          continue;
-        }
-
-        // Get 30-day price data
-        const { data: priceData, error: priceError } = await supabase
-          .from('stock_prices_30d')
-          .select('close_price, timestamp')
-          .eq('stock_id', stock.id)
-          .order('timestamp', { ascending: true });
-
-        if (priceError) {
-          console.error(`❌ [StockTrends] Error fetching 30d data for ${symbol}:`, priceError);
-          continue;
-        }
-
-        if (priceData && priceData.length > 0) {
-          realData[symbol] = priceData.map(d => parseFloat(d.close_price));
-          console.log(`✅ [StockTrends] Loaded ${priceData.length} data points for ${symbol}`);
-        } else {
-          console.warn(`⚠️ [StockTrends] No 30d data found for ${symbol}`);
+        const prices = await fetchReal30DayData(symbol);
+        if (prices.length > 0) {
+          realData[symbol] = prices;
         }
       }
       
@@ -93,7 +113,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
   useEffect(() => {
     if (top3Holdings.length > 0) {
       const symbols = top3Holdings.map(stock => stock.symbol);
-      fetchReal30DayData(symbols);
+      fetchReal30DayDataForSymbols(symbols);
     }
   }, [data]);
 
