@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { supabase, Portfolio, PortfolioHolding, Transaction, Dividend, Stock, PortfolioData } from './lib/supabase';
+import { supabase, Portfolio, PortfolioHolding, Transaction, Dividend, Stock, PortfolioData } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
-import { portfolioData, transactionData, dividendData } from './data/mockData';
+import { portfolioData, transactionData, dividendData } from '../data/mockData';
 
 // Create admin client for bypassing RLS when creating default portfolio
 const getAdminClient = () => {
@@ -971,3 +971,17 @@ export const usePortfolio = () => {
     fetchTransactions
   };
 };
+
+// Main App component
+const App = () => {
+  const portfolioHook = usePortfolio();
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Dashboard {...portfolioHook} />
+    </div>
+  );
+};
+
+export default App;
+import { Dashboard } from './components/Dashboard';
