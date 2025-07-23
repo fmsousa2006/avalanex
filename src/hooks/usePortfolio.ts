@@ -361,6 +361,8 @@ export const usePortfolio = () => {
     }
 
     try {
+      console.log('🔍 [DEBUG] Starting Today\'s Change calculation for portfolio:', portfolioId);
+      
       // Get all holdings with current stock prices
       const { data: holdingsWithPrices, error } = await supabase
         .from('portfolio_holdings')
@@ -384,10 +386,13 @@ export const usePortfolio = () => {
       }
 
       if (!holdingsWithPrices || holdingsWithPrices.length === 0) {
+        console.log('🔍 [DEBUG] No holdings found for portfolio');
         setTodaysChange({ value: 0, percentage: 0 });
         return;
       }
 
+      console.log('🔍 [DEBUG] Found holdings:', holdingsWithPrices.length);
+      
       let totalTodaysChange = 0;
       let totalCurrentValue = 0;
       let totalPreviousValue = 0;
@@ -407,6 +412,16 @@ export const usePortfolio = () => {
         const previousValue = shares * previousPrice;
         const holdingChange = currentValue - previousValue;
         
+        console.log(`🔍 [DEBUG] ${holding.stock.symbol}:`, {
+          shares,
+          currentPrice: `$${currentPrice}`,
+          priceChange24h: `$${priceChange24h}`,
+          previousPrice: `$${previousPrice.toFixed(2)}`,
+          currentValue: `$${currentValue.toFixed(2)}`,
+          previousValue: `$${previousValue.toFixed(2)}`,
+          holdingChange: `$${holdingChange.toFixed(2)}`
+        });
+        
         totalTodaysChange += holdingChange;
         totalCurrentValue += currentValue;
         totalPreviousValue += previousValue;
@@ -417,12 +432,19 @@ export const usePortfolio = () => {
         ? (totalTodaysChange / totalPreviousValue) * 100 
         : 0;
 
+      console.log('🔍 [DEBUG] Portfolio Totals:', {
+        totalCurrentValue: `$${totalCurrentValue.toFixed(2)}`,
+        totalPreviousValue: `$${totalPreviousValue.toFixed(2)}`,
+        totalTodaysChange: `$${totalTodaysChange.toFixed(2)}`,
+        percentageChange: `${percentageChange.toFixed(4)}%`
+      });
+
       setTodaysChange({
         value: totalTodaysChange,
         percentage: percentageChange
       });
 
-      console.log(`📊 Today's Change: $${totalTodaysChange.toFixed(2)} (${percentageChange.toFixed(2)}%)`);
+      console.log(`📊 Final Today's Change: $${totalTodaysChange.toFixed(2)} (${percentageChange.toFixed(2)}%)`);
     } catch (error) {
       console.error('Error calculating today\'s change:', error);
       setTodaysChange({ value: 0, percentage: 0 });
