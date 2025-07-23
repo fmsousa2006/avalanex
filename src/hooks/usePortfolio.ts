@@ -260,17 +260,54 @@ export const usePortfolio = () => {
       return; // Skip if using mock data
     }
 
-    // Only fetch upcoming dividends (not paid or ex-dividend)
-    const today = new Date().toISOString().split('T')[0];
-    const { data, error } = await supabase
-      .from('dividends')
-      .select(`
-        *,
-        stock:stocks(*)
-      `)
-      .eq('status', 'upcoming')
-      .gte('payment_date', today)
-      .order('payment_date', { ascending: true });
+    if (!currentPortfolio) {
+      setDividends([]);
+      return;
+    }
+
+    try {
+      // First get all stocks in the current portfolio
+      const { data: portfolioStocks, error: holdingsError } = await supabase
+        .from('portfolio_holdings')
+        .select('stock_id')
+        .eq('portfolio_id', currentPortfolio.id)
+        .gt('shares', 0); // Only stocks with shares > 0
+
+      if (holdingsError) throw holdingsError;
+
+      if (!portfolioStocks || portfolioStocks.length === 0) {
+        setDividends([]);
+        return;
+      }
+
+      // Get stock IDs from portfolio
+      const stockIds = portfolioStocks.map(holding => holding.stock_id).filter(Boolean);
+
+      if (stockIds.length === 0) {
+        setDividends([]);
+        return;
+      }
+
+      // Only fetch upcoming dividends for stocks we actually own
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('dividends')
+        .select(`
+          *,
+          stock:stocks(*)
+        `)
+        .in('stock_id', stockIds) // Only dividends for stocks we own
+        .eq('status', 'upcoming')
+        .gte('payment_date', today)
+        .order('payment_date', { ascending: true });
+
+      if (error) throw error;
+      setDividends(data || []);
+    } catch (error) {
+      console.error('Error fetching dividends:', error);
+      setDividends([]);
+    }
+  };
 
     if (error) throw error;
     setDividends(data || []);
