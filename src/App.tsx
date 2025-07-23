@@ -967,7 +967,6 @@ export const usePortfolio = () => {
     deleteTransaction,
     getPortfolioData,
     setCurrentPortfolio,
-    fetchHoldings,
-import { Dashboard } from './components/Dashboard';
+    fetchTransactions
   };
 };
