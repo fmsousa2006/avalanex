@@ -552,10 +552,6 @@ export const usePortfolio = () => {
             current_price: price,
             last_updated: new Date().toISOString()
           }
-          fetchNextDividend(currentPortfolio.id),
-          fetchNextDividend(currentPortfolio.id),
-          fetchNextDividend(currentPortfolio.id),
-          calculateTodaysChange(currentPortfolio.id)
         ]);
 
       if (insertError) throw insertError;
@@ -565,7 +561,8 @@ export const usePortfolio = () => {
     await Promise.all([
       fetchHoldings(currentPortfolio.id),
       fetchTransactions(currentPortfolio.id),
-      fetchNextDividend(currentPortfolio.id)
+      fetchNextDividend(currentPortfolio.id),
+      calculateTodaysChange(currentPortfolio.id)
     ]);
 
     return transaction;
@@ -701,7 +698,8 @@ export const usePortfolio = () => {
     await Promise.all([
       fetchHoldings(currentPortfolio.id),
       fetchTransactions(currentPortfolio.id),
-      fetchNextDividend(currentPortfolio.id)
+      fetchNextDividend(currentPortfolio.id),
+      calculateTodaysChange(currentPortfolio.id)
     ]);
 
     return updatedTransaction;
@@ -788,7 +786,8 @@ export const usePortfolio = () => {
     await Promise.all([
       fetchHoldings(currentPortfolio.id),
       fetchTransactions(currentPortfolio.id),
-      fetchNextDividend(currentPortfolio.id)
+      fetchNextDividend(currentPortfolio.id),
+      calculateTodaysChange(currentPortfolio.id)
     ]);
 
     return true;
