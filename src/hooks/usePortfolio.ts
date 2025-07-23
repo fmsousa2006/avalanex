@@ -900,6 +900,8 @@ export const usePortfolio = () => {
     updateTransaction,
     deleteTransaction,
     getPortfolioData,
-    setCurrentPortfolio
+    setCurrentPortfolio,
+    fetchHoldings,
+    fetchTransactions
   };
 };

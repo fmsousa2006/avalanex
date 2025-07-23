@@ -31,7 +31,9 @@ const Dashboard: React.FC = () => {
     addTransaction,
     updateTransaction,
     deleteTransaction,
-    getPortfolioData
+    getPortfolioData,
+    fetchHoldings,
+    fetchTransactions
   } = usePortfolio();
   
   // Add stock prices hook for real-time data
