@@ -157,16 +157,40 @@ export class FinnhubService {
         return false;
       }
 
-      // Generate 1-day historical data (market hours only)
-      const historicalData = this.generateMarketHoursData(symbol);
-      
-      if (historicalData.length === 0) {
-        console.warn(`⚠️ [Finnhub] No historical data generated for ${symbol}`);
+      // Check what data is already in the database
+      const { data: existingData, error: existingError } = await supabase
+        .from('stock_prices_1d')
+        .select('timestamp')
+        .eq('stock_id', stock.id)
+        .order('timestamp', { ascending: true });
+
+      if (existingError) {
+        console.error(`❌ [Finnhub] Error checking existing data for ${symbol}:`, existingError);
         return false;
       }
 
-      // Insert historical data into stock_prices_1d table
-      const priceRecords = historicalData.map(dataPoint => ({
+      // Get existing timestamps as a Set for fast lookup
+      const existingTimestamps = new Set(
+        (existingData || []).map(row => row.timestamp)
+      );
+
+      console.log(`📊 [Finnhub] Found ${existingTimestamps.size} existing data points for ${symbol}`);
+
+      // Generate only missing 1-day historical data (market hours only)
+      const allHistoricalData = this.generateMarketHoursData(symbol);
+      const missingData = allHistoricalData.filter(dataPoint => 
+        !existingTimestamps.has(dataPoint.timestamp)
+      );
+
+      console.log(`📊 [Finnhub] Need to add ${missingData.length} missing data points for ${symbol}`);
+      
+      if (missingData.length === 0) {
+        console.log(`✅ [Finnhub] All data up to date for ${symbol}`);
+        return true;
+      }
+
+      // Insert only missing historical data into stock_prices_1d table
+      const priceRecords = missingData.map(dataPoint => ({
         stock_id: stock.id,
         timestamp: dataPoint.timestamp,
         open_price: dataPoint.open_price,
@@ -184,11 +208,11 @@ export class FinnhubService {
         });
 
       if (insertError) {
-        console.error(`❌ [Finnhub] Error inserting historical data for ${symbol}:`, insertError);
+        console.error(`❌ [Finnhub] Error inserting missing historical data for ${symbol}:`, insertError);
         return false;
       }
 
-      console.log(`✅ [Finnhub] Updated ${symbol} with ${historicalData.length} historical data points`);
+      console.log(`✅ [Finnhub] Updated ${symbol} with ${missingData.length} new historical data points`);
       return true;
     } catch (error) {
       console.error(`❌ [Finnhub] Error updating ${symbol} with historical data:`, error);
@@ -244,25 +268,26 @@ export class FinnhubService {
     // Base price for the stock
     const basePrice = symbol === 'O' ? 58.25 : symbol === 'NVDA' ? 875.25 : 175.50;
     
-    // Generate data for the last 25 hours, but only include market hours
+    // Generate data for the last 48 hours, but only include market hours
     const now = new Date();
-    const startTime = new Date(now.getTime() - (25 * 60 * 60 * 1000)); // 25 hours ago
+    const startTime = new Date(now.getTime() - (48 * 60 * 60 * 1000)); // 48 hours ago
     
     let currentTime = new Date(startTime);
     let currentPrice = basePrice * 0.98; // Start slightly lower
     
     while (currentTime <= now) {
-      // Convert to UTC for market hours check
-      const utcHour = currentTime.getUTCHours();
-      const utcMinutes = currentTime.getUTCMinutes();
+      // Convert to ET for market hours check (UTC-5 in winter, UTC-4 in summer)
+      // For simplicity, using UTC-5 (EST)
+      const etHour = (currentTime.getUTCHours() - 5 + 24) % 24;
+      const etMinutes = currentTime.getUTCMinutes();
       const dayOfWeek = currentTime.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
       
       // Check if it's a weekday (Monday-Friday)
       const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
       
-      // Check if it's market hours (9:30 AM - 4:00 PM ET = 13:30 - 20:00 UTC)
-      const isMarketStart = utcHour === 13 && utcMinutes === 30; // 9:30 AM ET
-      const isMarketHours = (utcHour === 13 && utcMinutes === 30) || (utcHour >= 14 && utcHour <= 20); // 9:30 AM - 4:00 PM ET
+      // Check if it's market hours (9:30 AM - 4:00 PM ET)
+      const isMarketStart = etHour === 9 && etMinutes === 30; // 9:30 AM ET
+      const isMarketHours = (etHour === 9 && etMinutes >= 30) || (etHour >= 10 && etHour < 16); // 9:30 AM - 4:00 PM ET
       
       if (isWeekday && isMarketHours) {
         // Generate realistic price movement
@@ -280,18 +305,18 @@ export class FinnhubService {
         const baseVolume = symbol === 'O' ? 3200000 : symbol === 'NVDA' ? 45000000 : 25000000;
         const volume = Math.floor(baseVolume * (0.5 + Math.random()));
         
-        // Create timestamp - use exact time for market start, top of hour for others
+        // Create timestamp - use exact time for market start, hourly intervals for others
         let dataTimestamp: Date;
         if (isMarketStart) {
           dataTimestamp = new Date(currentTime);
-          dataTimestamp.setUTCMinutes(30);
-          dataTimestamp.setUTCSeconds(0);
-          dataTimestamp.setUTCMilliseconds(0);
+          dataTimestamp.setMinutes(30);
+          dataTimestamp.setSeconds(0);
+          dataTimestamp.setMilliseconds(0);
         } else {
           dataTimestamp = new Date(currentTime);
-          dataTimestamp.setUTCMinutes(0);
-          dataTimestamp.setUTCSeconds(0);
-          dataTimestamp.setUTCMilliseconds(0);
+          dataTimestamp.setMinutes(0);
+          dataTimestamp.setSeconds(0);
+          dataTimestamp.setMilliseconds(0);
         }
         
         // Check for duplicates
