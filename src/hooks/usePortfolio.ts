@@ -551,6 +551,7 @@ export const usePortfolio = () => {
             average_cost: price,
             current_price: price,
             last_updated: new Date().toISOString()
+          }
           fetchNextDividend(currentPortfolio.id),
           fetchNextDividend(currentPortfolio.id),
           fetchNextDividend(currentPortfolio.id),
