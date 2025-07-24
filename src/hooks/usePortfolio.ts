@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase, Portfolio, PortfolioHolding, Transaction, Dividend, Stock, PortfolioData } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { portfolioData, transactionData, dividendData } from '../data/mockData';
@@ -131,7 +131,17 @@ export const usePortfolio = () => {
     }));
 
     setPortfolios([mockPortfolio]);
-    setCurrentPortfolio(mockPortfolio);
+    setCurrentPortfolio(prev => {
+      if (!prev || prev.id !== mockPortfolio.id) {
+        console.log('Updating currentPortfolio from', prev?.id, 'to', mockPortfolio.id);
+        return mockPortfolio;
+      }
+      if (JSON.stringify(prev) !== JSON.stringify(mockPortfolio)) {
+        console.log('Updating currentPortfolio due to content change');
+        return mockPortfolio;
+      }
+      return prev;
+    });
     setHoldings(mockHoldings);
     setTransactions(mockTransactions);
     setDividends(mockDividends);
@@ -182,7 +192,19 @@ export const usePortfolio = () => {
 
       if (data) {
         setPortfolios([data]);
-        setCurrentPortfolio(data);
+        setCurrentPortfolio(prev => {
+          // Only update if the ID or content is different
+          if (!prev || prev.id !== data.id) {
+            console.log('Updating currentPortfolio from', prev?.id, 'to', data.id);
+            return data;
+          }
+          // If the object reference is different but the content is the same, do not update
+          if (JSON.stringify(prev) !== JSON.stringify(data)) {
+            console.log('Updating currentPortfolio due to content change');
+            return data;
+          }
+          return prev;
+        });
       } else {
         // Create default portfolio for the user
         const { data: newPortfolio, error: createError } = await supabase
@@ -204,11 +226,23 @@ export const usePortfolio = () => {
         }
 
         setPortfolios([newPortfolio]);
-        setCurrentPortfolio(newPortfolio);
+        setCurrentPortfolio(prev => {
+          if (prev?.id !== newPortfolio.id) {
+            console.log('Updating currentPortfolio from', prev?.id, 'to', newPortfolio.id);
+            return newPortfolio;
+          }
+          return prev;
+        });
       }
     } catch (err) {
       console.warn('Failed to connect to Supabase, using mock data:', err);
       createMockPortfolio();
+    }
+  };
+
+  const setIfChanged = <T>(setter: (v: T) => void, prev: T, next: T) => {
+    if (JSON.stringify(prev) !== JSON.stringify(next)) {
+      setter(next);
     }
   };
 
@@ -227,7 +261,7 @@ export const usePortfolio = () => {
       .eq('portfolio_id', portfolioId);
 
     if (error) throw error;
-    setHoldings(data || []);
+    setIfChanged(setHoldings, holdings, data || []);
   };
 
   // Fetch transactions for current portfolio
@@ -247,7 +281,7 @@ export const usePortfolio = () => {
       .limit(20);
 
     if (error) throw error;
-    setTransactions(data || []);
+    setIfChanged(setTransactions, transactions, data || []);
   };
 
   // Fetch dividends
@@ -256,7 +290,6 @@ export const usePortfolio = () => {
       return; // Skip if using mock data
     }
 
-    // Only fetch upcoming dividends (not paid or ex-dividend)
     const today = new Date().toISOString().split('T')[0];
     const { data, error } = await supabase
       .from('dividends')
@@ -269,7 +302,7 @@ export const usePortfolio = () => {
       .order('payment_date', { ascending: true });
 
     if (error) throw error;
-    setDividends(data || []);
+    setIfChanged(setDividends, dividends, data || []);
   };
 
   // Fetch next dividend based on portfolio holdings
@@ -738,7 +771,7 @@ export const usePortfolio = () => {
     const initializeData = async () => {
       try {
         setLoading(true);
-        
+
         // Check if Supabase is configured
         if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
           // Use mock data when Supabase is not configured
@@ -746,9 +779,9 @@ export const usePortfolio = () => {
           setLoading(false);
           return;
         }
-        
+
         await fetchPortfolios();
-        await fetchDividends();
+        await fetchDividends(); // Only fetch dividends once on load
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
@@ -760,23 +793,30 @@ export const usePortfolio = () => {
   }, []);
 
   // Fetch holdings and transactions when current portfolio changes
-  useEffect(() => {
-    if (currentPortfolio) {
-      const fetchPortfolioData = async () => {
-        try {
-          await Promise.all([
-            fetchHoldings(currentPortfolio.id),
-            fetchTransactions(currentPortfolio.id),
-            fetchDividends(),
-            fetchNextDividend(currentPortfolio.id)
-          ]);
-        } catch (err) {
-          setError(err instanceof Error ? err.message : 'An error occurred');
-        }
-      };
+  const lastPortfolioIdRef = useRef<string | null>(null);
 
-      fetchPortfolioData();
-    }
+  useEffect(() => {
+    if (!currentPortfolio) return;
+
+    // Prevent running if currentPortfolio hasn't changed
+    if (lastPortfolioIdRef.current === currentPortfolio.id) return;
+    lastPortfolioIdRef.current = currentPortfolio.id;
+
+    console.log('Portfolio effect triggered for:', currentPortfolio.id);
+
+    const fetchPortfolioData = async () => {
+      try {
+        await Promise.all([
+          fetchHoldings(currentPortfolio.id),
+          fetchTransactions(currentPortfolio.id),
+          fetchNextDividend(currentPortfolio.id)
+        ]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      }
+    };
+
+    fetchPortfolioData();
   }, [currentPortfolio]);
 
   return {
@@ -792,7 +832,6 @@ export const usePortfolio = () => {
     addTransaction,
     updateTransaction,
     deleteTransaction,
-    getPortfolioData,
-    setCurrentPortfolio
+    getPortfolioData
   };
 };

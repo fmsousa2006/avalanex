@@ -265,7 +265,7 @@ export const useStockPrices = () => {
 
     const interval = setInterval(() => {
       if (!isSupabaseConfigured) return;
-      
+
       const now = new Date();
       const hour = now.getHours();
       const day = now.getDay();
@@ -276,10 +276,10 @@ export const useStockPrices = () => {
           updateStockPrices();
         }
       }
-    }, 30 * 60 * 1000); // 30 minutes instead of 5 to reduce frequency
+    }, 30 * 60 * 1000); // 30 minutes
 
     return () => clearInterval(interval);
-  }, [isSupabaseConfigured, fetchStockPrices, updateStockPrices, arePricesStale]);
+  }, [isSupabaseConfigured]);
 
   return {
     stockPrices,
