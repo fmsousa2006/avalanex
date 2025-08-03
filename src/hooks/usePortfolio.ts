@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase, Portfolio, PortfolioHolding, Transaction, Dividend, Stock, PortfolioData } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
-import { portfolioData, transactionData, dividendData } from '../data/mockData';
+import { portfolioData, transactionData, dividendData as fallbackDividendData } from '../data/mockData';
+import { usePortfolio } from '../hooks/usePortfolio';
 
 // Create admin client for bypassing RLS when creating default portfolio
 const getAdminClient = () => {
@@ -109,7 +110,7 @@ export const usePortfolio = () => {
       }
     }));
 
-    const mockDividends: Dividend[] = dividendData.map((div, index) => ({
+    const mockDividends: Dividend[] = fallbackDividendData.map((div, index) => ({
       id: div.id,
       stock_id: `mock-stock-${index}`,
       amount: div.amount,
@@ -287,22 +288,39 @@ export const usePortfolio = () => {
   // Fetch dividends
   const fetchDividends = async () => {
     if (!isSupabaseConfiguredForRealData) {
-      return; // Skip if using mock data
+      setDividends(fallbackDividendData); // fallback to sample data if needed
+      return;
     }
+
+    // Get all stocks in the current portfolio
+    const { data: portfolioStocks, error: holdingsError } = await supabase
+      .from('portfolio_holdings')
+      .select('stock_id')
+      .eq('portfolio_id', currentPortfolio?.id)
+      .gt('shares', 0);
+
+    if (holdingsError || !portfolioStocks || portfolioStocks.length === 0) {
+      setDividends([]);
+      return;
+    }
+
+    const stockIds = portfolioStocks.map(h => h.stock_id);
 
     const today = new Date().toISOString().split('T')[0];
     const { data, error } = await supabase
       .from('dividends')
-      .select(`
-        *,
-        stock:stocks(*)
-      `)
-      .eq('status', 'upcoming')
+      .select('*, stock:stocks(symbol, name)')
+      .in('stock_id', stockIds)
       .gte('payment_date', today)
       .order('payment_date', { ascending: true });
 
-    if (error) throw error;
-    setIfChanged(setDividends, dividends, data || []);
+    if (error) {
+      setError(error.message);
+      setDividends([]);
+      return;
+    }
+
+    setDividends(data || []);
   };
 
   // Fetch next dividend based on portfolio holdings
@@ -748,7 +766,7 @@ export const usePortfolio = () => {
     return holdings.map(holding => {
       // Use current_price from stock table if available, otherwise use holding current_price
       const currentPrice = holding.stock?.current_price || holding.current_price;
-      const value = holding.shares * holding.current_price;
+      const value = holding.shares * currentPrice;  // Changed from average_cost to currentPrice
       const cost = holding.shares * holding.average_cost;
       const change = value - cost;
       const changePercent = cost > 0 ? (change / cost) * 100 : 0;
@@ -809,7 +827,8 @@ export const usePortfolio = () => {
         await Promise.all([
           fetchHoldings(currentPortfolio.id),
           fetchTransactions(currentPortfolio.id),
-          fetchNextDividend(currentPortfolio.id)
+          fetchNextDividend(currentPortfolio.id),
+          fetchDividends() // Add this line to fetch dividends when portfolio changes
         ]);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');

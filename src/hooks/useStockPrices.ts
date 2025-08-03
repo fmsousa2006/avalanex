@@ -112,18 +112,20 @@ export const useStockPrices = () => {
       // Update prices using Finnhub service
       const results = await finnhub.updateMultipleStockPrices(stockSymbols);
       
-      // Refresh local data
-      await fetchStockPrices();
-      
-      return results;
-    } catch (err) {
-      console.error('Error updating stock prices:', err);
-      if (err instanceof Error && err.message.includes('NetworkError')) {
-        setError('Network connection failed. Please check your internet connection, firewall settings, or Supabase project status.');
-      } else {
-        setError(err instanceof Error ? err.message : 'Failed to update stock prices');
+      // After successful sync, refresh the portfolio data
+      if (currentPortfolio) {
+        await Promise.all([
+          fetchHoldings(currentPortfolio.id),
+          fetchTransactions(currentPortfolio.id),
+          fetchNextDividend(currentPortfolio.id)
+        ]);
       }
-      return { success: [], failed: [] };
+
+      setLastUpdate(new Date());
+      return `Successfully synced ${stocks.length} stocks!`;
+    } catch (error) {
+      console.error('Error syncing stock prices:', error);
+      throw new Error('Error syncing stock data');
     } finally {
       setLoading(false);
     }
