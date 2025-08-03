@@ -24,10 +24,15 @@ export interface FinnhubCandle {
 
 export class FinnhubService {
   private apiKey: string;
-  private baseUrl = 'https://finnhub.io/api/v1';
+  private baseUrl: string;
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
+    this.baseUrl = 'https://finnhub.io/api/v1';
+  }
+
+  isConfigured(): boolean {
+    return Boolean(this.apiKey && this.apiKey !== 'demo');
   }
 
   // Get real-time quote for a stock
@@ -48,21 +53,29 @@ export class FinnhubService {
   }
 
   // Get historical candle data
-  async getCandles(symbol: string, resolution: string, from: number, to: number): Promise<FinnhubCandle> {
+  async getCandles(
+    symbol: string, 
+    resolution: string, 
+    from: number, 
+    to: number
+  ): Promise<FinnhubCandle> {
+    console.log(`🔍 Fetching candles for ${symbol}:`, {
+      resolution,
+      from: new Date(from * 1000).toLocaleString(),
+      to: new Date(to * 1000).toLocaleString()
+    });
+
     const response = await fetch(
       `${this.baseUrl}/stock/candle?symbol=${symbol}&resolution=${resolution}&from=${from}&to=${to}&token=${this.apiKey}`
     );
-    
+
     if (!response.ok) {
       throw new Error(`Finnhub API error: ${response.status} ${response.statusText}`);
     }
-    
+
     const data = await response.json();
-    
-    if (data.error) {
-      throw new Error(`Finnhub API error: ${data.error}`);
-    }
-    
+    console.log(`📊 Finnhub response for ${symbol}:`, data);
+
     return data;
   }
 
@@ -223,7 +236,29 @@ export class FinnhubService {
     return results;
   }
 
-  // Generate market hours data (9:30 AM - 4:00 PM ET, weekdays only)
+  private getLastTradingDay(): Date {
+    const now = new Date();
+    const lastTradingDay = new Date(now);
+    
+    // If it's before market open today (13:30 UTC), go back one day
+    if (now.getUTCHours() < 13 || (now.getUTCHours() === 13 && now.getUTCMinutes() < 30)) {
+      lastTradingDay.setDate(lastTradingDay.getDate() - 1);
+    }
+    
+    // Keep going back days until we find a weekday (Mon-Fri)
+    while (true) {
+      const dayOfWeek = lastTradingDay.getDay();
+      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+        break;
+      }
+      lastTradingDay.setDate(lastTradingDay.getDate() - 1);
+    }
+    
+    // Set to midnight of that day
+    lastTradingDay.setUTCHours(0, 0, 0, 0);
+    return lastTradingDay;
+  }
+
   private generateMarketHoursData(symbol: string): Array<{
     timestamp: string;
     open_price: number;
@@ -232,88 +267,67 @@ export class FinnhubService {
     close_price: number;
     volume: number;
   }> {
-    const data: Array<{
-      timestamp: string;
-      open_price: number;
-      high_price: number;
-      low_price: number;
-      close_price: number;
-      volume: number;
-    }> = [];
+    const data: Array<any> = [];
+    
+    // Get the last trading day
+    const tradingDay = this.getLastTradingDay();
+    
+    // Set pre-market start (4:00 AM ET = 08:00 UTC)
+    const preMarketStart = new Date(tradingDay);
+    preMarketStart.setUTCHours(8, 0, 0, 0);
+    
+    // Set regular market open (9:30 AM ET = 13:30 UTC)
+    const marketOpen = new Date(tradingDay);
+    marketOpen.setUTCHours(13, 30, 0, 0);
+    
+    // Set regular market close (4:00 PM ET = 20:00 UTC)
+    const marketClose = new Date(tradingDay);
+    marketClose.setUTCHours(20, 0, 0, 0);
+    
+    // Set after-market end (8:00 PM ET = 24:00 UTC)
+    const afterMarketEnd = new Date(tradingDay);
+    afterMarketEnd.setUTCHours(24, 0, 0, 0);
+    
+    console.log(`📅 Generating full day market data for ${symbol} on ${tradingDay.toLocaleDateString()}`, {
+      preMarket: preMarketStart.toISOString(),
+      marketOpen: marketOpen.toISOString(),
+      marketClose: marketClose.toISOString(),
+      afterMarket: afterMarketEnd.toISOString()
+    });
 
-    // Base price for the stock
+    // Base price and current time tracking
     const basePrice = symbol === 'O' ? 58.25 : symbol === 'NVDA' ? 875.25 : 175.50;
+    let currentTime = new Date(preMarketStart);
+    let currentPrice = basePrice;
     
-    // Generate data for the last 25 hours, but only include market hours
-    const now = new Date();
-    const startTime = new Date(now.getTime() - (25 * 60 * 60 * 1000)); // 25 hours ago
-    
-    let currentTime = new Date(startTime);
-    let currentPrice = basePrice * 0.98; // Start slightly lower
-    
-    while (currentTime <= now) {
-      // Convert to UTC for market hours check
-      const utcHour = currentTime.getUTCHours();
-      const utcMinutes = currentTime.getUTCMinutes();
-      const dayOfWeek = currentTime.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
+    // Generate data points for the entire trading day
+    while (currentTime <= afterMarketEnd) {
+      // Adjust volatility based on market session
+      let volatility = symbol === 'O' ? 0.002 : symbol === 'NVDA' ? 0.015 : 0.008;
       
-      // Check if it's a weekday (Monday-Friday)
-      const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
-      
-      // Check if it's market hours (9:30 AM - 4:00 PM ET = 13:30 - 20:00 UTC)
-      const isMarketStart = utcHour === 13 && utcMinutes === 30; // 9:30 AM ET
-      const isMarketHours = (utcHour === 13 && utcMinutes === 30) || (utcHour >= 14 && utcHour <= 20); // 9:30 AM - 4:00 PM ET
-      
-      if (isWeekday && isMarketHours) {
-        // Generate realistic price movement
-        const volatility = symbol === 'O' ? 0.002 : symbol === 'NVDA' ? 0.015 : 0.008;
-        const randomChange = (Math.random() - 0.5) * volatility;
-        currentPrice = currentPrice * (1 + randomChange);
-        
-        // Generate OHLC data
-        const open = currentPrice;
-        const high = open * (1 + Math.random() * volatility);
-        const low = open * (1 - Math.random() * volatility);
-        const close = low + Math.random() * (high - low);
-        
-        // Generate volume
-        const baseVolume = symbol === 'O' ? 3200000 : symbol === 'NVDA' ? 45000000 : 25000000;
-        const volume = Math.floor(baseVolume * (0.5 + Math.random()));
-        
-        // Create timestamp - use exact time for market start, top of hour for others
-        let dataTimestamp: Date;
-        if (isMarketStart) {
-          dataTimestamp = new Date(currentTime);
-          dataTimestamp.setUTCMinutes(30);
-          dataTimestamp.setUTCSeconds(0);
-          dataTimestamp.setUTCMilliseconds(0);
-        } else {
-          dataTimestamp = new Date(currentTime);
-          dataTimestamp.setUTCMinutes(0);
-          dataTimestamp.setUTCSeconds(0);
-          dataTimestamp.setUTCMilliseconds(0);
-        }
-        
-        // Check for duplicates
-        const timestampString = dataTimestamp.toISOString();
-        const isDuplicate = data.some(d => d.timestamp === timestampString);
-        
-        if (!isDuplicate) {
-          data.push({
-            timestamp: timestampString,
-            open_price: parseFloat(open.toFixed(4)),
-            high_price: parseFloat(high.toFixed(4)),
-            low_price: parseFloat(low.toFixed(4)),
-            close_price: parseFloat(close.toFixed(4)),
-            volume: volume
-          });
-        }
-        
-        currentPrice = close;
+      // Reduce volatility during pre and after market
+      if (currentTime < marketOpen || currentTime > marketClose) {
+        volatility *= 0.5;
       }
       
-      // Move to next hour
-      currentTime.setHours(currentTime.getHours() + 1);
+      const randomChange = (Math.random() - 0.5) * volatility;
+      currentPrice = currentPrice * (1 + randomChange);
+      
+      // Reduce volume during pre and after market
+      const baseVolume = symbol === 'O' ? 3200000 : symbol === 'NVDA' ? 45000000 : 25000000;
+      const volumeMultiplier = currentTime < marketOpen || currentTime > marketClose ? 0.3 : 1;
+      
+      data.push({
+        timestamp: currentTime.toISOString(),
+        open_price: parseFloat(currentPrice.toFixed(4)),
+        high_price: parseFloat((currentPrice * (1 + Math.random() * volatility)).toFixed(4)),
+        low_price: parseFloat((currentPrice * (1 - Math.random() * volatility)).toFixed(4)),
+        close_price: parseFloat(currentPrice.toFixed(4)),
+        volume: Math.floor(baseVolume * volumeMultiplier * (0.5 + Math.random()))
+      });
+      
+      // Move to next 5-minute interval
+      currentTime = new Date(currentTime.getTime() + 5 * 60 * 1000);
     }
     
     return data.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
@@ -513,6 +527,21 @@ export class FinnhubService {
 }
 
 // Factory function to create FinnhubService instance
-export const createFinnhubService = (apiKey: string): FinnhubService => {
+export const createFinnhubService = (): FinnhubService => {
+  const apiKey = import.meta.env.VITE_FINNHUB_API_KEY;
+  if (!apiKey) {
+    throw new Error('Finnhub API key is not configured');
+  }
   return new FinnhubService(apiKey);
+};
+
+// Sync stock price for a given symbol
+export const syncStockPrice = async (symbol: string) => {
+  try {
+    const finnhubService = createFinnhubService();
+    await finnhubService.updateStockPrice(symbol);
+  } catch (error) {
+    console.error('Failed to sync prices:', error);
+    // Handle the error appropriately in your UI
+  }
 };
