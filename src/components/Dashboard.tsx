@@ -1,7 +1,24 @@
+<<<<<<< HEAD
 import { useState, useEffect } from 'react';
 import { usePortfolio } from '../hooks/usePortfolio';
 import { useStockPrices } from '../hooks/useStockPrices';
 import { StockTrends } from './StockTrends';
+=======
+import React, { useState, useEffect } from 'react';
+import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal, RefreshCw } from 'lucide-react';
+import { usePortfolio } from '../hooks/usePortfolio';
+import { useStockPrices } from '../hooks/useStockPrices';
+import PortfolioChart from './PortfolioChart';
+import StockTrends from './StockTrends';
+import TransactionHistory from './TransactionHistory';
+import DividendTracker from './DividendTracker';
+import DividendCalendar from './DividendCalendar';
+import DividendsReceived from './DividendsReceived';
+import Sidebar from './Sidebar';
+import PortfolioModal from './PortfolioModal';
+import TestingModal from './TestingModal';
+import { supabase } from '../lib/supabase';
+>>>>>>> v1.0.5
 
 export const Dashboard = () => {
   const {
@@ -27,10 +44,21 @@ export const Dashboard = () => {
   const { updateStockPrices, updateStockWith30DayData } = useStockPrices();
   const [isSyncing, setIsSyncing] = useState(false);
 
+<<<<<<< HEAD
   // Auto-fetch 30-day data for portfolio stocks
   const autoFetch30DayDataForPortfolio = async () => {
     if (!currentPortfolio || isUsingMockData) {
       console.log('📊 [Dashboard] Skipping auto-fetch: no portfolio or using mock data');
+=======
+  // Replace line 64 with a different variable name:
+  const [recentTransactions, setRecentTransactions] = useState([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(true);
+
+  // Function to sync all portfolio stock prices
+  const handleSyncPortfolioPrices = async () => {
+    if (!isFinnhubConfigured) {
+      alert('Finnhub API key not configured. Please add VITE_FINNHUB_API_KEY to your .env file.');
+>>>>>>> v1.0.5
       return;
     }
 
@@ -117,6 +145,88 @@ export const Dashboard = () => {
     }
   }, [currentPortfolio, holdings.length, isUsingMockData]);
 
+  // Add this logout handler function to your Dashboard component
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      // Force redirect to login page
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error logging out:', error);
+      // Even if there's an error, redirect to login
+      window.location.href = '/';
+    }
+  };
+
+  // Add this function to fetch transactions
+  const fetchTransactions = async () => {
+    try {
+      setLoadingTransactions(true);
+      
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('Error getting user:', userError);
+        return;
+      }
+
+      // First get the user's portfolio
+      const { data: portfolioData, error: portfolioError } = await supabase
+        .from('portfolios')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (portfolioError || !portfolioData) {
+        console.error('Error fetching user portfolio:', portfolioError);
+        return;
+      }
+
+      // Now fetch transactions for the user's portfolio
+      const { data: transactionsData, error: transactionsError } = await supabase
+        .from('transactions')
+        .select(`
+          *,
+          stocks (
+            symbol,
+            name,
+            current_price
+          )
+        `)
+        .eq('portfolio_id', portfolioData.id)
+        .order('transaction_date', { ascending: false })
+        .limit(10);
+
+      if (transactionsError) {
+        console.error('Error fetching transactions:', transactionsError);
+        return;
+      }
+
+      setRecentTransactions(transactionsData || []);
+    } catch (error) {
+      console.error('Error in fetchTransactions:', error);
+    } finally {
+      setLoadingTransactions(false);
+    }
+  };
+
+  // Add this useEffect to fetch transactions when component mounts
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  // Update your existing refreshData function to also refresh transactions
+  const refreshData = async () => {
+    setLoading(true);
+    await Promise.all([
+      fetchPortfolioData(),
+      fetchTransactions() // Add this line
+    ]);
+    setLoading(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -136,6 +246,7 @@ export const Dashboard = () => {
   const portfolioData = getPortfolioData();
 
   return (
+<<<<<<< HEAD
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
@@ -145,6 +256,27 @@ export const Dashboard = () => {
               <p className="text-yellow-800 text-sm">
                 Using demo data. Configure Supabase to connect to real data.
               </p>
+=======
+    <div className="min-h-screen bg-gray-900 text-white flex">
+      {/* Sidebar */}
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        onToggle={setIsSidebarOpen}
+        onPortfolioClick={() => setIsPortfolioModalOpen(true)}
+        onTestingClick={() => setIsTestingModalOpen(true)}
+        onLogout={handleLogout}
+      />
+      
+      {/* Main Content */}
+      <div className="flex-1">
+      {/* Header */}
+      <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <BarChart3 className="w-8 h-8 text-emerald-400" />
+            <div>
+              <h1 className="text-2xl font-bold">Portfolio Dashboard</h1>
+>>>>>>> v1.0.5
             </div>
           )}
         </div>
@@ -235,6 +367,113 @@ export const Dashboard = () => {
                 ))}
               </div>
             </div>
+<<<<<<< HEAD
+=======
+            <PortfolioChart 
+              data={currentPortfolioData} 
+              onHover={setHoveredStock}
+              hoveredStock={hoveredStock}
+            />
+          </div>
+
+          {/* Stock Trends */}
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div className="flex items-center space-x-2 mb-6">
+              <Activity className="w-5 h-5 text-blue-400" />
+              <h2 className="text-xl font-semibold">Top 3 Holdings (30 Days)</h2>
+            </div>
+            <StockTrends data={currentPortfolioData} />
+          </div>
+        </div>
+
+        {/* Bottom Section */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {/* Dividends Received */}
+          <div className="xl:col-span-3">
+            <DividendsReceived portfolioId={currentPortfolio?.id} />
+          </div>
+        </div>
+
+        {/* Transaction and Dividend Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Transaction History */}
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold">Last Transactions</h2>
+              <button
+                onClick={() => setIsPortfolioModalOpen(true)}
+                className={`p-2 rounded-lg transition-colors ${
+                  !currentPortfolio && !isUsingMockData
+                    ? 'bg-gray-600 cursor-not-allowed opacity-50'
+                    : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
+                title="Add Transaction"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+            {loadingTransactions ? (
+  <div className="flex items-center justify-center py-8">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-400"></div>
+  </div>
+) : recentTransactions.length > 0 ? (
+  <div className="space-y-3">
+    {recentTransactions.slice(0, 5).map((transaction, index) => (
+      <div key={transaction.id || index} className="flex justify-between items-center py-2 border-b border-gray-700 last:border-b-0">
+        <div>
+          <div className="flex items-center space-x-2">
+            <span className={`px-2 py-1 text-xs rounded ${
+              transaction.type === 'buy' 
+                ? 'bg-emerald-900 text-emerald-300' 
+                : transaction.type === 'sell'
+                ? 'bg-red-900 text-red-300'
+                : 'bg-blue-900 text-blue-300'
+            }`}>
+              {transaction.type?.toUpperCase()}
+            </span>
+            <span className="text-white font-medium">
+              {transaction.stocks?.symbol}
+            </span>
+          </div>
+          <div className="text-sm text-gray-400 mt-1">
+            {transaction.shares} shares @ ${transaction.price}
+            <span className="ml-2 text-xs">
+              {new Date(transaction.transaction_date).toLocaleDateString()}
+            </span>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-white font-medium">
+            ${transaction.amount}
+          </div>
+          <div className="text-sm text-gray-400">
+            {transaction.fee > 0 && `Fee: $${transaction.fee}`}
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+) : (
+  <div className="text-center py-8 text-gray-400">
+    <p className="mb-2">No transactions found</p>
+    <p className="text-sm">
+      Start building your portfolio by adding your first transaction.
+    </p>
+    <button
+      onClick={() => setIsPortfolioModalOpen(true)}
+      className="mt-3 px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
+    >
+      Add Transaction
+    </button>
+  </div>
+)}
+          </div>
+
+          {/* Dividend Tracker */}
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <h2 className="text-xl font-semibold mb-6">Upcoming Dividends</h2>
+            <DividendTracker data={dividendData} />
+>>>>>>> v1.0.5
           </div>
         </div>
       </div>

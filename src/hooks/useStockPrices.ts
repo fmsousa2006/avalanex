@@ -250,6 +250,7 @@ export const useStockPrices = () => {
       throw new Error('Finnhub API key not configured');
     }
 
+<<<<<<< HEAD
     setLoading(true);
     try {
       const finnhub = createFinnhubService(finnhubApiKey);
@@ -280,6 +281,25 @@ export const useStockPrices = () => {
       setLoading(false);
     }
   }, [isConfigured, finnhubApiKey]);
+=======
+    const interval = setInterval(() => {
+      if (!isSupabaseConfigured) return;
+
+      const now = new Date();
+      const hour = now.getHours();
+      const day = now.getDay();
+
+      // Only auto-update during market hours (weekdays 9 AM - 4 PM)
+      if (day >= 1 && day <= 5 && hour >= 9 && hour < 16) {
+        if (arePricesStale()) {
+          updateStockPrices();
+        }
+      }
+    }, 30 * 60 * 1000); // 30 minutes
+
+    return () => clearInterval(interval);
+  }, [isSupabaseConfigured]);
+>>>>>>> v1.0.5
 
   return {
     loading,
