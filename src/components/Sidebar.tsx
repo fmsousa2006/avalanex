@@ -6,9 +6,16 @@ interface SidebarProps {
   onToggle: (open: boolean) => void;
   onPortfolioClick: () => void;
   onTestingClick: () => void;
+  onLogout: () => void; // Add this prop
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onPortfolioClick, onTestingClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ 
+  isOpen, 
+  onToggle, 
+  onPortfolioClick, 
+  onTestingClick,
+  onLogout // Add this prop
+}) => {
   const menuItems = [
     { icon: BarChart3, label: 'Dashboard', active: true },
     { icon: Briefcase, label: 'Portfolio', onClick: onPortfolioClick },
@@ -75,8 +82,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onPortfolioClick, o
 
         {/* Logout Button - Fixed at bottom */}
         <div className="p-4 border-t border-gray-700">
-          <button className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors text-gray-300 hover:bg-red-600 hover:text-white">
-            <LogOut className="w-5 h-5" />
+          <button
+            onClick={onLogout}
+            className="flex items-center px-4 py-2 text-gray-300 hover:bg-red-600 hover:text-white rounded-md transition-colors w-full text-left"
+          >
+            <LogOut className="w-5 h-5 mr-3" />
             <span className="font-medium">Logout</span>
           </button>
         </div>

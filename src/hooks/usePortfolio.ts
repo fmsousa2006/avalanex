@@ -15,6 +15,7 @@ const getAdminClient = () => {
 };
 
 export const usePortfolio = () => {
+  // State declarations
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [currentPortfolio, setCurrentPortfolio] = useState<Portfolio | null>(null);
   const [holdings, setHoldings] = useState<PortfolioHolding[]>([]);
@@ -49,7 +50,6 @@ export const usePortfolio = () => {
 
   // Get current user
   const getCurrentUser = async () => {
-    // Return null if Supabase is not properly configured
     if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
       return null;
     }
@@ -157,86 +157,46 @@ export const usePortfolio = () => {
   // Fetch portfolios
   const fetchPortfolios = async () => {
     try {
-      // Check if Supabase is configured before attempting connection
-      const supabaseConfigured = isSupabaseEnvConfigured();
-      setIsSupabaseConfiguredForRealData(supabaseConfigured);
+      setLoading(true);
+      setError(null);
+
+      const { data: { user } } = await supabase.auth.getUser();
       
-      if (!supabaseConfigured) {
-        console.warn('Supabase not configured, using mock data');
-        createMockPortfolio();
-        return;
+      if (!user) {
+        throw new Error('No authenticated user');
       }
 
-      // Get current authenticated user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        console.warn('No authenticated user found, using mock data');
-        createMockPortfolio();
-        return;
-      }
-
-      // Try to fetch portfolio for the authenticated user
-      const { data, error } = await supabase
+      // Fetch portfolios for the authenticated user
+      const { data: portfolios, error: portfoliosError } = await supabase
         .from('portfolios')
-        .select('*')
+        .select(`
+          *,
+          portfolio_holdings (
+            *,
+            stock:stocks(*)
+          )
+        `)
         .eq('user_id', user.id)
-        .maybeSingle();
+        .order('created_at', { ascending: false });
 
-      if (error) {
-        console.warn('Error fetching portfolio from Supabase:', error);
-        // Fall back to mock data
-        createMockPortfolio();
-        return;
+      if (portfoliosError) throw portfoliosError;
+
+      if (!portfolios?.length) {
+        throw new Error('No portfolios found');
       }
 
-      if (data) {
-        setPortfolios([data]);
-        setCurrentPortfolio(prev => {
-          // Only update if the ID or content is different
-          if (!prev || prev.id !== data.id) {
-            console.log('Updating currentPortfolio from', prev?.id, 'to', data.id);
-            return data;
-          }
-          // If the object reference is different but the content is the same, do not update
-          if (JSON.stringify(prev) !== JSON.stringify(data)) {
-            console.log('Updating currentPortfolio due to content change');
-            return data;
-          }
-          return prev;
-        });
-      } else {
-        // Create default portfolio for the user
-        const { data: newPortfolio, error: createError } = await supabase
-          .from('portfolios')
-          .insert([
-            {
-              user_id: user.id,
-              name: 'My Portfolio',
-              description: 'Default portfolio'
-            }
-          ])
-          .select()
-          .single();
-
-        if (createError) {
-          console.warn('Error creating portfolio, using mock data:', createError);
-          createMockPortfolio();
-          return;
-        }
-
-        setPortfolios([newPortfolio]);
-        setCurrentPortfolio(prev => {
-          if (prev?.id !== newPortfolio.id) {
-            console.log('Updating currentPortfolio from', prev?.id, 'to', newPortfolio.id);
-            return newPortfolio;
-          }
-          return prev;
-        });
+      setPortfolios(portfolios);
+      setCurrentPortfolio(portfolios[0]);
+      
+      if (portfolios[0].portfolio_holdings) {
+        setHoldings(portfolios[0].portfolio_holdings);
       }
-    } catch (err) {
-      console.warn('Failed to connect to Supabase, using mock data:', err);
-      createMockPortfolio();
+
+    } catch (error) {
+      console.error('Failed to fetch portfolios:', error);
+      setError(error instanceof Error ? error.message : 'Failed to fetch portfolios');
+    } finally {
+      setLoading(false);
     }
   };
 

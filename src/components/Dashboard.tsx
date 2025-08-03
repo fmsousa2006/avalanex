@@ -11,6 +11,7 @@ import DividendsReceived from './DividendsReceived';
 import Sidebar from './Sidebar';
 import PortfolioModal from './PortfolioModal';
 import TestingModal from './TestingModal';
+import { supabase } from '../lib/supabase';
 
 console.log('🏠 Dashboard.tsx loading...');
 
@@ -255,6 +256,21 @@ const Dashboard: React.FC = () => {
     setEditingTransaction(null);
   };
 
+  // Add this logout handler function to your Dashboard component
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      // Force redirect to login page
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error logging out:', error);
+      // Even if there's an error, redirect to login
+      window.location.href = '/';
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
@@ -285,6 +301,7 @@ const Dashboard: React.FC = () => {
         onToggle={setIsSidebarOpen}
         onPortfolioClick={() => setIsPortfolioModalOpen(true)}
         onTestingClick={() => setIsTestingModalOpen(true)}
+        onLogout={handleLogout}
       />
       
       {/* Main Content */}
