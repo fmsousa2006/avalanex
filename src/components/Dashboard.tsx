@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal, RefreshCw } from 'lucide-react';
 import { usePortfolio } from '../hooks/usePortfolio';
 import { useStockPrices } from '../hooks/useStockPrices';
@@ -59,6 +59,10 @@ const Dashboard: React.FC = () => {
     currency: string;
     fee: string;
   } | null>(null);
+
+  // Replace line 64 with a different variable name:
+  const [recentTransactions, setRecentTransactions] = useState([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(true);
 
   // Function to sync all portfolio stock prices
   const handleSyncPortfolioPrices = async () => {
@@ -269,6 +273,73 @@ const Dashboard: React.FC = () => {
       // Even if there's an error, redirect to login
       window.location.href = '/';
     }
+  };
+
+  // Add this function to fetch transactions
+  const fetchTransactions = async () => {
+    try {
+      setLoadingTransactions(true);
+      
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('Error getting user:', userError);
+        return;
+      }
+
+      // First get the user's portfolio
+      const { data: portfolioData, error: portfolioError } = await supabase
+        .from('portfolios')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (portfolioError || !portfolioData) {
+        console.error('Error fetching user portfolio:', portfolioError);
+        return;
+      }
+
+      // Now fetch transactions for the user's portfolio
+      const { data: transactionsData, error: transactionsError } = await supabase
+        .from('transactions')
+        .select(`
+          *,
+          stocks (
+            symbol,
+            name,
+            current_price
+          )
+        `)
+        .eq('portfolio_id', portfolioData.id)
+        .order('transaction_date', { ascending: false })
+        .limit(10);
+
+      if (transactionsError) {
+        console.error('Error fetching transactions:', transactionsError);
+        return;
+      }
+
+      setRecentTransactions(transactionsData || []);
+    } catch (error) {
+      console.error('Error in fetchTransactions:', error);
+    } finally {
+      setLoadingTransactions(false);
+    }
+  };
+
+  // Add this useEffect to fetch transactions when component mounts
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  // Update your existing refreshData function to also refresh transactions
+  const refreshData = async () => {
+    setLoading(true);
+    await Promise.all([
+      fetchPortfolioData(),
+      fetchTransactions() // Add this line
+    ]);
+    setLoading(false);
   };
 
   if (loading) {
@@ -544,7 +615,6 @@ const Dashboard: React.FC = () => {
               <h2 className="text-xl font-semibold">Last Transactions</h2>
               <button
                 onClick={() => setIsPortfolioModalOpen(true)}
-                disabled={!currentPortfolio && !isUsingMockData}
                 className={`p-2 rounded-lg transition-colors ${
                   !currentPortfolio && !isUsingMockData
                     ? 'bg-gray-600 cursor-not-allowed opacity-50'
@@ -555,11 +625,61 @@ const Dashboard: React.FC = () => {
                 <Plus className="w-4 h-4" />
               </button>
             </div>
-            <TransactionHistory 
-              data={currentTransactionData} 
-              onDeleteTransaction={handleDeleteTransaction}
-              onEditTransaction={handleEditTransaction}
-            />
+            {loadingTransactions ? (
+  <div className="flex items-center justify-center py-8">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-400"></div>
+  </div>
+) : recentTransactions.length > 0 ? (
+  <div className="space-y-3">
+    {recentTransactions.slice(0, 5).map((transaction, index) => (
+      <div key={transaction.id || index} className="flex justify-between items-center py-2 border-b border-gray-700 last:border-b-0">
+        <div>
+          <div className="flex items-center space-x-2">
+            <span className={`px-2 py-1 text-xs rounded ${
+              transaction.type === 'buy' 
+                ? 'bg-emerald-900 text-emerald-300' 
+                : transaction.type === 'sell'
+                ? 'bg-red-900 text-red-300'
+                : 'bg-blue-900 text-blue-300'
+            }`}>
+              {transaction.type?.toUpperCase()}
+            </span>
+            <span className="text-white font-medium">
+              {transaction.stocks?.symbol}
+            </span>
+          </div>
+          <div className="text-sm text-gray-400 mt-1">
+            {transaction.shares} shares @ ${transaction.price}
+            <span className="ml-2 text-xs">
+              {new Date(transaction.transaction_date).toLocaleDateString()}
+            </span>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-white font-medium">
+            ${transaction.amount}
+          </div>
+          <div className="text-sm text-gray-400">
+            {transaction.fee > 0 && `Fee: $${transaction.fee}`}
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+) : (
+  <div className="text-center py-8 text-gray-400">
+    <p className="mb-2">No transactions found</p>
+    <p className="text-sm">
+      Start building your portfolio by adding your first transaction.
+    </p>
+    <button
+      onClick={() => setIsPortfolioModalOpen(true)}
+      className="mt-3 px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
+    >
+      Add Transaction
+    </button>
+  </div>
+)}
           </div>
 
           {/* Dividend Tracker */}

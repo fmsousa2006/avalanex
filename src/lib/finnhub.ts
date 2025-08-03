@@ -140,58 +140,66 @@ export class FinnhubService {
       console.log(`📊 [Finnhub] Fetching historical data for ${symbol}...`);
       
       // First update current price
-      const priceUpdated = await this.updateStockPrice(symbol);
-      if (!priceUpdated) {
-        return false;
-      }
-
-      // Get stock ID from database
-      const { data: stock, error: stockError } = await supabase
-        .from('stocks')
-        .select('id')
-        .eq('symbol', symbol)
-        .single();
-
-      if (stockError || !stock) {
-        console.error(`❌ [Finnhub] Stock ${symbol} not found in database`);
-        return false;
-      }
-
-      // Generate 1-day historical data (market hours only)
-      const historicalData = this.generateMarketHoursData(symbol);
+      await this.updateStockPrice(symbol);
       
-      if (historicalData.length === 0) {
-        console.warn(`⚠️ [Finnhub] No historical data generated for ${symbol}`);
+      // Get historical data
+      const endDate = Math.floor(Date.now() / 1000);
+      const startDate = endDate - (30 * 24 * 60 * 60); // 30 days ago
+      
+      const historicalData = await this.getHistoricalData(symbol, startDate, endDate);
+      
+      if (!historicalData || !historicalData.c || historicalData.c.length === 0) {
+        console.warn(`⚠️ [Finnhub] No historical data received for ${symbol}`);
         return false;
       }
 
-      // Insert historical data into stock_prices_1d table
-      const priceRecords = historicalData.map(dataPoint => ({
-        stock_id: stock.id,
-        timestamp: dataPoint.timestamp,
-        open_price: dataPoint.open_price,
-        high_price: dataPoint.high_price,
-        low_price: dataPoint.low_price,
-        close_price: dataPoint.close_price,
-        volume: dataPoint.volume
-      }));
+      // Generate historical price records
+      const historicalRecords = [];
+      const timestamps = historicalData.t || [];
+      const closes = historicalData.c || [];
+      const opens = historicalData.o || [];
+      const highs = historicalData.h || [];
+      const lows = historicalData.l || [];
 
-      // Use upsert to avoid duplicates
-      const { error: insertError } = await supabase
-        .from('stock_prices_1d')
-        .upsert(priceRecords, {
-          onConflict: 'stock_id,timestamp'
+      for (let i = 0; i < Math.min(timestamps.length, closes.length); i++) {
+        if (timestamps[i] && closes[i]) {
+          const date = new Date(timestamps[i] * 1000).toISOString().split('T')[0];
+          
+          historicalRecords.push({
+            symbol,
+            date,
+            open: opens[i] || closes[i],
+            high: highs[i] || closes[i],
+            low: lows[i] || closes[i],
+            close: closes[i],
+            created_at: new Date().toISOString()
+          });
+        }
+      }
+
+      if (historicalRecords.length === 0) {
+        console.warn(`⚠️ [Finnhub] No valid historical records generated for ${symbol}`);
+        return false;
+      }
+
+      // Save to Supabase
+      const { error } = await supabase
+        .from('stock_prices')
+        .upsert(historicalRecords, { 
+          onConflict: 'symbol,date',
+          ignoreDuplicates: false 
         });
 
-      if (insertError) {
-        console.error(`❌ [Finnhub] Error inserting historical data for ${symbol}:`, insertError);
+      if (error) {
+        console.error(`❌ [Finnhub] Failed to save historical data for ${symbol}:`, error);
         return false;
       }
 
-      console.log(`✅ [Finnhub] Updated ${symbol} with ${historicalData.length} historical data points`);
+      console.log(`✅ [Finnhub] Saved ${historicalRecords.length} historical records for ${symbol}`);
       return true;
+
     } catch (error) {
-      console.error(`❌ [Finnhub] Error updating ${symbol} with historical data:`, error);
+      console.error(`❌ [Finnhub] Error updating historical data for ${symbol}:`, error);
       return false;
     }
   }
@@ -508,6 +516,39 @@ export class FinnhubService {
     } catch (error) {
       console.error('❌ [Test] NVDA stock sync failed:', error);
       throw error;
+    }
+  }
+
+  // Get historical data method (inside the class)
+  async getHistoricalData(symbol: string, from: number, to: number) {
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/stock/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${this.apiKey}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Check if the response indicates "no data"
+      if (data.s === 'no_data') {
+        console.warn(`⚠️ [Finnhub] No historical data available for ${symbol}`);
+        return null;
+      }
+
+      if (data.s !== 'ok') {
+        console.warn(`⚠️ [Finnhub] Historical data request failed for ${symbol}:`, data);
+        return null;
+      }
+
+      console.log(`📊 [Finnhub] Received ${data.c?.length || 0} historical data points for ${symbol}`);
+      return data;
+
+    } catch (error) {
+      console.error(`❌ [Finnhub] Error fetching historical data for ${symbol}:`, error);
+      return null;
     }
   }
 }

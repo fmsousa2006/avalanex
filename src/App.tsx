@@ -34,6 +34,16 @@ function App() {
     // Set up auth listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      
+      // Force CSS refresh when session changes
+      if (session) {
+        setTimeout(() => {
+          document.documentElement.classList.add('force-refresh');
+          setTimeout(() => {
+            document.documentElement.classList.remove('force-refresh');
+          }, 10);
+        }, 100);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -51,7 +61,7 @@ function App() {
     return <ResetPassword />;
   }
 
-  return session ? <Dashboard /> : <Login />;
+  return session ? <Dashboard key={session.user.id} /> : <Login />;
 }
 
 export default App;
