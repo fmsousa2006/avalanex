@@ -38,6 +38,11 @@ export const Dashboard = () => {
   } = usePortfolio();
 
   const { updateStockPrices, updateStockWith30DayData } = useStockPrices();
+  const { 
+    updateStockPrices, 
+    updateStockPricesWithHistoricalData,
+    autoFetch30DayDataForPortfolio: hookAutoFetch30DayData
+  } = useStockPrices();
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
@@ -49,45 +54,6 @@ export const Dashboard = () => {
 
   // Check if Finnhub is configured
   const isFinnhubConfigured = import.meta.env.VITE_FINNHUB_API_KEY;
-
-  // Auto-fetch 30-day data for portfolio stocks
-  const autoFetch30DayDataForPortfolio = async () => {
-    if (!currentPortfolio || isUsingMockData) {
-      console.log('📊 [Dashboard] Skipping auto-fetch: no portfolio or using mock data');
-      return;
-    }
-
-    try {
-      console.log('📊 [Dashboard] Auto-fetching 30-day data for portfolio stocks...');
-      
-      // Get unique symbols from current holdings
-      const symbols = holdings
-        .filter(holding => holding.stock?.symbol)
-        .map(holding => holding.stock!.symbol);
-
-      if (symbols.length === 0) {
-        console.log('📊 [Dashboard] No stocks in portfolio to fetch data for');
-        return;
-      }
-
-      console.log(`📊 [Dashboard] Fetching 30-day data for ${symbols.length} stocks:`, symbols);
-
-      // Update each stock with 30-day historical data
-      for (const symbol of symbols) {
-        try {
-          await updateStockWith30DayData(symbol);
-          // Small delay between requests to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 100));
-        } catch (error) {
-          console.error(`❌ [Dashboard] Failed to update 30d data for ${symbol}:`, error);
-        }
-      }
-
-      console.log('✅ [Dashboard] Completed auto-fetch of 30-day data');
-    } catch (error) {
-      console.error('❌ [Dashboard] Error in auto-fetch 30-day data:', error);
-    }
-  };
 
   // Sync portfolio stock prices
   const handleSyncPortfolioPrices = async () => {
@@ -113,8 +79,8 @@ export const Dashboard = () => {
 
       console.log(`Syncing portfolio stock prices: ${symbols.length} stocks:`, symbols);
       
-      // Use the hook's updateMultipleStocksWithHistoricalData method
-      await updateStockWith30DayData(symbols);
+      // Use the hook's updateStockPricesWithHistoricalData method
+      await updateStockPricesWithHistoricalData(symbols);
 
       // Refresh portfolio data to show updated prices
       if (currentPortfolio) {
@@ -136,7 +102,11 @@ export const Dashboard = () => {
     if (currentPortfolio && holdings.length > 0 && !isUsingMockData) {
       // Delay to avoid conflicts with initial loading
       const timer = setTimeout(() => {
-        autoFetch30DayDataForPortfolio();
+        const portfolioData = {
+          portfolio: currentPortfolio,
+          holdings: holdings
+        };
+        hookAutoFetch30DayData(portfolioData);
       }, 1000);
 
       return () => clearTimeout(timer);
