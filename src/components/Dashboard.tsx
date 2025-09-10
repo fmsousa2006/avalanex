@@ -40,7 +40,10 @@ export const Dashboard = () => {
   const { updateStockPrices, updateStockWith30DayData } = useStockPrices();
   const { 
     updateStockPricesWithHistoricalData,
-    autoFetch30DayDataForPortfolio: hookAutoFetch30DayData
+    autoFetch30DayDataForPortfolio: hookAutoFetch30DayData,
+    testSyncO1D,
+    testSyncNVDA1D,
+    loading
   } = useStockPrices();
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -215,6 +218,30 @@ export const Dashboard = () => {
         onTestingClick={() => setIsTestingModalOpen(true)}
         onLogout={handleLogout}
       />
+
+      {/* Testing Modal */}
+      <TestingModal
+        isOpen={isTestingModalOpen}
+        onClose={() => setIsTestingModalOpen(false)}
+        onTestO1D={async () => {
+          try {
+            await testSyncO1D();
+            console.log('✅ O stock 1D test completed');
+          } catch (error) {
+            console.error('❌ O stock 1D test failed:', error);
+          }
+        }}
+        onTestNVDA1D={async () => {
+          try {
+            await testSyncNVDA1D();
+            console.log('✅ NVDA stock 1D test completed');
+          } catch (error) {
+            console.error('❌ NVDA stock 1D test failed:', error);
+          }
+        }}
+        isLoading={loading}
+        isFinnhubConfigured={!!isFinnhubConfigured}
+      />
       
       {/* Main Content */}
       <div className="flex-1">
@@ -289,6 +316,192 @@ export const Dashboard = () => {
                   <TrendingDown className="w-8 h-8 text-red-400" />
                 )}
               </div>
+            </div>
+
+            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 text-sm">Next Dividend</p>
+                  {nextDividend ? (
+                    <>
+                      <p className="text-2xl font-bold text-blue-400">${nextDividend.totalAmount.toFixed(2)}</p>
+                      <p className="text-xs text-gray-400">{nextDividend.symbol} - {nextDividend.date}</p>
+                    </>
+                  ) : (
+                    <p className="text-lg text-gray-500">No upcoming dividends</p>
+                  )}
+                </div>
+                <Calendar className="w-8 h-8 text-blue-400" />
+              </div>
+            </div>
+
+            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 text-sm">Holdings</p>
+                  <p className="text-2xl font-bold text-white">{holdings.length}</p>
+                  <p className="text-xs text-gray-400">Active positions</p>
+                </div>
+                <PieChart className="w-8 h-8 text-purple-400" />
+              </div>
+            </div>
+          </div>
+
+          {/* Main Dashboard Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            {/* Portfolio Chart */}
+            <div className="lg:col-span-2 bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">Portfolio Allocation</h2>
+                <button
+                  onClick={() => setIsPortfolioModalOpen(true)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Transaction</span>
+                </button>
+              </div>
+              
+              {currentPortfolioData.holdings.length > 0 ? (
+                <PortfolioChart 
+                  data={currentPortfolioData.holdings.map(holding => ({
+                    symbol: holding.symbol,
+                    name: holding.name,
+                    shares: holding.shares,
+                    price: holding.currentPrice,
+                    value: holding.totalValue,
+                    cost: holding.shares * holding.averageCost,
+                    change: holding.gainLoss,
+                    changePercent: holding.gainLossPercent
+                  }))}
+                  onHover={setHoveredStock}
+                  hoveredStock={hoveredStock}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <PieChart className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                    <p className="text-gray-400 font-medium text-lg">No holdings yet</p>
+                    <p className="text-gray-500 text-sm mt-2">Add your first transaction to get started</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Stock Trends */}
+            <div>
+              <StockTrends 
+                data={currentPortfolioData.holdings.map(holding => ({
+                  symbol: holding.symbol,
+                  name: holding.name,
+                  shares: holding.shares,
+                  price: holding.currentPrice,
+                  value: holding.totalValue,
+                  cost: holding.shares * holding.averageCost,
+                  change: holding.gainLoss,
+                  changePercent: holding.gainLossPercent
+                }))}
+              />
+            </div>
+          </div>
+
+          {/* Secondary Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Dividends Received */}
+            <DividendsReceived portfolioId={currentPortfolio?.id} />
+
+            {/* Future Payments */}
+            <FuturePayments 
+              portfolioId={currentPortfolio?.id}
+              onCalendarClick={() => setIsDividendCalendarOpen(true)}
+            />
+          </div>
+
+          {/* Bottom Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Transaction History */}
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">Recent Transactions</h2>
+                <button className="text-gray-400 hover:text-white transition-colors">
+                  <MoreHorizontal className="w-5 h-5" />
+                </button>
+              </div>
+              
+              {transactions.length > 0 ? (
+                <TransactionHistory 
+                  data={transactions.slice(0, 10).map(tx => ({
+                    id: tx.id,
+                    symbol: tx.stock?.symbol || '',
+                    type: tx.type,
+                    shares: tx.shares,
+                    price: tx.price,
+                    amount: tx.amount,
+                    date: tx.transaction_date,
+                    status: tx.status
+                  }))}
+                  onDeleteTransaction={async (id) => {
+                    try {
+                      await deleteTransaction(id);
+                    } catch (error) {
+                      console.error('Failed to delete transaction:', error);
+                    }
+                  }}
+                  onEditTransaction={(id) => {
+                    const transaction = transactions.find(tx => tx.id === id);
+                    if (transaction) {
+                      // Handle edit transaction
+                      console.log('Edit transaction:', transaction);
+                    }
+                  }}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <Activity className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                    <p className="text-gray-400 font-medium text-lg">No transactions yet</p>
+                    <p className="text-gray-500 text-sm mt-2">Your transaction history will appear here</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Dividend Tracker */}
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">Dividend Tracker</h2>
+                <button 
+                  onClick={() => setIsDividendCalendarOpen(true)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <Calendar className="w-5 h-5" />
+                </button>
+              </div>
+              
+              {dividends.length > 0 ? (
+                <DividendTracker 
+                  data={dividends.map(div => ({
+                    id: div.id,
+                    symbol: div.stock?.symbol || '',
+                    name: div.stock?.name || '',
+                    amount: div.amount,
+                    date: div.payment_date,
+                    exDividendDate: div.ex_dividend_date,
+                    paymentDate: div.payment_date,
+                    yield: div.dividend_yield || 0,
+                    frequency: div.frequency,
+                    status: div.status
+                  }))}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <DollarSign className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                    <p className="text-gray-400 font-medium text-lg">No dividends tracked</p>
+                    <p className="text-gray-500 text-sm mt-2">Dividend information will appear here</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </main>
