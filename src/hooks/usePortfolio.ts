@@ -423,6 +423,7 @@ export const usePortfolio = () => {
         console.error('Error during initialization:', error);
         createMockPortfolio();
       }
+        setLoading(false);
     };
 
     initializeData();

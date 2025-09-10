@@ -3,7 +3,7 @@ import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Ac
 import { usePortfolio } from '../hooks/usePortfolio';
 import { useStockPrices } from '../hooks/useStockPrices';
 import PortfolioChart from './PortfolioChart';
-import StockTrends from './StockTrends';
+import { StockTrends } from './StockTrends';
 import TransactionHistory from './TransactionHistory';
 import DividendTracker from './DividendTracker';
 import DividendCalendar from './DividendCalendar';
