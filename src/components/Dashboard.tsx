@@ -218,25 +218,85 @@ export const Dashboard = () => {
   // Add the missing handleSaveTransaction function
   const handleSaveTransaction = async (transactionData: any) => {
     try {
+      console.log('Saving transaction:', transactionData);
+      
       if (editTransaction) {
         // Update existing transaction
-        await updateTransaction(editTransaction.id, transactionData);
+        console.log('Updating transaction with ID:', editTransaction.id);
+        await updateTransaction(editTransaction.id, {
+          type: transactionData.operation,
+          shares: parseInt(transactionData.shares),
+          price: parseFloat(transactionData.price),
+          amount: parseInt(transactionData.shares) * parseFloat(transactionData.price),
+          fee: parseFloat(transactionData.fee || '0'),
+          currency: transactionData.currency,
+          transaction_date: transactionData.date,
+          status: 'completed'
+        });
       } else {
         // Add new transaction
-        await addTransaction(transactionData);
+        console.log('Adding new transaction');
+        
+        // First, ensure the stock exists in the database
+        const { data: existingStock, error: stockFetchError } = await supabase
+          .from('stocks')
+          .select('id')
+          .eq('symbol', transactionData.ticker)
+          .maybeSingle();
+
+        let stockId;
+        if (existingStock) {
+          stockId = existingStock.id;
+        } else {
+          // Create new stock entry
+          const { data: newStock, error: stockCreateError } = await supabase
+            .from('stocks')
+            .insert([{ 
+              symbol: transactionData.ticker, 
+              name: `${transactionData.ticker} Inc.`,
+              current_price: parseFloat(transactionData.price)
+            }])
+            .select('id')
+            .single();
+
+          if (stockCreateError) {
+            console.error('Error creating stock:', stockCreateError);
+            throw stockCreateError;
+          }
+          stockId = newStock.id;
+        }
+
+        await addTransaction({
+          portfolio_id: currentPortfolio!.id,
+          stock_id: stockId,
+          type: transactionData.operation,
+          shares: parseInt(transactionData.shares),
+          price: parseFloat(transactionData.price),
+          amount: parseInt(transactionData.shares) * parseFloat(transactionData.price),
+          fee: parseFloat(transactionData.fee || '0'),
+          currency: transactionData.currency,
+          transaction_date: transactionData.date,
+          status: 'completed'
+        });
       }
       
-      // Refresh data
+      console.log('Transaction saved, refreshing data...');
+      
+      // Force refresh all data
       if (currentPortfolio) {
         await fetchHoldings(currentPortfolio.id);
         await fetchTransactions(currentPortfolio.id);
+        await fetchRecentTransactions();
       }
+      
+      console.log('Data refreshed successfully');
       
       // Close modal and reset edit state
       setIsPortfolioModalOpen(false);
       setEditTransaction(null);
     } catch (error) {
       console.error('Failed to save transaction:', error);
+      alert('Failed to save transaction. Please try again.');
     }
   };
 
