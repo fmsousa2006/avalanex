@@ -92,7 +92,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
   // Fetch real data for multiple symbols
   const fetchReal30DayDataForSymbols = async (symbols: string[]) => {
     if (!isSupabaseEnvConfigured()) {
-      console.log('📊 [StockTrends] Supabase not configured, using mock data');
+      console.log('📊 [StockTrends] Supabase not configured, showing empty state');
       return;
     }
 

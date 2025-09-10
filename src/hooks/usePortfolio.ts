@@ -565,13 +565,15 @@ export const usePortfolio = () => {
         
         if (error) {
           console.error('Error getting user:', error);
-          createMockPortfolio();
+          // Don't create mock portfolio if user authentication fails
+          // Let the app handle authentication properly
           return;
         }
 
         if (!user) {
           console.warn('No authenticated user found, using mock data');
-          createMockPortfolio();
+          // Don't create mock portfolio if no user
+          // Let the app handle authentication properly
           return;
         }
 
@@ -579,7 +581,8 @@ export const usePortfolio = () => {
         await fetchPortfolios();
       } catch (error) {
         console.error('Error during initialization:', error);
-        createMockPortfolio();
+        // Don't fallback to mock data on errors
+        setError(error instanceof Error ? error.message : 'Failed to initialize portfolio');
       } finally {
         setLoading(false);
       }
@@ -588,11 +591,50 @@ export const usePortfolio = () => {
 
   // Fetch related data when current portfolio changes
   useEffect(() => {
-    if (currentPortfolio && !isUsingMockData) {
+    if (currentPortfolio) {
+      console.log('📊 [usePortfolio] Fetching data for portfolio:', currentPortfolio.id);
       fetchHoldings(currentPortfolio.id);
       fetchTransactions(currentPortfolio.id);
+      
+      // Also fetch dividends for the portfolio
+      const fetchDividends = async (portfolioId: string) => {
+        try {
+          // Get all stocks in the portfolio first
+          const { data: holdings, error: holdingsError } = await supabase
+            .from('portfolio_holdings')
+            .select('stock_id')
+            .eq('portfolio_id', portfolioId);
+
+          if (holdingsError || !holdings || holdings.length === 0) {
+            setDividends([]);
+            return;
+          }
+
+          const stockIds = holdings.map(h => h.stock_id);
+
+          const { data, error } = await supabase
+            .from('dividends')
+            .select(`
+              *,
+              stock:stocks(*)
+            `)
+            .in('stock_id', stockIds);
+
+          if (error) {
+            console.error('Error fetching dividends:', error);
+            setDividends([]);
+            return;
+          }
+          
+          setDividends(data || []);
+        } catch (error) {
+          console.error('Error fetching dividends:', error);
+          setDividends([]);
+        }
+      };
+      
+      fetchDividends(currentPortfolio.id);
     }
-  }, [currentPortfolio, isUsingMockData]);
 
   // Calculate derived data when holdings or dividends change
   useEffect(() => {

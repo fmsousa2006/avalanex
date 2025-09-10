@@ -66,13 +66,10 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
     const supabaseConfigured = isSupabaseEnvConfigured();
     
     if (!supabaseConfigured) {
-      console.log('📊 [FutureDividends] Using mock data');
-      const mockData = generateMockData();
-      setMonthlyDividends(mockData);
-      
-      const total = mockData.reduce((sum, month) => sum + month.amount, 0);
-      setNext12MonthsTotal(total);
-      setMonthlyAverage(total / 12);
+      console.log('📊 [FutureDividends] Supabase not configured, showing empty state');
+      setMonthlyDividends([]);
+      setNext12MonthsTotal(0);
+      setMonthlyAverage(0);
       setLoading(false);
       return;
     }
