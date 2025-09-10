@@ -259,13 +259,39 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
             </div>
           );
         })}
+    // Check if API key is configured
+    const apiKey = import.meta.env.VITE_FINNHUB_API_KEY;
+    if (!apiKey || apiKey === 'your-finnhub-api-key-here') {
+      console.warn(`⚠️ [StockTrends] Finnhub API key not configured, using mock data for ${symbol}`);
+      return null;
+    }
+
       </div>
       
       {top3Holdings.length === 0 && (
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
         <div className="text-center py-8 text-gray-400">
+    
+    if (data.s === 'no_data') {
+      console.warn(`⚠️ [StockTrends] No data available for ${symbol}`);
+      return null;
+    }
+    if (data && data.c && data.c.length > 0) {
           <p>No holdings to display</p>
+    } else {
+      // Use mock data as fallback
+      console.log(`📊 [StockTrends] Using mock data for ${symbol}`);
+      const mockData = generateMockStockData();
+      results[symbol] = {
+        c: mockData.map(d => d.close),
+        t: mockData.map(d => Math.floor(new Date(d.date).getTime() / 1000))
+      };
         </div>
-      )}
+    console.warn(`⚠️ [StockTrends] Error fetching 30d data for ${symbol}, falling back to mock data:`, error);
     </div>
   );
 };
