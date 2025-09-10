@@ -434,11 +434,13 @@ export const Dashboard = () => {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold">Recent Transactions</h2>
                 <button 
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     console.log('Menu button clicked');
                     setIsPortfolioModalOpen(true);
                   }}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
                   title="Add Transaction"
                 >
                   <MoreHorizontal className="w-5 h-5" />
