@@ -154,9 +154,9 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg font-semibold text-gray-900">Top 3 Holdings (30 Days)</h2>
+        <h2 className="text-lg font-semibold text-white">Top 3 Holdings (30 Days)</h2>
         {isLoadingRealData && (
           <div className="text-sm text-blue-600">Loading real data...</div>
         )}
@@ -173,21 +173,21 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
           const priceRange = maxPrice - minPrice;
           
           return (
-            <div key={stock.symbol} className="border-b border-gray-100 last:border-b-0 pb-6 last:pb-0">
+            <div key={stock.symbol} className="border-b border-gray-600 last:border-b-0 pb-6 last:pb-0">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-3">
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium text-gray-900">{stock.symbol}</span>
+                    <span className="text-sm font-medium text-white">{stock.symbol}</span>
                     {hasRealData && (
                       <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
                         Real Data
                       </span>
                     )}
                   </div>
-                  <span className="text-sm text-gray-500">{stock.name}</span>
+                  <span className="text-sm text-gray-400">{stock.name}</span>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-medium text-gray-900">
+                  <div className="text-sm font-medium text-white">
                     {formatCurrency(stock.price)}
                   </div>
                   <div className={`text-xs ${stock.changePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -197,22 +197,37 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
               </div>
               
               {/* Mini Chart */}
-              <div className="h-12 relative">
-                <svg width="100%" height="100%" className="overflow-visible">
+              <div className="h-16 relative bg-gray-750 rounded-lg p-2">
+                <svg width="100%" height="100%" className="overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <polyline
                     fill="none"
                     stroke={stock.changePercent >= 0 ? "#10b981" : "#ef4444"}
-                    strokeWidth="1.5"
+                    strokeWidth="2"
                     points={trendData.map((price, i) => {
                       const x = (i / (trendData.length - 1)) * 100;
                       const y = priceRange > 0 ? ((maxPrice - price) / priceRange) * 100 : 50;
                       return `${x},${y}`;
                     }).join(' ')}
                   />
+                  {/* Add gradient fill under the line */}
+                  <defs>
+                    <linearGradient id={`gradient-${stock.symbol}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor={stock.changePercent >= 0 ? "#10b981" : "#ef4444"} stopOpacity="0.3"/>
+                      <stop offset="100%" stopColor={stock.changePercent >= 0 ? "#10b981" : "#ef4444"} stopOpacity="0.05"/>
+                    </linearGradient>
+                  </defs>
+                  <polygon
+                    fill={`url(#gradient-${stock.symbol})`}
+                    points={`${trendData.map((price, i) => {
+                      const x = (i / (trendData.length - 1)) * 100;
+                      const y = priceRange > 0 ? ((maxPrice - price) / priceRange) * 100 : 50;
+                      return `${x},${y}`;
+                    }).join(' ')} 100,100 0,100`}
+                  />
                 </svg>
               </div>
               
-              <div className="flex justify-between text-xs text-gray-500 mt-2">
+              <div className="flex justify-between text-xs text-gray-400 mt-2">
                 <span>{stock.shares} shares</span>
                 <span>{formatCurrency(stock.value)} total</span>
               </div>
@@ -222,7 +237,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
       </div>
       
       {top3Holdings.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-gray-400">
           <p>No holdings to display</p>
         </div>
       )}
