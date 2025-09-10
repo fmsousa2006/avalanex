@@ -232,9 +232,9 @@ export const Dashboard = () => {
   }
 
   const currentPortfolioData = getPortfolioData();
-  const totalValue = currentPortfolioData.reduce((sum, holding) => sum + holding.totalValue, 0);
-  const totalChange = currentPortfolioData.reduce((sum, holding) => sum + holding.totalChange, 0);
-  const totalChangePercent = totalValue > 0 ? (totalChange / (totalValue - totalChange)) * 100 : 0;
+  const totalValue = currentPortfolioData.totalValue;
+  const totalChange = currentPortfolioData.totalGainLoss;
+  const totalChangePercent = currentPortfolioData.totalGainLossPercent;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex">

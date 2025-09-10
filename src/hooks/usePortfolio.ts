@@ -401,7 +401,7 @@ export const usePortfolio = () => {
 
   // Initialize data
   useEffect(() => {
-    const initializeData = async () => {
+    (async () => {
       try {
         setLoading(true);
         
@@ -437,9 +437,7 @@ export const usePortfolio = () => {
       } finally {
         setLoading(false);
       }
-    };
-
-    initializeData();
+    })();
   }, []);
 
   // Fetch related data when current portfolio changes
