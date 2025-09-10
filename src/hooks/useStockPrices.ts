@@ -233,14 +233,14 @@ export const useStockPrices = () => {
   }, [isSupabaseConfigured, isConfigured, finnhubApiKey]);
 
   // Auto-fetch 30-day data for portfolio stocks
-  const autoFetch30DayDataForPortfolio = useCallback(async (portfolioData: Array<{ symbol: string }>) => {
+  const autoFetch30DayDataForPortfolio = useCallback(async (portfolioData: { holdings: Array<{ stock?: { symbol: string } }> }) => {
     if (!isSupabaseConfigured || !isConfigured || portfolioData.length === 0) {
       return { success: [], failed: [] };
     }
 
     console.log('🔄 [Dashboard] Auto-fetching 30-day historical data for portfolio stocks...');
     
-    const symbols = portfolioData.map(stock => stock.symbol);
+    const symbols = portfolioData.holdings.map(holding => holding.stock?.symbol).filter(Boolean) as string[];
     return await updateStockPricesWithHistoricalData(symbols);
   }, [updateStockPricesWithHistoricalData, isSupabaseConfigured, isConfigured]);
 
