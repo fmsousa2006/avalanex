@@ -249,7 +249,6 @@ export const useStockPrices = () => {
     if (!isConfigured) {
       throw new Error('Finnhub API key not configured');
     }
-<<<<<<< HEAD
     setLoading(true);
     try {
       const finnhub = createFinnhubService(finnhubApiKey);
@@ -279,6 +278,7 @@ export const useStockPrices = () => {
     } finally {
       setLoading(false);
     }
+  }, [isConfigured, finnhubApiKey]);
 
   return {
     loading,
