@@ -139,6 +139,17 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
     return { data: mockData, isReal: false };
   };
 
+  // Calculate real change percentage from 30-day data
+  const calculateRealChangePercent = (symbol: string, currentPrice: number): number => {
+    if (realPriceData[symbol] && realPriceData[symbol].length > 1) {
+      const firstPrice = realPriceData[symbol][0];
+      const lastPrice = realPriceData[symbol][realPriceData[symbol].length - 1];
+      return ((lastPrice - firstPrice) / firstPrice) * 100;
+    }
+    // Fallback to portfolio data change percent if no real data
+    return 0;
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -166,6 +177,16 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
         {top3Holdings.map((stock, index) => {
           const { data: trendData, isReal: hasRealData } = getTrendData(stock.symbol, stock.price);
           
+          // Use real change percentage if we have real data, otherwise use portfolio data
+          const displayChangePercent = hasRealData 
+            ? calculateRealChangePercent(stock.symbol, stock.price)
+            : stock.changePercent;
+          
+          // Use real current price if available (last price from real data)
+          const displayPrice = hasRealData && realPriceData[stock.symbol] && realPriceData[stock.symbol].length > 0
+            ? realPriceData[stock.symbol][realPriceData[stock.symbol].length - 1]
+            : stock.price;
+          
           // Calculate min and max for scaling
           const minPrice = Math.min(...trendData);
           const maxPrice = Math.max(...trendData);
@@ -192,10 +213,10 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                 </div>
                 <div className="text-right">
                   <div className="text-base font-semibold text-white">
-                    {formatCurrency(stock.price)}
+                    {formatCurrency(displayPrice)}
                   </div>
-                  <div className={`text-sm font-medium ${stock.changePercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {formatPercentage(stock.changePercent)}
+                  <div className={`text-sm font-medium ${displayChangePercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {formatPercentage(displayChangePercent)}
                   </div>
                 </div>
               </div>
@@ -205,7 +226,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                 <svg width="100%" height="100%" className="overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <polyline
                     fill="none"
-                    stroke={stock.changePercent >= 0 ? "#10b981" : "#ef4444"}
+                    stroke={displayChangePercent >= 0 ? "#10b981" : "#ef4444"}
                     strokeWidth="2"
                     points={trendData.map((price, i) => {
                       const x = (i / (trendData.length - 1)) * 100;
@@ -216,8 +237,8 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                   {/* Add gradient fill under the line */}
                   <defs>
                     <linearGradient id={`gradient-${stock.symbol}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor={stock.changePercent >= 0 ? "#10b981" : "#ef4444"} stopOpacity="0.3"/>
-                      <stop offset="100%" stopColor={stock.changePercent >= 0 ? "#10b981" : "#ef4444"} stopOpacity="0.05"/>
+                      <stop offset="0%" stopColor={displayChangePercent >= 0 ? "#10b981" : "#ef4444"} stopOpacity="0.3"/>
+                      <stop offset="100%" stopColor={displayChangePercent >= 0 ? "#10b981" : "#ef4444"} stopOpacity="0.05"/>
                     </linearGradient>
                   </defs>
                   <polygon
@@ -233,7 +254,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
               
               <div className="flex justify-between text-xs text-gray-400 mt-2">
                 <span>{stock.shares} shares</span>
-                <span>{formatCurrency(stock.value)} total</span>
+                <span>{formatCurrency(displayPrice * stock.shares)} total</span>
               </div>
             </div>
           );
