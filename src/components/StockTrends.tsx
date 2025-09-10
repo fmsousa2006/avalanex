@@ -38,19 +38,15 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
       return [];
     }
 
-    // Test Supabase connection first
-    try {
-      const { error: connectionError } = await supabase
-        .from('stocks')
-        .select('id')
-        .limit(1);
-
-      if (connectionError) {
-        console.warn(`⚠️ [StockTrends] Supabase connection failed for ${symbol}:`, connectionError.message);
-        return [];
-      }
-    } catch (error) {
-      console.warn(`⚠️ [StockTrends] Network error connecting to Supabase for ${symbol}:`, error);
+    // Check if Supabase is properly configured
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    if (!supabaseUrl || !supabaseKey || 
+        supabaseUrl === 'https://your-project-ref.supabase.co' || 
+        supabaseKey === 'your-anon-key-here' ||
+        supabaseUrl.includes('your-project-ref')) {
+      console.warn('⚠️ [StockTrends] Supabase not configured properly, using mock data');
       return [];
     }
 
@@ -82,13 +78,13 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
       if (priceData && priceData.length > 0) {
         const prices = priceData.map(d => parseFloat(d.close_price));
         console.log(`✅ [StockTrends] Loaded ${priceData.length} data points for ${symbol}`);
-        return prices;
+        console.warn(`⚠️ [StockTrends] Database error for ${symbol}:`, error.message);
       } else {
         console.warn(`⚠️ [StockTrends] No 30d data found for ${symbol}`);
         return [];
       }
     } catch (error) {
-      console.warn(`⚠️ [StockTrends] Network/connection error for ${symbol}:`, error);
+      console.warn(`⚠️ [StockTrends] Network error for ${symbol}:`, error);
       return [];
     }
   };
