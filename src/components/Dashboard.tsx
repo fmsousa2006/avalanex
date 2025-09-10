@@ -197,6 +197,24 @@ export const Dashboard = () => {
     fetchRecentTransactions();
   }, []);
 
+  // Handle editing a transaction
+  const handleEditTransaction = (id: string) => {
+    const transaction = transactions.find(tx => tx.id === id);
+    if (!transaction) return;
+
+    setEditTransaction({
+      id: transaction.id,
+      ticker: transaction.stock?.symbol || '',
+      operation: transaction.type as 'buy' | 'sell',
+      date: transaction.transaction_date,
+      shares: transaction.shares?.toString() || '0',
+      price: transaction.price?.toString() || '0',
+      currency: transaction.currency || 'USD',
+      fee: transaction.fee?.toString() || '0'
+    });
+    setIsPortfolioModalOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
