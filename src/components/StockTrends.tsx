@@ -259,13 +259,21 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
             </div>
           );
         })}
-        
-        {top3Holdings.length === 0 && (
-          <div className="text-center py-8 text-gray-400">
-            <p>No holdings to display</p>
-          </div>
-        )}
+        {/* Check if API key is configured */}
+        {(() => {
+          const apiKey = import.meta.env.VITE_FINNHUB_API_KEY;
+          if (!apiKey || apiKey === 'your-finnhub-api-key-here') {
+            console.warn(`⚠️ [StockTrends] Finnhub API key not configured, using mock data`);
+            return null;
+          }
+        })()}
       </div>
+      
+      {top3Holdings.length === 0 && (
+        <div className="text-center py-8 text-gray-400">
+          <p>No holdings to display</p>
+        </div>
+      )}
     </div>
   );
 };
