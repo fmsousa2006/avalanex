@@ -14,27 +14,6 @@ interface StockTrendsProps {
   }>;
 }
 
-// Generate mock stock data for fallback
-const generateMockStockData = () => {
-  const data = [];
-  const basePrice = 150 + Math.random() * 100;
-  
-  for (let i = 29; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    
-    const variation = (Math.random() - 0.5) * 10;
-    const price = Math.max(basePrice + variation, 1);
-    
-    data.push({
-      date: date.toISOString().split('T')[0],
-      close: parseFloat(price.toFixed(2))
-    });
-  }
-  
-  return data;
-};
-
 export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
   const [realPriceData, setRealPriceData] = useState<{ [symbol: string]: number[] }>({});
   const [isLoadingRealData, setIsLoadingRealData] = useState(false);
@@ -280,39 +259,13 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
             </div>
           );
         })}
-    // Check if API key is configured
-    const apiKey = import.meta.env.VITE_FINNHUB_API_KEY;
-    if (!apiKey || apiKey === 'your-finnhub-api-key-here') {
-      console.warn(`⚠️ [StockTrends] Finnhub API key not configured, using mock data for ${symbol}`);
-      return null;
-    }
-
+        
+        {top3Holdings.length === 0 && (
+          <div className="text-center py-8 text-gray-400">
+            <p>No holdings to display</p>
+          </div>
+        )}
       </div>
-      
-      {top3Holdings.length === 0 && (
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-        <div className="text-center py-8 text-gray-400">
-    
-    if (data.s === 'no_data') {
-      console.warn(`⚠️ [StockTrends] No data available for ${symbol}`);
-      return null;
-    }
-    if (data && data.c && data.c.length > 0) {
-          <p>No holdings to display</p>
-    } else {
-      // Use mock data as fallback
-      console.log(`📊 [StockTrends] Using mock data for ${symbol}`);
-      const mockData = generateMockStockData();
-      results[symbol] = {
-        c: mockData.map(d => d.close),
-        t: mockData.map(d => Math.floor(new Date(d.date).getTime() / 1000))
-      };
-        </div>
-    console.warn(`⚠️ [StockTrends] Error fetching 30d data for ${symbol}, falling back to mock data:`, error);
     </div>
   );
 };
