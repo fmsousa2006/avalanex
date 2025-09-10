@@ -43,7 +43,7 @@ export const Dashboard = () => {
     autoFetch30DayDataForPortfolio: hookAutoFetch30DayData,
     testSyncO1D,
     testSyncNVDA1D,
-    loading
+    loading: stockPricesLoading
   } = useStockPrices();
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -239,7 +239,7 @@ export const Dashboard = () => {
             console.error('❌ NVDA stock 1D test failed:', error);
           }
         }}
-        isLoading={loading}
+        isLoading={stockPricesLoading}
         isFinnhubConfigured={!!isFinnhubConfigured}
       />
       
