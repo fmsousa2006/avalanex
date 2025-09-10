@@ -300,6 +300,11 @@ export const Dashboard = () => {
                   !currentPortfolio ? 'No portfolio selected' :
                   isUsingMockData ? 'Cannot sync mock data' :
                   'Sync stock prices with Finnhub'
+                }
+              >
+                <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span>{isSyncing ? 'Syncing...' : 'Sync Prices'}</span>
+              </button>
               <button
                 onClick={() => {
                   console.log('Menu button clicked - opening portfolio modal');
@@ -555,6 +560,25 @@ export const Dashboard = () => {
           </div>
         </main>
       </div>
+
+      {/* Portfolio Modal */}
+      <PortfolioModal
+        isOpen={isPortfolioModalOpen}
+        onClose={() => {
+          setIsPortfolioModalOpen(false);
+          setEditTransaction(null);
+        }}
+        onAddTransaction={addTransaction}
+        onUpdateTransaction={updateTransaction}
+        editTransaction={editTransaction}
+      />
+
+      {/* Dividend Calendar Modal */}
+      <DividendCalendar
+        isOpen={isDividendCalendarOpen}
+        onClose={() => setIsDividendCalendarOpen(false)}
+        portfolioId={currentPortfolio?.id}
+      />
     </div>
   );
 };
