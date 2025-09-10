@@ -458,11 +458,7 @@ export const Dashboard = () => {
                     }
                   }}
                   onEditTransaction={(id) => {
-                    const transaction = transactions.find(tx => tx.id === id);
-                    if (transaction) {
-                      // Handle edit transaction
-                      console.log('Edit transaction:', transaction);
-                    }
+                    handleEditTransaction(id);
                   }}
                 />
               ) : (
