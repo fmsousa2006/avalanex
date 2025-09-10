@@ -434,7 +434,10 @@ export const Dashboard = () => {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold">Recent Transactions</h2>
                 <button 
-                  onClick={() => setIsPortfolioModalOpen(true)}
+                  onClick={() => {
+                    console.log('Menu button clicked');
+                    setIsPortfolioModalOpen(true);
+                  }}
                   className="text-gray-400 hover:text-white transition-colors"
                   title="Add Transaction"
                 >
