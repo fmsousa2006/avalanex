@@ -253,6 +253,132 @@ export const usePortfolio = () => {
     }
   };
 
+  // Update portfolio holdings based on transaction
+  const updatePortfolioHoldings = async (transaction: Omit<Transaction, 'id' | 'created_at'>) => {
+    try {
+      // Check if holding already exists
+      const { data: existingHolding, error: holdingError } = await supabase
+        .from('portfolio_holdings')
+        .select('*')
+        .eq('portfolio_id', transaction.portfolio_id)
+        .eq('stock_id', transaction.stock_id)
+        .maybeSingle();
+
+      if (holdingError && holdingError.code !== 'PGRST116') {
+        throw holdingError;
+      }
+
+      if (existingHolding) {
+        // Update existing holding
+        const newShares = transaction.type === 'buy' 
+          ? existingHolding.shares + (transaction.shares || 0)
+          : existingHolding.shares - (transaction.shares || 0);
+        
+        const newAverageCost = transaction.type === 'buy'
+          ? ((existingHolding.shares * existingHolding.average_cost) + (transaction.amount || 0)) / newShares
+          : existingHolding.average_cost;
+
+        const { error: updateError } = await supabase
+          .from('portfolio_holdings')
+          .update({
+            shares: Math.max(0, newShares),
+            average_cost: newAverageCost,
+            current_price: transaction.price || existingHolding.current_price,
+            last_updated: new Date().toISOString()
+          })
+          .eq('id', existingHolding.id);
+
+        if (updateError) throw updateError;
+      } else if (transaction.type === 'buy') {
+        // Create new holding for buy transactions
+        const { error: insertError } = await supabase
+          .from('portfolio_holdings')
+          .insert([{
+            portfolio_id: transaction.portfolio_id,
+            stock_id: transaction.stock_id,
+            shares: transaction.shares || 0,
+            average_cost: transaction.price || 0,
+            current_price: transaction.price || 0,
+            last_updated: new Date().toISOString()
+          }]);
+
+        if (insertError) throw insertError;
+      }
+    } catch (error) {
+      console.error('Error updating portfolio holdings:', error);
+    }
+  };
+
+  // Recalculate all portfolio holdings
+  const recalculatePortfolioHoldings = async (portfolioId: string) => {
+    try {
+      // Get all transactions for this portfolio
+      const { data: allTransactions, error: transError } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('portfolio_id', portfolioId)
+        .in('type', ['buy', 'sell'])
+        .order('transaction_date', { ascending: true });
+
+      if (transError) throw transError;
+
+      // Clear existing holdings
+      const { error: clearError } = await supabase
+        .from('portfolio_holdings')
+        .delete()
+        .eq('portfolio_id', portfolioId);
+
+      if (clearError) throw clearError;
+
+      // Recalculate holdings from transactions
+      const holdingsMap = new Map();
+
+      allTransactions?.forEach(tx => {
+        const key = tx.stock_id;
+        if (!holdingsMap.has(key)) {
+          holdingsMap.set(key, {
+            portfolio_id: portfolioId,
+            stock_id: tx.stock_id,
+            shares: 0,
+            total_cost: 0,
+            current_price: tx.price || 0
+          });
+        }
+
+        const holding = holdingsMap.get(key);
+        if (tx.type === 'buy') {
+          holding.shares += tx.shares || 0;
+          holding.total_cost += tx.amount || 0;
+        } else if (tx.type === 'sell') {
+          holding.shares -= tx.shares || 0;
+          // Reduce total cost proportionally
+          const sellRatio = (tx.shares || 0) / (holding.shares + (tx.shares || 0));
+          holding.total_cost *= (1 - sellRatio);
+        }
+        holding.current_price = tx.price || holding.current_price;
+      });
+
+      // Insert recalculated holdings
+      const holdingsToInsert = Array.from(holdingsMap.values())
+        .filter(holding => holding.shares > 0)
+        .map(holding => ({
+          ...holding,
+          average_cost: holding.total_cost / holding.shares,
+          last_updated: new Date().toISOString()
+        }));
+
+      if (holdingsToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from('portfolio_holdings')
+          .insert(holdingsToInsert);
+
+        if (insertError) throw insertError;
+      }
+    } catch (error) {
+      console.error('Error recalculating portfolio holdings:', error);
+    }
+  };
+
   // Add transaction
   const addTransaction = async (transaction: Omit<Transaction, 'id' | 'created_at'>) => {
     try {
