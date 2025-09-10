@@ -186,4 +186,6 @@ export const usePortfolio = () => {
       if (!user) {
         throw new Error('No authenticated user');
       }
-};
+    };
+  }
+}
