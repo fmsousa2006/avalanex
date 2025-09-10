@@ -44,12 +44,21 @@ export const usePortfolio = () => {
     const url = import.meta.env.VITE_SUPABASE_URL;
     const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
     
-    return url && 
-           key && 
-           url !== 'https://your-project-ref.supabase.co' &&
-           url !== 'https://placeholder.supabase.co' &&
-           key !== 'your-anon-key-here' &&
-           key !== 'placeholder-anon-key';
+    const isConfigured = url && 
+                        key && 
+                        url !== 'https://your-project-ref.supabase.co' &&
+                        url !== 'https://placeholder.supabase.co' &&
+                        key !== 'your-anon-key-here' &&
+                        key !== 'placeholder-anon-key' &&
+                        !url.includes('your-project-ref');
+    
+    console.log('🔧 [usePortfolio] Supabase configuration check:', {
+      url: url ? `${url.substring(0, 20)}...` : 'missing',
+      key: key ? `${key.substring(0, 10)}...` : 'missing',
+      isConfigured
+    });
+    
+    return isConfigured;
   };
 
   // Get current user
@@ -134,6 +143,13 @@ export const usePortfolio = () => {
       }
     }));
 
+    console.log('📊 [usePortfolio] Creating mock portfolio with data:', {
+      portfolio: mockPortfolio,
+      holdings: mockHoldings.length,
+      transactions: mockTransactions.length,
+      dividends: mockDividends.length
+    });
+
     setPortfolios([mockPortfolio]);
     setCurrentPortfolio(prev => {
       if (!prev || prev.id !== mockPortfolio.id) {
@@ -150,6 +166,7 @@ export const usePortfolio = () => {
     setTransactions(mockTransactions);
     setDividends(mockDividends);
     setIsUsingMockData(true);
+    setIsSupabaseConfiguredForRealData(false);
   };
 
   // Create default portfolio for new users
@@ -540,7 +557,6 @@ export const usePortfolio = () => {
         if (!isSupabaseEnvConfigured()) {
           console.log('Supabase not configured, using mock data');
           createMockPortfolio();
-          setLoading(false);
           return;
         }
 
@@ -550,14 +566,12 @@ export const usePortfolio = () => {
         if (error) {
           console.error('Error getting user:', error);
           createMockPortfolio();
-          setLoading(false);
           return;
         }
 
         if (!user) {
           console.warn('No authenticated user found, using mock data');
           createMockPortfolio();
-          setLoading(false);
           return;
         }
 
