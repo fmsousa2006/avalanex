@@ -14,6 +14,27 @@ interface StockTrendsProps {
   }>;
 }
 
+// Generate mock stock data for fallback
+const generateMockStockData = () => {
+  const data = [];
+  const basePrice = 150 + Math.random() * 100;
+  
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    
+    const variation = (Math.random() - 0.5) * 10;
+    const price = Math.max(basePrice + variation, 1);
+    
+    data.push({
+      date: date.toISOString().split('T')[0],
+      close: parseFloat(price.toFixed(2))
+    });
+  }
+  
+  return data;
+};
+
 export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
   const [realPriceData, setRealPriceData] = useState<{ [symbol: string]: number[] }>({});
   const [isLoadingRealData, setIsLoadingRealData] = useState(false);
