@@ -307,6 +307,7 @@ export const Dashboard = () => {
               >
                 <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
                 <span>{isSyncing ? 'Syncing...' : 'Sync Prices'}</span>
+              </button>
               <button
                 onClick={() => {
                   console.log('Menu button clicked - opening portfolio modal');
@@ -570,8 +571,8 @@ export const Dashboard = () => {
           setIsPortfolioModalOpen(false);
           setEditTransaction(null);
         }}
-        onAddTransaction={handleSaveTransaction}
-        onUpdateTransaction={handleSaveTransaction}
+        onAddTransaction={addTransaction}
+        onUpdateTransaction={updateTransaction}
         editTransaction={editTransaction}
       />
 
