@@ -402,28 +402,42 @@ export const usePortfolio = () => {
   // Initialize data
   useEffect(() => {
     const initializeData = async () => {
-      if (!isSupabaseEnvConfigured()) {
-        console.log('Supabase not configured, using mock data');
-        createMockPortfolio();
-        return;
-      }
-
       try {
-        // Try to sign in anonymously
-        const { data: { user }, error } = await supabase.auth.signInAnonymously();
+        setLoading(true);
         
-        if (error || !user) {
-          console.warn('Failed to create anonymous user, using mock data');
+        if (!isSupabaseEnvConfigured()) {
+          console.log('Supabase not configured, using mock data');
           createMockPortfolio();
+          setLoading(false);
           return;
         }
 
+        // Get current authenticated user (don't sign in anonymously)
+        const { data: { user }, error } = await supabase.auth.getUser();
+        
+        if (error) {
+          console.error('Error getting user:', error);
+          createMockPortfolio();
+          setLoading(false);
+          return;
+        }
+
+        if (!user) {
+          console.warn('No authenticated user found, using mock data');
+          createMockPortfolio();
+          setLoading(false);
+          return;
+        }
+
+        console.log('Authenticated user found, fetching portfolios...');
         await fetchPortfolios();
       } catch (error) {
         console.error('Error during initialization:', error);
         createMockPortfolio();
+      } finally {
       }
         setLoading(false);
+      }
     };
 
     initializeData();
