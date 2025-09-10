@@ -319,4 +319,4 @@ export const Dashboard = () => {
                 ) : (
                   <TrendingDown className="w-8 h-8 text-red-400" />
                 )}
-              </div
+              </div>
