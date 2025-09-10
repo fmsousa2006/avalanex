@@ -5,7 +5,16 @@ import { supabase } from '../lib/supabase';
 interface PortfolioModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (transactionData: {
+  onAddTransaction: (transactionData: {
+    ticker: string;
+    operation: 'buy' | 'sell';
+    date: string;
+    shares: string;
+    price: string;
+    currency: string;
+    fee: string;
+  }) => void;
+  onUpdateTransaction: (transactionData: {
     ticker: string;
     operation: 'buy' | 'sell';
     date: string;
@@ -36,7 +45,7 @@ interface FormData {
   fee: string;
 }
 
-const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onSave, editTransaction }) => {
+const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onAddTransaction, onUpdateTransaction, editTransaction }) => {
   const [formData, setFormData] = useState<FormData>({
     ticker: '',
     operation: 'buy',
@@ -205,8 +214,12 @@ const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onSave
   const handleSave = (addMore: boolean = false) => {
     if (!validateForm()) return;
 
-    // Call the onSave callback with the form data
-    onSave(formData);
+    // Call the appropriate callback based on edit mode
+    if (isEditMode) {
+      onUpdateTransaction(formData);
+    } else {
+      onAddTransaction(formData);
+    }
 
     if (addMore) {
       // Reset form but keep some fields
