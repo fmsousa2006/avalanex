@@ -152,6 +152,294 @@ export const usePortfolio = () => {
     setIsUsingMockData(true);
   };
 
+  // Fetch portfolios from Supabase
+  const fetchPortfolios = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('No authenticated user');
+      }
+
+      const { data: portfoliosData, error: portfoliosError } = await supabase
+        .from('portfolios')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (portfoliosError) throw portfoliosError;
+
+      if (!portfoliosData || portfoliosData.length === 0) {
+        // Create default portfolio for new user
+        const newPortfolio = await createDefaultPortfolio(user.id);
+        if (newPortfolio) {
+          setPortfolios([newPortfolio]);
+          setCurrentPortfolio(newPortfolio);
+        }
+      } else {
+        setPortfolios(portfoliosData);
+        setCurrentPortfolio(portfoliosData[0]);
+      }
+
+      setIsSupabaseConfiguredForRealData(true);
+    } catch (error) {
+      console.error('Error fetching portfolios:', error);
+      setError(error instanceof Error ? error.message : 'Failed to fetch portfolios');
+      createMockPortfolio();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch holdings for current portfolio
+  const fetchHoldings = async (portfolioId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('portfolio_holdings')
+        .select(`
+          *,
+          stock:stocks(*)
+        `)
+        .eq('portfolio_id', portfolioId);
+
+      if (error) throw error;
+      setHoldings(data || []);
+    } catch (error) {
+      console.error('Error fetching holdings:', error);
+    }
+  };
+
+  // Fetch transactions for current portfolio
+  const fetchTransactions = async (portfolioId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select(`
+          *,
+          stock:stocks(*)
+        `)
+        .eq('portfolio_id', portfolioId)
+        .order('transaction_date', { ascending: false });
+
+      if (error) throw error;
+      setTransactions(data || []);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+    }
+  };
+
+  // Add transaction
+  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'created_at'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert([transaction])
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      // Refresh data
+      if (currentPortfolio) {
+        await fetchTransactions(currentPortfolio.id);
+        await fetchHoldings(currentPortfolio.id);
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      throw error;
+    }
+  };
+
+  // Update transaction
+  const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      // Refresh data
+      if (currentPortfolio) {
+        await fetchTransactions(currentPortfolio.id);
+        await fetchHoldings(currentPortfolio.id);
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error updating transaction:', error);
+      throw error;
+    }
+  };
+
+  // Delete transaction
+  const deleteTransaction = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      // Refresh data
+      if (currentPortfolio) {
+        await fetchTransactions(currentPortfolio.id);
+        await fetchHoldings(currentPortfolio.id);
+      }
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      throw error;
+    }
+  };
+
+  // Get portfolio data for charts
+  const getPortfolioData = (): PortfolioData => {
+    const totalValue = holdings.reduce((sum, holding) => 
+      sum + (holding.shares * holding.current_price), 0
+    );
+    
+    const totalCost = holdings.reduce((sum, holding) => 
+      sum + (holding.shares * holding.average_cost), 0
+    );
+    
+    const totalGainLoss = totalValue - totalCost;
+    const totalGainLossPercent = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
+
+    return {
+      totalValue,
+      totalCost,
+      totalGainLoss,
+      totalGainLossPercent,
+      holdings: holdings.map(holding => ({
+        symbol: holding.stock?.symbol || '',
+        name: holding.stock?.name || '',
+        shares: holding.shares,
+        currentPrice: holding.current_price,
+        averageCost: holding.average_cost,
+        totalValue: holding.shares * holding.current_price,
+        gainLoss: (holding.current_price - holding.average_cost) * holding.shares,
+        gainLossPercent: holding.average_cost > 0 ? 
+          ((holding.current_price - holding.average_cost) / holding.average_cost) * 100 : 0
+      }))
+    };
+  };
+
+  // Calculate next dividend
+  const calculateNextDividend = () => {
+    const upcomingDividends = dividends.filter(div => 
+      div.status === 'upcoming' && new Date(div.payment_date) > new Date()
+    );
+    
+    if (upcomingDividends.length === 0) {
+      setNextDividend(null);
+      return;
+    }
+    
+    const nextDiv = upcomingDividends.sort((a, b) => 
+      new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime()
+    )[0];
+    
+    const holding = holdings.find(h => h.stock_id === nextDiv.stock_id);
+    const totalAmount = holding ? holding.shares * nextDiv.amount : nextDiv.amount;
+    
+    setNextDividend({
+      symbol: nextDiv.stock?.symbol || '',
+      amount: nextDiv.amount,
+      date: nextDiv.payment_date,
+      totalAmount
+    });
+  };
+
+  // Calculate today's change
+  const calculateTodaysChange = () => {
+    // This would typically use real-time price data
+    // For now, using mock calculation
+    const totalValue = holdings.reduce((sum, holding) => 
+      sum + (holding.shares * holding.current_price), 0
+    );
+    
+    // Mock 1.2% gain for demo
+    const changePercent = 1.2;
+    const changeValue = totalValue * (changePercent / 100);
+    
+    setTodaysChange({
+      value: changeValue,
+      percentage: changePercent
+    });
+  };
+
+  // Initialize data
+  useEffect(() => {
+    const initializeData = async () => {
+      if (!isSupabaseEnvConfigured()) {
+        console.log('Supabase not configured, using mock data');
+        createMockPortfolio();
+        return;
+      }
+
+      try {
+        // Try to sign in anonymously
+        const { data: { user }, error } = await supabase.auth.signInAnonymously();
+        
+        if (error || !user) {
+          console.warn('Failed to create anonymous user, using mock data');
+          createMockPortfolio();
+          return;
+        }
+
+        await fetchPortfolios();
+      } catch (error) {
+        console.error('Error during initialization:', error);
+        createMockPortfolio();
+      }
+    };
+
+    initializeData();
+  }, []);
+
+  // Fetch related data when current portfolio changes
+  useEffect(() => {
+    if (currentPortfolio && !isUsingMockData) {
+      fetchHoldings(currentPortfolio.id);
+      fetchTransactions(currentPortfolio.id);
+    }
+  }, [currentPortfolio, isUsingMockData]);
+
+  // Calculate derived data when holdings or dividends change
+  useEffect(() => {
+    calculateNextDividend();
+    calculateTodaysChange();
+  }, [holdings, dividends]);
+
+  return {
+    portfolios,
+    currentPortfolio,
+    holdings,
+    transactions,
+    dividends,
+    loading,
+    error,
+    isUsingMockData,
+    isSupabaseConfiguredForRealData,
+    nextDividend,
+    todaysChange,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
+    getPortfolioData,
+    fetchPortfolios,
+    fetchHoldings,
+    fetchTransactions
+  };
+};
   // Create default portfolio for new users
   const createDefaultPortfolio = async (userId: string) => {
     try {
