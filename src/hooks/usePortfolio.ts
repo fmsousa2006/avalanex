@@ -268,6 +268,9 @@ export const usePortfolio = () => {
       if (currentPortfolio) {
         await fetchTransactions(currentPortfolio.id);
         await fetchHoldings(currentPortfolio.id);
+        
+        // Update portfolio holdings based on the transaction
+        await updatePortfolioHoldings(transaction);
       }
       
       return data;
@@ -293,6 +296,9 @@ export const usePortfolio = () => {
       if (currentPortfolio) {
         await fetchTransactions(currentPortfolio.id);
         await fetchHoldings(currentPortfolio.id);
+        
+        // Recalculate portfolio holdings
+        await recalculatePortfolioHoldings(currentPortfolio.id);
       }
       
       return data;

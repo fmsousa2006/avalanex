@@ -287,6 +287,13 @@ export const Dashboard = () => {
         await fetchHoldings(currentPortfolio.id);
         await fetchTransactions(currentPortfolio.id);
         await fetchRecentTransactions();
+        
+        // Force re-render of all components by updating state
+        // This ensures portfolio allocation, stats, and stock trends refresh
+        setTimeout(() => {
+          // Small delay to ensure database updates are complete
+          window.location.reload();
+        }, 500);
       }
       
       console.log('Data refreshed successfully');
