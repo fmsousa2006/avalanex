@@ -117,26 +117,26 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
     }
   }, [data]);
 
-  // Generate mock 30-day trend data for visualization
-  const generateTrendData = (symbol: string, currentPrice: number): number[] => {
+  // Get trend data - prioritize real data, fallback to mock
+  const getTrendData = (symbol: string, currentPrice: number): { data: number[], isReal: boolean } => {
     // Use real data if available, otherwise generate mock data
     if (realPriceData[symbol] && realPriceData[symbol].length > 0) {
-      return realPriceData[symbol];
+      return { data: realPriceData[symbol], isReal: true };
     }
 
     // Fallback to generated data
-    const data = [];
+    const mockData = [];
     let price = currentPrice * 0.95; // Start 5% below current price
     
     for (let i = 0; i < 30; i++) {
       const change = (Math.random() - 0.5) * 0.04; // ±2% daily change
       price = price * (1 + change);
-      data.push(price);
+      mockData.push(price);
     }
     
     // Ensure the last price matches current price
-    data[29] = currentPrice;
-    return data;
+    mockData[29] = currentPrice;
+    return { data: mockData, isReal: false };
   };
 
   const formatCurrency = (value: number) => {
@@ -164,8 +164,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
       
       <div className="space-y-6">
         {top3Holdings.map((stock, index) => {
-          const trendData = generateTrendData(stock.symbol, stock.price);
-          const hasRealData = realPriceData[stock.symbol] && realPriceData[stock.symbol].length > 0;
+          const { data: trendData, isReal: hasRealData } = getTrendData(stock.symbol, stock.price);
           
           // Calculate min and max for scaling
           const minPrice = Math.min(...trendData);
@@ -177,20 +176,25 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-3">
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium text-white">{stock.symbol}</span>
+                    <span className="text-base font-semibold text-white">{stock.symbol}</span>
                     {hasRealData && (
-                      <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
+                      <span className="px-2 py-1 text-xs bg-green-900/30 text-green-400 rounded-full border border-green-600/30">
                         Real Data
                       </span>
                     )}
+                    {!hasRealData && (
+                      <span className="px-2 py-1 text-xs bg-yellow-900/30 text-yellow-400 rounded-full border border-yellow-600/30">
+                        Mock Data
+                      </span>
+                    )}
                   </div>
-                  <span className="text-sm text-gray-400">{stock.name}</span>
+                  <span className="text-sm text-gray-300">{stock.name}</span>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-medium text-white">
+                  <div className="text-base font-semibold text-white">
                     {formatCurrency(stock.price)}
                   </div>
-                  <div className={`text-xs ${stock.changePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <div className={`text-sm font-medium ${stock.changePercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {formatPercentage(stock.changePercent)}
                   </div>
                 </div>
