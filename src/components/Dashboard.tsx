@@ -537,7 +537,7 @@ export const Dashboard = () => {
             {/* Dividends Received */}
             <DividendsReceived portfolioId={currentPortfolio?.id} />
 
-            {/* Future Payments */}
+            {/* Upcoming Dividends */}
             <FutureDividends 
               portfolioId={currentPortfolio?.id}
               onCalendarClick={() => setIsDividendCalendarOpen(true)}

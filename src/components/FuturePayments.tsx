@@ -229,7 +229,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-2">
-          <h2 className="text-xl font-semibold text-white">Future dividends</h2>
+          <h2 className="text-xl font-semibold text-white">Upcoming Dividends</h2>
           <HelpCircle className="w-4 h-4 text-gray-400" />
         </div>
         <div className="flex items-center space-x-4">
