@@ -39,7 +39,6 @@ export const Dashboard = () => {
 
   const { updateStockPrices, updateStockWith30DayData } = useStockPrices();
   const { 
-    updateStockPrices, 
     updateStockPricesWithHistoricalData,
     autoFetch30DayDataForPortfolio: hookAutoFetch30DayData
   } = useStockPrices();
