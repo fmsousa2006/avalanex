@@ -8,7 +8,7 @@ import TransactionHistory from './TransactionHistory';
 import DividendTracker from './DividendTracker';
 import DividendCalendar from './DividendCalendar';
 import DividendsReceived from './DividendsReceived';
-import FuturePayments from './FuturePayments';
+import FutureDividends from './FuturePayments';
 import Sidebar from './Sidebar';
 import PortfolioModal from './PortfolioModal';
 import TestingModal from './TestingModal';
@@ -538,7 +538,7 @@ export const Dashboard = () => {
             <DividendsReceived portfolioId={currentPortfolio?.id} />
 
             {/* Future Payments */}
-            <FuturePayments 
+            <FutureDividends 
               portfolioId={currentPortfolio?.id}
               onCalendarClick={() => setIsDividendCalendarOpen(true)}
             />
