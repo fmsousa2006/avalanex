@@ -331,3 +331,6 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
   );
 }
 
+
+
+export default FutureDividends
