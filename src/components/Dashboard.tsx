@@ -300,15 +300,14 @@ export const Dashboard = () => {
                   !currentPortfolio ? 'No portfolio selected' :
                   isUsingMockData ? 'Cannot sync mock data' :
                   'Sync stock prices with Finnhub'
-                }
-              >
-                <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                <span>{isSyncing ? 'Syncing...' : 'Sync'}</span>
-              </button>
-              
               <button
-                onClick={() => setIsSidebarOpen(true)}
-                className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 lg:hidden"
+                onClick={() => {
+                  console.log('Menu button clicked - opening portfolio modal');
+                  setEditTransaction(null);
+                  setIsPortfolioModalOpen(true);
+                }}
+                className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                title="Add Transaction"
               >
                 <Menu className="w-5 h-5" />
               </button>
@@ -485,7 +484,24 @@ export const Dashboard = () => {
                     }
                   }}
                   onEditTransaction={(id) => {
-                    handleEditTransaction(id);
+                    console.log('Edit transaction clicked for ID:', id);
+                    const transaction = transactions.find(tx => tx.id === id);
+                    if (transaction) {
+                      console.log('Found transaction:', transaction);
+                      setEditTransaction({
+                        id: transaction.id,
+                        ticker: transaction.stock?.symbol || '',
+                        operation: transaction.type as 'buy' | 'sell',
+                        date: transaction.transaction_date,
+                        shares: transaction.shares?.toString() || '0',
+                        price: transaction.price?.toString() || '0',
+                        currency: transaction.currency || 'USD',
+                        fee: transaction.fee?.toString() || '0'
+                      });
+                      setIsPortfolioModalOpen(true);
+                    } else {
+                      console.error('Transaction not found for ID:', id);
+                    }
                   }}
                 />
               ) : (
