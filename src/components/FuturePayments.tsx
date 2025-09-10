@@ -323,12 +323,11 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
             );
           })}
         </div>
-        {monthlyDividends.length === 0 && (
           <p>No dividends to display</p>
+        )}
         )}
       </div>
     </div>
   );
-};
 
 export default FutureDividends;
