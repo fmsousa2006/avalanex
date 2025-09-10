@@ -635,6 +635,8 @@ export const usePortfolio = () => {
       
       fetchDividends(currentPortfolio.id);
     }
+  }
+  )
 
   // Calculate derived data when holdings or dividends change
   useEffect(() => {

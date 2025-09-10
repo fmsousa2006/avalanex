@@ -485,11 +485,6 @@ export const Dashboard = () => {
             <div className="lg:col-span-2 bg-gray-800 rounded-xl p-6 border border-gray-700">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold">Portfolio Allocation</h2>
-                {isUsingMockData && (
-                  <div className="text-sm text-yellow-400 bg-yellow-900/20 px-3 py-1 rounded-full border border-yellow-600/30">
-                    Demo Data
-                  </div>
-                )}
                 <button
                   onClick={() => setIsPortfolioModalOpen(true)}
                   className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
@@ -520,19 +515,8 @@ export const Dashboard = () => {
                     <PieChart className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                     <p className="text-gray-400 font-medium text-lg">No holdings yet</p>
                     <p className="text-gray-500 text-sm mt-2">
-                      {isUsingMockData 
-                        ? 'Configure Supabase to see real data or add transactions to demo portfolio'
-                        : 'Add your first transaction to get started'
-                      }
+                      Add your first transaction to get started
                     </p>
-                    {isUsingMockData && (
-                      <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-600/30 rounded-lg text-sm text-yellow-300">
-                        <p className="font-medium">Using Demo Mode</p>
-                        <p className="text-xs mt-1">
-                          Set up your .env file with Supabase credentials to use real data
-                        </p>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
