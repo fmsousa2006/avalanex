@@ -8,6 +8,7 @@ import TransactionHistory from './TransactionHistory';
 import DividendTracker from './DividendTracker';
 import DividendCalendar from './DividendCalendar';
 import DividendsReceived from './DividendsReceived';
+import FuturePayments from './FuturePayments';
 import Sidebar from './Sidebar';
 import PortfolioModal from './PortfolioModal';
 import TestingModal from './TestingModal';
@@ -42,6 +43,7 @@ export const Dashboard = () => {
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [isTestingModalOpen, setIsTestingModalOpen] = useState(false);
   const [hoveredStock, setHoveredStock] = useState<string | null>(null);
+  const [isDividendCalendarOpen, setIsDividendCalendarOpen] = useState(false);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
 
@@ -317,190 +319,4 @@ export const Dashboard = () => {
                 ) : (
                   <TrendingDown className="w-8 h-8 text-red-400" />
                 )}
-              </div>
-            </div>
-
-            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-400 text-sm">Total Invested</p>
-                  <p className="text-2xl font-bold text-white">${totalValue.toLocaleString()}</p>
-                </div>
-                <BarChart3 className="w-8 h-8 text-blue-400" />
-              </div>
-            </div>
-
-            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-400 text-sm">Total Gain/Loss</p>
-                  <p className={`text-2xl font-bold ${totalChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    ${totalChange >= 0 ? '+' : ''}${totalChange.toFixed(2)}
-                  </p>
-                </div>
-                <Activity className="w-8 h-8 text-purple-400" />
-              </div>
-            </div>
-
-            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-400 text-sm">Return %</p>
-                  <p className={`text-2xl font-bold ${totalChangePercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {totalChangePercent >= 0 ? '+' : ''}{totalChangePercent.toFixed(2)}%
-                  </p>
-                </div>
-                <PieChart className="w-8 h-8 text-yellow-400" />
-              </div>
-            </div>
-
-            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-400 text-sm">Next Dividend</p>
-                  <p className="text-2xl font-bold text-white">$0.00</p>
-                  <p className="text-sm text-gray-500">No upcoming dividends</p>
-                </div>
-                <Calendar className="w-8 h-8 text-green-400" />
-              </div>
-            </div>
-          </div>
-
-          {/* Charts Section */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
-            {/* Portfolio Composition */}
-            <div className="xl:col-span-2 bg-gray-800 rounded-xl p-6 border border-gray-700">
-              <div className="flex items-center space-x-2 mb-6">
-                <PieChart className="w-5 h-5 text-emerald-400" />
-                <h2 className="text-xl font-semibold">Portfolio Composition</h2>
-              </div>
-              <PortfolioChart 
-                data={currentPortfolioData} 
-                onHover={setHoveredStock}
-                hoveredStock={hoveredStock}
-              />
-            </div>
-
-            {/* Stock Trends */}
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-              <div className="flex items-center space-x-2 mb-6">
-                <Activity className="w-5 h-5 text-blue-400" />
-                <h2 className="text-xl font-semibold">Top 3 Holdings (30 Days)</h2>
-              </div>
-              <StockTrends data={currentPortfolioData} />
-            </div>
-          </div>
-
-          {/* Bottom Section */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            {/* Dividends Received */}
-            <div className="xl:col-span-3">
-              <DividendsReceived portfolioId={currentPortfolio?.id} />
-            </div>
-          </div>
-
-          {/* Transaction and Dividend Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Transaction History */}
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">Last Transactions</h2>
-                <button
-                  onClick={() => setIsPortfolioModalOpen(true)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    !currentPortfolio && !isUsingMockData
-                      ? 'bg-gray-600 cursor-not-allowed opacity-50'
-                      : 'bg-emerald-600 hover:bg-emerald-700'
-                  }`}
-                  title="Add Transaction"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
-              {loadingTransactions ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-400"></div>
-                </div>
-              ) : recentTransactions.length > 0 ? (
-                <div className="space-y-3">
-                  {recentTransactions.slice(0, 5).map((transaction, index) => (
-                    <div key={transaction.id || index} className="flex justify-between items-center py-2 border-b border-gray-700 last:border-b-0">
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <span className={`px-2 py-1 text-xs rounded ${
-                            transaction.type === 'buy' 
-                              ? 'bg-emerald-900 text-emerald-300' 
-                              : transaction.type === 'sell'
-                              ? 'bg-red-900 text-red-300'
-                              : 'bg-blue-900 text-blue-300'
-                          }`}>
-                            {transaction.type?.toUpperCase()}
-                          </span>
-                          <span className="text-white font-medium">
-                            {transaction.stocks?.symbol}
-                          </span>
-                        </div>
-                        <div className="text-sm text-gray-400 mt-1">
-                          {transaction.shares} shares @ ${transaction.price}
-                          <span className="ml-2 text-xs">
-                            {new Date(transaction.transaction_date).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-white font-medium">
-                          ${transaction.amount}
-                        </div>
-                        <div className="text-sm text-gray-400">
-                          {transaction.fee > 0 && `Fee: $${transaction.fee}`}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-400">
-                  <p className="mb-2">No transactions found</p>
-                  <p className="text-sm">
-                    Start building your portfolio by adding your first transaction.
-                  </p>
-                  <button
-                    onClick={() => setIsPortfolioModalOpen(true)}
-                    className="mt-3 px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
-                  >
-                    Add Transaction
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Dividend Tracker */}
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-              <h2 className="text-xl font-semibold mb-6">Upcoming Dividends</h2>
-              <DividendTracker data={dividends} />
-            </div>
-          </div>
-        </main>
-      </div>
-
-      {/* Modals */}
-      {isPortfolioModalOpen && (
-        <PortfolioModal
-          isOpen={isPortfolioModalOpen}
-          onClose={() => setIsPortfolioModalOpen(false)}
-          currentPortfolio={currentPortfolio}
-          onAddTransaction={addTransaction}
-          onUpdateTransaction={updateTransaction}
-          onDeleteTransaction={deleteTransaction}
-        />
-      )}
-
-      {isTestingModalOpen && (
-        <TestingModal
-          isOpen={isTestingModalOpen}
-          onClose={() => setIsTestingModalOpen(false)}
-        />
-      )}
-    </div>
-  );
-};
+              </div
