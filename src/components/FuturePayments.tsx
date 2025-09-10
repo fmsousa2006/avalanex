@@ -65,7 +65,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
   const fetchFutureDividends = async () => {
     const supabaseConfigured = isSupabaseEnvConfigured();
     
-    if (!supabaseConfigured || !portfolioId) {
+    if (!supabaseConfigured) {
       console.log('📊 [FutureDividends] Using mock data');
       const mockData = generateMockData();
       setMonthlyDividends(mockData);
@@ -73,6 +73,15 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
       const total = mockData.reduce((sum, month) => sum + month.amount, 0);
       setNext12MonthsTotal(total);
       setMonthlyAverage(total / 12);
+      setLoading(false);
+      return;
+    }
+
+    if (!portfolioId) {
+      console.log('📊 [FutureDividends] No portfolio ID provided');
+      setMonthlyDividends([]);
+      setNext12MonthsTotal(0);
+      setMonthlyAverage(0);
       setLoading(false);
       return;
     }
@@ -92,12 +101,9 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
 
       if (holdingsError || !holdings || holdings.length === 0) {
         console.log('📊 [FutureDividends] No holdings found, using mock data');
-        const mockData = generateMockData();
-        setMonthlyDividends(mockData);
-        
-        const total = mockData.reduce((sum, month) => sum + month.amount, 0);
-        setNext12MonthsTotal(total);
-        setMonthlyAverage(total / 12);
+        setMonthlyDividends([]);
+        setNext12MonthsTotal(0);
+        setMonthlyAverage(0);
         setLoading(false);
         return;
       }
@@ -106,12 +112,9 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
       const stockIds = holdings.map(h => h.stock?.id).filter(Boolean);
 
       if (stockIds.length === 0) {
-        const mockData = generateMockData();
-        setMonthlyDividends(mockData);
-        
-        const total = mockData.reduce((sum, month) => sum + month.amount, 0);
-        setNext12MonthsTotal(total);
-        setMonthlyAverage(total / 12);
+        setMonthlyDividends([]);
+        setNext12MonthsTotal(0);
+        setMonthlyAverage(0);
         setLoading(false);
         return;
       }
@@ -134,12 +137,9 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
 
       if (dividendsError || !dividends || dividends.length === 0) {
         console.log('📊 [FutureDividends] No future dividends found, using mock data');
-        const mockData = generateMockData();
-        setMonthlyDividends(mockData);
-        
-        const total = mockData.reduce((sum, month) => sum + month.amount, 0);
-        setNext12MonthsTotal(total);
-        setMonthlyAverage(total / 12);
+        setMonthlyDividends([]);
+        setNext12MonthsTotal(0);
+        setMonthlyAverage(0);
         setLoading(false);
         return;
       }
@@ -195,12 +195,9 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
 
     } catch (error) {
       console.error('❌ [FutureDividends] Error fetching future dividends:', error);
-      const mockData = generateMockData();
-      setMonthlyDividends(mockData);
-      
-      const total = mockData.reduce((sum, month) => sum + month.amount, 0);
-      setNext12MonthsTotal(total);
-      setMonthlyAverage(total / 12);
+      setMonthlyDividends([]);
+      setNext12MonthsTotal(0);
+      setMonthlyAverage(0);
     } finally {
       setLoading(false);
     }
@@ -322,10 +319,17 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
               </div>
             );
           })}
+          ) : (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <Calendar className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-400 font-medium text-lg">No upcoming dividends</p>
+                <p className="text-gray-500 text-sm mt-2">
+                  Future dividend payments will appear here once you have dividend-paying stocks in your portfolio.
+                </p>
+              </div>
+            </div>
         </div>
-        {monthlyDividends.length === 0 && (
-          <p>No dividends to display</p>
-        )}
       </div>
     </div>
   );
