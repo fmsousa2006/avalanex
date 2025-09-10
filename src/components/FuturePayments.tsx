@@ -37,9 +37,9 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
   };
 
   // Generate mock data for demonstration
-  const generateMockData = (): MonthlyPayment[] => {
+  const generateMockData = (): MonthlyDividend[] => {
     const months = ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'];
-    const mockData: MonthlyPayment[] = [];
+    const mockData: MonthlyDividend[] = [];
 
     months.forEach((month, index) => {
       // Generate realistic dividend amounts with some variation
@@ -62,13 +62,13 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
   };
 
   // Fetch future dividend payments from Supabase
-  const fetchFuturePayments = async () => {
+  const fetchFutureDividends = async () => {
     const supabaseConfigured = isSupabaseEnvConfigured();
     
     if (!supabaseConfigured || !portfolioId) {
-      console.log('📊 [FuturePayments] Using mock data');
+      console.log('📊 [FutureDividends] Using mock data');
       const mockData = generateMockData();
-      setMonthlyPayments(mockData);
+      setMonthlyDividends(mockData);
       
       const total = mockData.reduce((sum, month) => sum + month.amount, 0);
       setNext12MonthsTotal(total);
@@ -91,9 +91,9 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
         .gt('shares', 0);
 
       if (holdingsError || !holdings || holdings.length === 0) {
-        console.log('📊 [FuturePayments] No holdings found, using mock data');
+        console.log('📊 [FutureDividends] No holdings found, using mock data');
         const mockData = generateMockData();
-        setMonthlyPayments(mockData);
+        setMonthlyDividends(mockData);
         
         const total = mockData.reduce((sum, month) => sum + month.amount, 0);
         setNext12MonthsTotal(total);
@@ -107,7 +107,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
 
       if (stockIds.length === 0) {
         const mockData = generateMockData();
-        setMonthlyPayments(mockData);
+        setMonthlyDividends(mockData);
         
         const total = mockData.reduce((sum, month) => sum + month.amount, 0);
         setNext12MonthsTotal(total);
@@ -133,9 +133,9 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
         .order('payment_date', { ascending: true });
 
       if (dividendsError || !dividends || dividends.length === 0) {
-        console.log('📊 [FuturePayments] No future dividends found, using mock data');
+        console.log('📊 [FutureDividends] No future dividends found, using mock data');
         const mockData = generateMockData();
-        setMonthlyPayments(mockData);
+        setMonthlyDividends(mockData);
         
         const total = mockData.reduce((sum, month) => sum + month.amount, 0);
         setNext12MonthsTotal(total);
@@ -145,7 +145,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
       }
 
       // Group dividends by month
-      const monthlyData: { [key: string]: MonthlyPayment } = {};
+      const monthlyData: { [key: string]: MonthlyDividend } = {};
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
       dividends.forEach(dividend => {
@@ -171,15 +171,15 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
       });
 
       // Convert to array and ensure we have 12 months
-      const paymentsArray: MonthlyPayment[] = [];
+      const dividendsArray: MonthlyDividend[] = [];
       for (let i = 0; i < 12; i++) {
         const monthIndex = (startDate.getMonth() + i) % 12;
         const monthKey = months[monthIndex];
         
         if (monthlyData[monthKey]) {
-          paymentsArray.push(monthlyData[monthKey]);
+          dividendsArray.push(monthlyData[monthKey]);
         } else {
-          paymentsArray.push({
+          dividendsArray.push({
             month: monthKey,
             amount: 0,
             payments: []
@@ -187,16 +187,16 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
         }
       }
 
-      setMonthlyPayments(paymentsArray);
+      setMonthlyDividends(dividendsArray);
       
-      const total = paymentsArray.reduce((sum, month) => sum + month.amount, 0);
+      const total = dividendsArray.reduce((sum, month) => sum + month.amount, 0);
       setNext12MonthsTotal(total);
       setMonthlyAverage(total / 12);
 
     } catch (error) {
-      console.error('❌ [FuturePayments] Error fetching future payments:', error);
+      console.error('❌ [FutureDividends] Error fetching future dividends:', error);
       const mockData = generateMockData();
-      setMonthlyPayments(mockData);
+      setMonthlyDividends(mockData);
       
       const total = mockData.reduce((sum, month) => sum + month.amount, 0);
       setNext12MonthsTotal(total);
@@ -207,7 +207,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
   };
 
   useEffect(() => {
-    fetchFuturePayments();
+    fetchFutureDividends();
   }, [portfolioId]);
 
   if (loading) {
@@ -215,13 +215,13 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
       <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
-          <span className="ml-3 text-gray-400">Loading future payments...</span>
+          <span className="ml-3 text-gray-400">Loading future dividends...</span>
         </div>
       </div>
     );
   }
 
-  const maxAmount = Math.max(...monthlyPayments.map(m => m.amount));
+  const maxAmount = Math.max(...monthlyDividends.map(m => m.amount));
   const chartHeight = 200;
 
   return (
@@ -229,7 +229,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-2">
-          <h2 className="text-xl font-semibold text-white">Future payments</h2>
+          <h2 className="text-xl font-semibold text-white">Future dividends</h2>
           <HelpCircle className="w-4 h-4 text-gray-400" />
         </div>
         <div className="flex items-center space-x-4">
@@ -253,7 +253,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
             <div className="w-1 h-6 bg-blue-400 rounded"></div>
             <span className="text-gray-400 text-sm">Next 12m</span>
           </div>
-          <div className="text-2xl font-bold text-white">
+          <div className="text-xl font-bold text-white">
             ${next12MonthsTotal.toFixed(2)}
           </div>
         </div>
@@ -262,7 +262,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
             <div className="w-1 h-6 bg-blue-400 rounded"></div>
             <span className="text-gray-400 text-sm">Monthly</span>
           </div>
-          <div className="text-2xl font-bold text-white">
+          <div className="text-xl font-bold text-white">
             ${monthlyAverage.toFixed(2)}
           </div>
         </div>
@@ -293,7 +293,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
 
         {/* Bars */}
         <div className="flex items-end justify-between space-x-2" style={{ height: `${chartHeight}px` }}>
-          {monthlyPayments.map((month, index) => {
+          {monthlyDividends.map((month, index) => {
             const barHeight = maxAmount > 0 ? (month.amount / maxAmount) * chartHeight : 0;
             const isHighlighted = month.amount > monthlyAverage;
             
@@ -323,11 +323,12 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
             );
           })}
         </div>
+        {monthlyDividends.length === 0 && (
+          <p>No dividends to display</p>
+        )}
       </div>
     </div>
   );
 };
 
-export default FuturePayments;
-
-export default FutureDividends
+export default FutureDividends;
