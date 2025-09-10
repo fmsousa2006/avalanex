@@ -433,7 +433,11 @@ export const Dashboard = () => {
             <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold">Recent Transactions</h2>
-                <button className="text-gray-400 hover:text-white transition-colors">
+                <button 
+                  onClick={() => setIsPortfolioModalOpen(true)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                  title="Add Transaction"
+                >
                   <MoreHorizontal className="w-5 h-5" />
                 </button>
               </div>
