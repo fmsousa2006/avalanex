@@ -53,6 +53,16 @@ export const Dashboard = () => {
   const [isDividendCalendarOpen, setIsDividendCalendarOpen] = useState(false);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
+  const [editTransaction, setEditTransaction] = useState<{
+    id: string;
+    ticker: string;
+    operation: 'buy' | 'sell';
+    date: string;
+    shares: string;
+    price: string;
+    currency: string;
+    fee: string;
+  } | null>(null);
 
   // Check if Finnhub is configured
   const isFinnhubConfigured = import.meta.env.VITE_FINNHUB_API_KEY;
