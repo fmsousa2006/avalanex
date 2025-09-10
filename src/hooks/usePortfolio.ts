@@ -152,6 +152,29 @@ export const usePortfolio = () => {
     setIsUsingMockData(true);
   };
 
+  // Create default portfolio for new users
+  const createDefaultPortfolio = async (userId: string) => {
+    try {
+      const { data: newPortfolio, error } = await supabase
+        .from('portfolios')
+        .insert([
+          {
+            user_id: userId,
+            name: 'My Portfolio',
+            description: 'Default portfolio'
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return newPortfolio;
+    } catch (error) {
+      console.error('Error creating default portfolio:', error);
+      return null;
+    }
+  };
+
   // Fetch portfolios from Supabase
   const fetchPortfolios = async () => {
     try {
@@ -440,40 +463,3 @@ export const usePortfolio = () => {
     fetchTransactions
   };
 };
-  // Create default portfolio for new users
-  const createDefaultPortfolio = async (userId: string) => {
-    try {
-      const { data: newPortfolio, error } = await supabase
-        .from('portfolios')
-        .insert([
-          {
-            user_id: userId,
-            name: 'My Portfolio',
-            description: 'Default portfolio'
-          }
-        ])
-        .select()
-        .single();
-
-      if (error) throw error;
-      return newPortfolio;
-    } catch (error) {
-      console.error('Error creating default portfolio:', error);
-      return null;
-    }
-  };
-
-  // Fetch portfolios
-  const fetchPortfolios = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('No authenticated user');
-      }
-    }
-  }
-}
