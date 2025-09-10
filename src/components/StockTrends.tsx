@@ -38,6 +38,22 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
       return [];
     }
 
+    // Test Supabase connection first
+    try {
+      const { error: connectionError } = await supabase
+        .from('stocks')
+        .select('id')
+        .limit(1);
+
+      if (connectionError) {
+        console.warn(`⚠️ [StockTrends] Supabase connection failed for ${symbol}:`, connectionError.message);
+        return [];
+      }
+    } catch (error) {
+      console.warn(`⚠️ [StockTrends] Network error connecting to Supabase for ${symbol}:`, error);
+      return [];
+    }
+
     try {
       // Get stock ID
       const { data: stock, error: stockError } = await supabase
@@ -47,7 +63,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
         .maybeSingle();
 
       if (stockError || !stock) {
-        console.warn(`⚠️ [StockTrends] Stock ${symbol} not found in database`);
+        console.warn(`⚠️ [StockTrends] Database error fetching stock ${symbol}:`, stockError.message);
         return [];
       }
 
@@ -59,7 +75,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
         .order('timestamp', { ascending: true });
 
       if (priceError) {
-        console.error(`❌ [StockTrends] Error fetching 30d data for ${symbol}:`, priceError);
+        console.warn(`⚠️ [StockTrends] Database error fetching 30d data for ${symbol}:`, priceError.message);
         return [];
       }
 
@@ -72,7 +88,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
         return [];
       }
     } catch (error) {
-      console.error(`❌ [StockTrends] Error fetching real 30d data for ${symbol}:`, error);
+      console.warn(`⚠️ [StockTrends] Network/connection error for ${symbol}:`, error);
       return [];
     }
   };
@@ -94,11 +110,13 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
         if (prices.length > 0) {
           realData[symbol] = prices;
         }
+        // Add small delay between requests to avoid overwhelming the database
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
       
       setRealPriceData(realData);
     } catch (error) {
-      console.error('❌ [StockTrends] Error fetching real 30d data:', error);
+      console.warn('⚠️ [StockTrends] Error fetching real 30d data, using mock data:', error);
     } finally {
       setIsLoadingRealData(false);
     }
