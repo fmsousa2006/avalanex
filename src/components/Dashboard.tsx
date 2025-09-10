@@ -215,6 +215,31 @@ export const Dashboard = () => {
     setIsPortfolioModalOpen(true);
   };
 
+  // Add the missing handleSaveTransaction function
+  const handleSaveTransaction = async (transactionData: any) => {
+    try {
+      if (editTransaction) {
+        // Update existing transaction
+        await updateTransaction(editTransaction.id, transactionData);
+      } else {
+        // Add new transaction
+        await addTransaction(transactionData);
+      }
+      
+      // Refresh data
+      if (currentPortfolio) {
+        await fetchHoldings(currentPortfolio.id);
+        await fetchTransactions(currentPortfolio.id);
+      }
+      
+      // Close modal and reset edit state
+      setIsPortfolioModalOpen(false);
+      setEditTransaction(null);
+    } catch (error) {
+      console.error('Failed to save transaction:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -571,8 +596,8 @@ export const Dashboard = () => {
           setIsPortfolioModalOpen(false);
           setEditTransaction(null);
         }}
-        onAddTransaction={addTransaction}
-        onUpdateTransaction={updateTransaction}
+        onAddTransaction={handleSaveTransaction}
+        onUpdateTransaction={handleSaveTransaction}
         editTransaction={editTransaction}
       />
 
