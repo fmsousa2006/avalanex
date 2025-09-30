@@ -611,6 +611,7 @@ export const usePortfolio = () => {
         console.error('Error during initialization:', error);
         setError(error instanceof Error ? error.message : 'Failed to initialize portfolio');
         setLoading(false);
+      }
     })();
   }, []);
 
