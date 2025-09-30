@@ -682,13 +682,14 @@ export const usePortfolio = () => {
       };
       
       fetchAllData();
-    } else {
-      console.log('📊 [usePortfolio] No current portfolio set');
     }
-  }, [currentPortfolio]);
+  }, [currentPortfolio, isUsingMockData]);
 
   // Calculate derived data when holdings or dividends change
   useEffect(() => {
+    if (!isUsingMockData) {
+      console.log('📊 [usePortfolio] No current portfolio set');
+    }
     calculateNextDividend();
     calculateTodaysChange();
   }, [holdings, dividends]);
