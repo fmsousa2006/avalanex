@@ -73,8 +73,9 @@ const DividendTracker: React.FC<DividendTrackerProps> = ({ data }) => {
 
   return (
     <div className="space-y-4 max-h-96 overflow-y-auto">
-      {sortedData.map((dividend) => (
+      {sortedData.map((dividend) => {
         const actualStatus = getActualStatus(dividend);
+        return (
         <div
           key={dividend.id}
           className="bg-gray-750 rounded-lg p-4 border border-gray-600 hover:border-gray-500 transition-colors"
@@ -116,7 +117,8 @@ const DividendTracker: React.FC<DividendTrackerProps> = ({ data }) => {
             </div>
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
