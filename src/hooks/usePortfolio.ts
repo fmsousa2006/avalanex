@@ -576,30 +576,36 @@ export const usePortfolio = () => {
 
   // Initialize data
   useEffect(() => {
+    console.log('🔧 [usePortfolio] useEffect triggered for initialization');
     (async () => {
       try {
         setLoading(true);
         console.log('🔧 [usePortfolio] Initializing portfolio data...');
         
         if (!isSupabaseEnvConfigured()) {
-          console.log('Supabase not configured, using mock data');
+          console.log('🔧 [usePortfolio] Supabase not configured, using mock data');
+          createMockPortfolio();
           setError('Supabase not configured');
           setLoading(false);
           return;
         }
 
+        console.log('🔧 [usePortfolio] Supabase is configured, proceeding with real data');
+        
         // Get current authenticated user (don't sign in anonymously)
         const { data: { user }, error } = await supabase.auth.getUser();
         
         if (error) {
-          console.error('Error getting user:', error);
+          console.error('🔧 [usePortfolio] Error getting user:', error);
+          createMockPortfolio();
           setError('Authentication failed');
           setLoading(false);
           return;
         }
 
         if (!user) {
-          console.warn('No authenticated user found, using mock data');
+          console.warn('🔧 [usePortfolio] No authenticated user found, using mock data');
+          createMockPortfolio();
           setError('No authenticated user');
           setLoading(false);
           return;
@@ -608,7 +614,8 @@ export const usePortfolio = () => {
         console.log('✅ [usePortfolio] Authenticated user found:', user.id);
         await fetchPortfolios();
       } catch (error) {
-        console.error('Error during initialization:', error);
+        console.error('🔧 [usePortfolio] Error during initialization:', error);
+        createMockPortfolio();
         setError(error instanceof Error ? error.message : 'Failed to initialize portfolio');
         setLoading(false);
       }
@@ -618,8 +625,10 @@ export const usePortfolio = () => {
   // Fetch related data when current portfolio changes
   useEffect(() => {
     console.log('📊 [usePortfolio] useEffect triggered - currentPortfolio:', currentPortfolio?.id);
+    console.log('📊 [usePortfolio] isUsingMockData:', isUsingMockData);
+    console.log('📊 [usePortfolio] isSupabaseConfiguredForRealData:', isSupabaseConfiguredForRealData);
     
-    if (currentPortfolio) {
+    if (currentPortfolio && !isUsingMockData) {
       console.log('📊 [usePortfolio] Current portfolio changed, fetching data for:', currentPortfolio.id);
       
       const fetchAllData = async () => {
@@ -682,10 +691,11 @@ export const usePortfolio = () => {
       };
       
       fetchAllData();
+    } else if (currentPortfolio && isUsingMockData) {
+      console.log('📊 [usePortfolio] Using mock data, skipping Supabase fetch');
     } else {
-      console.log('📊 [usePortfolio] No current portfolio set');
+      console.log('📊 [usePortfolio] No current portfolio set or waiting for portfolio');
     }
-  }, [currentPortfolio]);
 
   // Calculate derived data when holdings or dividends change
   useEffect(() => {
