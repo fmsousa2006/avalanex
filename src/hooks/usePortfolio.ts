@@ -446,6 +446,8 @@ export const usePortfolio = () => {
   // Update transaction
   const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
     try {
+      console.log('🔄 [usePortfolio] Updating transaction with ID:', id, 'Updates:', updates);
+      
       const { data, error } = await supabase
         .from('transactions')
         .update(updates)
@@ -455,15 +457,22 @@ export const usePortfolio = () => {
 
       if (error) throw error;
       
+      console.log('✅ [usePortfolio] Transaction updated successfully, refreshing data...');
+      
       // Refresh data
       if (currentPortfolio) {
+        // Recalculate portfolio holdings
+        console.log('🔄 [usePortfolio] Recalculating portfolio holdings after update...');
+        await recalculatePortfolioHoldings(currentPortfolio.id);
+        
+        // Then refresh all data
+        console.log('🔄 [usePortfolio] Refreshing all data after recalculation...');
         await fetchTransactions(currentPortfolio.id);
         await fetchHoldings(currentPortfolio.id);
-        
-        // Recalculate portfolio holdings
-        await recalculatePortfolioHoldings(currentPortfolio.id);
+        await fetchDividends(currentPortfolio.id);
       }
       
+      console.log('✅ [usePortfolio] Portfolio data refreshed after transaction update');
       return data;
     } catch (error) {
       console.error('Error updating transaction:', error);
