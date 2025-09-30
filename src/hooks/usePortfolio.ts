@@ -696,6 +696,8 @@ export const usePortfolio = () => {
     } else {
       console.log('📊 [usePortfolio] No current portfolio set or waiting for portfolio');
     }
+  }
+  )
 
   // Calculate derived data when holdings or dividends change
   useEffect(() => {
