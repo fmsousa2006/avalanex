@@ -309,7 +309,8 @@ export const usePortfolio = () => {
       const stockIds = holdings.map(h => h.stock_id);
       console.log(`📊 [usePortfolio] Found ${stockIds.length} stock IDs for dividend lookup:`, stockIds);
 
-      const { data, error } = await supabase
+      // Get dividends for stocks in portfolio, but only show those that are relevant to current holdings
+      const { data: allDividends, error } = await supabase
         .from('dividends')
         .select(`
           *,
@@ -323,8 +324,45 @@ export const usePortfolio = () => {
         return;
       }
       
-      console.log(`📊 [usePortfolio] Fetched ${(data || []).length} dividends:`, data);
-      setDividends(data || []);
+      if (!allDividends || allDividends.length === 0) {
+        console.log('📊 [usePortfolio] No dividends found for current holdings');
+        setDividends([]);
+        return;
+      }
+
+      // Filter dividends to only show relevant ones based on transaction dates
+      const { data: transactions, error: transError } = await supabase
+        .from('transactions')
+        .select('stock_id, transaction_date, type')
+        .eq('portfolio_id', portfolioId)
+        .in('type', ['buy', 'sell'])
+        .order('transaction_date', { ascending: true });
+
+      if (transError) {
+        console.error('Error fetching transactions for dividend filtering:', transError);
+        setDividends(allDividends);
+        return;
+      }
+
+      // Filter dividends based on when the user actually held the stock
+      const relevantDividends = allDividends.filter(dividend => {
+        const dividendPaymentDate = new Date(dividend.payment_date);
+        const stockTransactions = transactions?.filter(t => t.stock_id === dividend.stock_id) || [];
+        
+        if (stockTransactions.length === 0) return false;
+
+        // Find the earliest buy date for this stock
+        const buyTransactions = stockTransactions.filter(t => t.type === 'buy');
+        if (buyTransactions.length === 0) return false;
+
+        const earliestBuyDate = new Date(Math.min(...buyTransactions.map(t => new Date(t.transaction_date).getTime())));
+        
+        // Only show dividends that have payment dates after the user started holding the stock
+        return dividendPaymentDate >= earliestBuyDate;
+      });
+      
+      console.log(`📊 [usePortfolio] Filtered ${relevantDividends.length} relevant dividends from ${allDividends.length} total dividends`);
+      setDividends(relevantDividends);
     } catch (error) {
       console.error('Error fetching dividends:', error);
       setDividends([]);
