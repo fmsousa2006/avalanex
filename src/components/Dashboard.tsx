@@ -142,6 +142,13 @@ export const Dashboard = () => {
 
   // Add this function to fetch transactions
   const fetchRecentTransactions = async () => {
+    // Skip Supabase calls if using mock data
+    if (isUsingMockData) {
+      setRecentTransactions([]);
+      setLoadingTransactions(false);
+      return;
+    }
+
     try {
       setLoadingTransactions(true);
       
@@ -149,6 +156,8 @@ export const Dashboard = () => {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
         console.error('Error getting user:', userError);
+        setRecentTransactions([]);
+        setLoadingTransactions(false);
         return;
       }
 
@@ -161,6 +170,8 @@ export const Dashboard = () => {
 
       if (portfolioError || !portfolioData) {
         console.error('Error fetching user portfolio:', portfolioError);
+        setRecentTransactions([]);
+        setLoadingTransactions(false);
         return;
       }
 
@@ -181,12 +192,15 @@ export const Dashboard = () => {
 
       if (transactionsError) {
         console.error('Error fetching transactions:', transactionsError);
+        setRecentTransactions([]);
+        setLoadingTransactions(false);
         return;
       }
 
       setRecentTransactions(transactionsData || []);
     } catch (error) {
       console.error('Error in fetchTransactions:', error);
+      setRecentTransactions([]);
     } finally {
       setLoadingTransactions(false);
     }
@@ -195,7 +209,7 @@ export const Dashboard = () => {
   // Add this useEffect to fetch transactions when component mounts
   useEffect(() => {
     fetchRecentTransactions();
-  }, []);
+  }, [isUsingMockData]);
 
   // Handle editing a transaction
   const handleEditTransaction = (id: string) => {
