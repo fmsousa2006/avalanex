@@ -399,8 +399,11 @@ export const usePortfolio = () => {
       const holdingsToInsert = Array.from(holdingsMap.values())
         .filter(holding => holding.shares > 0)
         .map(holding => ({
-          ...holding,
+          portfolio_id: holding.portfolio_id,
+          stock_id: holding.stock_id,
+          shares: holding.shares,
           average_cost: holding.total_cost / holding.shares,
+          current_price: holding.current_price,
           last_updated: new Date().toISOString()
         }));
 
