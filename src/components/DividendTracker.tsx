@@ -19,6 +19,26 @@ interface DividendTrackerProps {
 }
 
 const DividendTracker: React.FC<DividendTrackerProps> = ({ data }) => {
+  // Helper function to determine actual dividend status based on dates
+  const getActualStatus = (dividend: DividendData): 'upcoming' | 'ex-dividend' | 'paid' => {
+    const today = new Date();
+    const paymentDate = new Date(dividend.paymentDate);
+    const exDividendDate = new Date(dividend.exDividendDate);
+    
+    // Reset time to compare only dates
+    today.setHours(0, 0, 0, 0);
+    paymentDate.setHours(0, 0, 0, 0);
+    exDividendDate.setHours(0, 0, 0, 0);
+    
+    if (paymentDate < today) {
+      return 'paid';
+    } else if (exDividendDate <= today && paymentDate >= today) {
+      return 'ex-dividend';
+    } else {
+      return 'upcoming';
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'upcoming':
@@ -54,6 +74,7 @@ const DividendTracker: React.FC<DividendTrackerProps> = ({ data }) => {
   return (
     <div className="space-y-4 max-h-96 overflow-y-auto">
       {sortedData.map((dividend) => (
+        const actualStatus = getActualStatus(dividend);
         <div
           key={dividend.id}
           className="bg-gray-750 rounded-lg p-4 border border-gray-600 hover:border-gray-500 transition-colors"
@@ -63,9 +84,9 @@ const DividendTracker: React.FC<DividendTrackerProps> = ({ data }) => {
               <h3 className="font-semibold">{dividend.symbol}</h3>
               <p className="text-xs text-gray-400">{dividend.name}</p>
             </div>
-            <div className={`flex items-center space-x-1 text-xs px-2 py-1 rounded border ${getStatusColor(dividend.status)}`}>
-              {getStatusIcon(dividend.status)}
-              <span className="capitalize">{dividend.status.replace('-', ' ')}</span>
+            <div className={`flex items-center space-x-1 text-xs px-2 py-1 rounded border ${getStatusColor(actualStatus)}`}>
+              {getStatusIcon(actualStatus)}
+              <span className="capitalize">{actualStatus.replace('-', ' ')}</span>
             </div>
           </div>
           
