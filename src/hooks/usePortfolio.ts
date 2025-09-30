@@ -643,47 +643,6 @@ export const usePortfolio = () => {
           await fetchTransactions(currentPortfolio.id);
           console.log('📊 [usePortfolio] Transactions fetch completed');
           
-          // Also fetch dividends for the portfolio
-          const fetchDividends = async (portfolioId: string) => {
-            console.log(`📊 [usePortfolio] Fetching dividends for portfolio: ${portfolioId}`);
-            try {
-              // Get all stocks in the portfolio first
-              const { data: holdings, error: holdingsError } = await supabase
-                .from('portfolio_holdings')
-                .select('stock_id')
-                .eq('portfolio_id', portfolioId);
-
-              if (holdingsError || !holdings || holdings.length === 0) {
-                console.log('📊 [usePortfolio] No holdings found for dividends, setting empty dividends');
-                setDividends([]);
-                return;
-              }
-
-              const stockIds = holdings.map(h => h.stock_id);
-              console.log(`📊 [usePortfolio] Found ${stockIds.length} stock IDs for dividend lookup:`, stockIds);
-
-              const { data, error } = await supabase
-                .from('dividends')
-                .select(`
-                  *,
-                  stock:stocks(*)
-                `)
-                .in('stock_id', stockIds);
-
-              if (error) {
-                console.error('Error fetching dividends:', error);
-                setDividends([]);
-                return;
-              }
-              
-              console.log(`📊 [usePortfolio] Fetched ${(data || []).length} dividends:`, data);
-              setDividends(data || []);
-            } catch (error) {
-              console.error('Error fetching dividends:', error);
-              setDividends([]);
-            }
-          };
-          
           await fetchDividends(currentPortfolio.id);
           console.log('📊 [usePortfolio] Finished fetching all portfolio data');
         } catch (error) {
@@ -694,6 +653,47 @@ export const usePortfolio = () => {
       fetchAllData();
     }
   }, [currentPortfolio, isUsingMockData]);
+
+  // Extract fetchDividends as a separate function so it can be reused
+  const fetchDividends = async (portfolioId: string) => {
+    console.log(`📊 [usePortfolio] Fetching dividends for portfolio: ${portfolioId}`);
+    try {
+      // Get all stocks in the portfolio first
+      const { data: holdings, error: holdingsError } = await supabase
+        .from('portfolio_holdings')
+        .select('stock_id')
+        .eq('portfolio_id', portfolioId);
+
+      if (holdingsError || !holdings || holdings.length === 0) {
+        console.log('📊 [usePortfolio] No holdings found for dividends, setting empty dividends');
+        setDividends([]);
+        return;
+      }
+
+      const stockIds = holdings.map(h => h.stock_id);
+      console.log(`📊 [usePortfolio] Found ${stockIds.length} stock IDs for dividend lookup:`, stockIds);
+
+      const { data, error } = await supabase
+        .from('dividends')
+        .select(`
+          *,
+          stock:stocks(*)
+        `)
+        .in('stock_id', stockIds);
+
+      if (error) {
+        console.error('Error fetching dividends:', error);
+        setDividends([]);
+        return;
+      }
+      
+      console.log(`📊 [usePortfolio] Fetched ${(data || []).length} dividends:`, data);
+      setDividends(data || []);
+    } catch (error) {
+      console.error('Error fetching dividends:', error);
+      setDividends([]);
+    }
+  };
 
   // Calculate derived data when holdings or dividends change
   useEffect(() => {
@@ -722,6 +722,7 @@ export const usePortfolio = () => {
     getPortfolioData,
     fetchPortfolios,
     fetchHoldings,
-    fetchTransactions
+    fetchTransactions,
+    setCurrentPortfolio
   };
 };
