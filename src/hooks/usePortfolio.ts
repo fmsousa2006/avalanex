@@ -235,6 +235,7 @@ export const usePortfolio = () => {
 
   // Fetch holdings for current portfolio
   const fetchHoldings = async (portfolioId: string) => {
+    console.log(`📊 [usePortfolio] Fetching holdings for portfolio: ${portfolioId}`);
     try {
       const { data, error } = await supabase
         .from('portfolio_holdings')
@@ -245,14 +246,18 @@ export const usePortfolio = () => {
         .eq('portfolio_id', portfolioId);
 
       if (error) throw error;
+      console.log(`📊 [usePortfolio] Raw holdings data from Supabase:`, data);
       setHoldings(data || []);
+      console.log(`📊 [usePortfolio] Set holdings count: ${(data || []).length}`);
     } catch (error) {
       console.error('Error fetching holdings:', error);
+      setHoldings([]);
     }
   };
 
   // Fetch transactions for current portfolio
   const fetchTransactions = async (portfolioId: string) => {
+    console.log(`📊 [usePortfolio] Fetching transactions for portfolio: ${portfolioId}`);
     try {
       const { data, error } = await supabase
         .from('transactions')
@@ -264,9 +269,12 @@ export const usePortfolio = () => {
         .order('transaction_date', { ascending: false });
 
       if (error) throw error;
+      console.log(`📊 [usePortfolio] Raw transactions data from Supabase:`, data);
       setTransactions(data || []);
+      console.log(`📊 [usePortfolio] Set transactions count: ${(data || []).length}`);
     } catch (error) {
       console.error('Error fetching transactions:', error);
+      setTransactions([]);
     }
   };
 
@@ -559,6 +567,7 @@ export const usePortfolio = () => {
     (async () => {
       try {
         setLoading(true);
+        console.log('🔧 [usePortfolio] Initializing portfolio data...');
         
         if (!isSupabaseEnvConfigured()) {
           console.log('Supabase not configured, using mock data');
@@ -571,23 +580,20 @@ export const usePortfolio = () => {
         
         if (error) {
           console.error('Error getting user:', error);
-          // Don't create mock portfolio if user authentication fails
-          // Let the app handle authentication properly
+          setError('Authentication failed');
           return;
         }
 
         if (!user) {
           console.warn('No authenticated user found, using mock data');
-          // Don't create mock portfolio if no user
-          // Let the app handle authentication properly
+          setError('No authenticated user');
           return;
         }
 
-        console.log('Authenticated user found, fetching portfolios...');
+        console.log('✅ [usePortfolio] Authenticated user found:', user.id);
         await fetchPortfolios();
       } catch (error) {
         console.error('Error during initialization:', error);
-        // Don't fallback to mock data on errors
         setError(error instanceof Error ? error.message : 'Failed to initialize portfolio');
       } finally {
         setLoading(false);
@@ -598,15 +604,17 @@ export const usePortfolio = () => {
   // Fetch related data when current portfolio changes
   useEffect(() => {
     if (currentPortfolio) {
-      console.log('📊 [usePortfolio] Fetching data for portfolio:', currentPortfolio.id);
+      console.log('📊 [usePortfolio] Current portfolio changed, fetching data for:', currentPortfolio.id);
       
       const fetchAllData = async () => {
         try {
+          console.log('📊 [usePortfolio] Starting to fetch all portfolio data...');
           await fetchHoldings(currentPortfolio.id);
           await fetchTransactions(currentPortfolio.id);
           
           // Also fetch dividends for the portfolio
           const fetchDividends = async (portfolioId: string) => {
+            console.log(`📊 [usePortfolio] Fetching dividends for portfolio: ${portfolioId}`);
             try {
               // Get all stocks in the portfolio first
               const { data: holdings, error: holdingsError } = await supabase
@@ -615,11 +623,13 @@ export const usePortfolio = () => {
                 .eq('portfolio_id', portfolioId);
 
               if (holdingsError || !holdings || holdings.length === 0) {
+                console.log('📊 [usePortfolio] No holdings found for dividends, setting empty dividends');
                 setDividends([]);
                 return;
               }
 
               const stockIds = holdings.map(h => h.stock_id);
+              console.log(`📊 [usePortfolio] Found ${stockIds.length} stock IDs for dividend lookup:`, stockIds);
 
               const { data, error } = await supabase
                 .from('dividends')
@@ -635,6 +645,7 @@ export const usePortfolio = () => {
                 return;
               }
               
+              console.log(`📊 [usePortfolio] Fetched ${(data || []).length} dividends:`, data);
               setDividends(data || []);
             } catch (error) {
               console.error('Error fetching dividends:', error);
@@ -643,12 +654,15 @@ export const usePortfolio = () => {
           };
           
           await fetchDividends(currentPortfolio.id);
+          console.log('📊 [usePortfolio] Finished fetching all portfolio data');
         } catch (error) {
           console.error('Error fetching portfolio data:', error);
         }
       };
       
       fetchAllData();
+    } else {
+      console.log('📊 [usePortfolio] No current portfolio set');
     }
   }, [currentPortfolio]);
 
