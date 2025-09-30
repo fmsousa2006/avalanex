@@ -474,6 +474,8 @@ export const usePortfolio = () => {
 
   // Get portfolio data for charts
   const getPortfolioData = (): PortfolioData => {
+    console.log('📊 [usePortfolio] getPortfolioData called with holdings:', holdings.length);
+    
     const totalValue = holdings.reduce((sum, holding) => 
       sum + (holding.shares * holding.current_price), 0
     );
@@ -485,7 +487,7 @@ export const usePortfolio = () => {
     const totalGainLoss = totalValue - totalCost;
     const totalGainLossPercent = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
 
-    return {
+    const portfolioData = {
       totalValue,
       totalCost,
       totalGainLoss,
@@ -502,6 +504,10 @@ export const usePortfolio = () => {
           ((holding.current_price - holding.average_cost) / holding.average_cost) * 100 : 0
       }))
     };
+    
+    console.log('📊 [usePortfolio] Portfolio data calculated:', portfolioData);
+    
+    return portfolioData;
   };
 
   // Calculate next dividend
@@ -593,47 +599,56 @@ export const usePortfolio = () => {
   useEffect(() => {
     if (currentPortfolio) {
       console.log('📊 [usePortfolio] Fetching data for portfolio:', currentPortfolio.id);
-      fetchHoldings(currentPortfolio.id);
-      fetchTransactions(currentPortfolio.id);
       
-      // Also fetch dividends for the portfolio
-      const fetchDividends = async (portfolioId: string) => {
+      const fetchAllData = async () => {
         try {
-          // Get all stocks in the portfolio first
-          const { data: holdings, error: holdingsError } = await supabase
-            .from('portfolio_holdings')
-            .select('stock_id')
-            .eq('portfolio_id', portfolioId);
-
-          if (holdingsError || !holdings || holdings.length === 0) {
-            setDividends([]);
-            return;
-          }
-
-          const stockIds = holdings.map(h => h.stock_id);
-
-          const { data, error } = await supabase
-            .from('dividends')
-            .select(`
-              *,
-              stock:stocks(*)
-            `)
-            .in('stock_id', stockIds);
-
-          if (error) {
-            console.error('Error fetching dividends:', error);
-            setDividends([]);
-            return;
-          }
+          await fetchHoldings(currentPortfolio.id);
+          await fetchTransactions(currentPortfolio.id);
           
-          setDividends(data || []);
+          // Also fetch dividends for the portfolio
+          const fetchDividends = async (portfolioId: string) => {
+            try {
+              // Get all stocks in the portfolio first
+              const { data: holdings, error: holdingsError } = await supabase
+                .from('portfolio_holdings')
+                .select('stock_id')
+                .eq('portfolio_id', portfolioId);
+
+              if (holdingsError || !holdings || holdings.length === 0) {
+                setDividends([]);
+                return;
+              }
+
+              const stockIds = holdings.map(h => h.stock_id);
+
+              const { data, error } = await supabase
+                .from('dividends')
+                .select(`
+                  *,
+                  stock:stocks(*)
+                `)
+                .in('stock_id', stockIds);
+
+              if (error) {
+                console.error('Error fetching dividends:', error);
+                setDividends([]);
+                return;
+              }
+              
+              setDividends(data || []);
+            } catch (error) {
+              console.error('Error fetching dividends:', error);
+              setDividends([]);
+            }
+          };
+          
+          await fetchDividends(currentPortfolio.id);
         } catch (error) {
-          console.error('Error fetching dividends:', error);
-          setDividends([]);
+          console.error('Error fetching portfolio data:', error);
         }
       };
       
-      fetchDividends(currentPortfolio.id);
+      fetchAllData();
     }
   }, [currentPortfolio]);
 

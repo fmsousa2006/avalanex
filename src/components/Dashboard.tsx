@@ -338,6 +338,10 @@ export const Dashboard = () => {
   }
 
   const currentPortfolioData = getPortfolioData();
+  console.log('📊 [Dashboard] Current portfolio data:', currentPortfolioData);
+  console.log('📊 [Dashboard] Holdings count:', holdings.length);
+  console.log('📊 [Dashboard] Current portfolio:', currentPortfolio?.id);
+  
   const totalValue = currentPortfolioData.totalValue;
   const totalChange = currentPortfolioData.totalGainLoss;
   const totalChangePercent = currentPortfolioData.totalGainLossPercent;
