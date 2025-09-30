@@ -237,6 +237,14 @@ export const usePortfolio = () => {
   const fetchHoldings = async (portfolioId: string) => {
     console.log(`📊 [usePortfolio] Fetching holdings for portfolio: ${portfolioId}`);
     try {
+      // First check if we can connect to Supabase
+      const { data: testData, error: testError } = await supabase
+        .from('portfolio_holdings')
+        .select('count')
+        .eq('portfolio_id', portfolioId);
+      
+      console.log(`📊 [usePortfolio] Test query result:`, { testData, testError });
+      
       const { data, error } = await supabase
         .from('portfolio_holdings')
         .select(`
@@ -245,7 +253,11 @@ export const usePortfolio = () => {
         `)
         .eq('portfolio_id', portfolioId);
 
-      if (error) throw error;
+      if (error) {
+        console.error(`❌ [usePortfolio] Error fetching holdings:`, error);
+        throw error;
+      }
+      
       console.log(`📊 [usePortfolio] Raw holdings data from Supabase:`, data);
       setHoldings(data || []);
       console.log(`📊 [usePortfolio] Set holdings count: ${(data || []).length}`);
@@ -571,7 +583,8 @@ export const usePortfolio = () => {
         
         if (!isSupabaseEnvConfigured()) {
           console.log('Supabase not configured, using mock data');
-          createMockPortfolio();
+          setError('Supabase not configured');
+          setLoading(false);
           return;
         }
 
@@ -581,12 +594,14 @@ export const usePortfolio = () => {
         if (error) {
           console.error('Error getting user:', error);
           setError('Authentication failed');
+          setLoading(false);
           return;
         }
 
         if (!user) {
           console.warn('No authenticated user found, using mock data');
           setError('No authenticated user');
+          setLoading(false);
           return;
         }
 
@@ -595,22 +610,27 @@ export const usePortfolio = () => {
       } catch (error) {
         console.error('Error during initialization:', error);
         setError(error instanceof Error ? error.message : 'Failed to initialize portfolio');
-      } finally {
         setLoading(false);
-      }
     })();
   }, []);
 
   // Fetch related data when current portfolio changes
   useEffect(() => {
+    console.log('📊 [usePortfolio] useEffect triggered - currentPortfolio:', currentPortfolio?.id);
+    
     if (currentPortfolio) {
       console.log('📊 [usePortfolio] Current portfolio changed, fetching data for:', currentPortfolio.id);
       
       const fetchAllData = async () => {
         try {
           console.log('📊 [usePortfolio] Starting to fetch all portfolio data...');
+          
+          // Force fetch holdings first
           await fetchHoldings(currentPortfolio.id);
+          console.log('📊 [usePortfolio] Holdings fetch completed');
+          
           await fetchTransactions(currentPortfolio.id);
+          console.log('📊 [usePortfolio] Transactions fetch completed');
           
           // Also fetch dividends for the portfolio
           const fetchDividends = async (portfolioId: string) => {
