@@ -6,18 +6,20 @@ interface SidebarProps {
   onToggle: (open: boolean) => void;
   onPortfolioClick: () => void;
   onTestingClick: () => void;
-  onLogout: () => void; // Add this prop
+  onAdminClick: () => void;
+  onLogout: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ 
-  isOpen, 
-  onToggle, 
-  onPortfolioClick, 
+const Sidebar: React.FC<SidebarProps> = ({
+  isOpen,
+  onToggle,
+  onPortfolioClick,
   onTestingClick,
-  onLogout // Add this prop
+  onAdminClick,
+  onLogout
 }) => {
   const menuItems = [
-    { icon: Shield, label: 'Admin' },
+    { icon: Shield, label: 'Admin', onClick: onAdminClick },
     { icon: BarChart3, label: 'Dashboard', active: true },
     { icon: Briefcase, label: 'Portfolio', onClick: onPortfolioClick },
     { icon: TestTube, label: 'Testing', onClick: onTestingClick },

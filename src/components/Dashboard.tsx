@@ -12,6 +12,7 @@ import FutureDividends from './FuturePayments';
 import Sidebar from './Sidebar';
 import PortfolioModal from './PortfolioModal';
 import TestingModal from './TestingModal';
+import Admin from './Admin';
 import { supabase } from '../lib/supabase';
 
 console.log('🏠 Dashboard component rendering...');
@@ -49,6 +50,7 @@ export const Dashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [isTestingModalOpen, setIsTestingModalOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [hoveredStock, setHoveredStock] = useState<string | null>(null);
   const [isDividendCalendarOpen, setIsDividendCalendarOpen] = useState(false);
   const [recentTransactions, setRecentTransactions] = useState([]);
@@ -346,14 +348,19 @@ export const Dashboard = () => {
   const totalChange = currentPortfolioData.totalGainLoss;
   const totalChangePercent = currentPortfolioData.totalGainLossPercent;
 
+  if (isAdminOpen) {
+    return <Admin onClose={() => setIsAdminOpen(false)} />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-white flex">
       {/* Sidebar */}
-      <Sidebar 
-        isOpen={isSidebarOpen} 
+      <Sidebar
+        isOpen={isSidebarOpen}
         onToggle={setIsSidebarOpen}
         onPortfolioClick={() => setIsPortfolioModalOpen(true)}
         onTestingClick={() => setIsTestingModalOpen(true)}
+        onAdminClick={() => setIsAdminOpen(true)}
         onLogout={handleLogout}
       />
 
