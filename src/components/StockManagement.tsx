@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, CreditCard as Edit2, Trash2, TrendingUp, Calendar, DollarSign, ArrowLeft, Save, X, Filter, RefreshCw } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, TrendingUp, Calendar, DollarSign, ArrowLeft, Save, X, Filter, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Stock {
@@ -18,7 +18,6 @@ interface Dividend {
   ex_dividend_date: string;
   payment_date: string;
   frequency: string;
-  status: string;
   stock?: Stock;
 }
 
@@ -51,8 +50,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
     amount: '',
     ex_dividend_date: '',
     payment_date: '',
-    frequency: 'Quarterly',
-    status: 'upcoming'
+    frequency: 'Quarterly'
   });
 
   useEffect(() => {
@@ -188,8 +186,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
           amount: parseFloat(dividendForm.amount),
           ex_dividend_date: dividendForm.ex_dividend_date,
           payment_date: dividendForm.payment_date,
-          frequency: dividendForm.frequency,
-          status: dividendForm.status
+          frequency: dividendForm.frequency
         }]);
 
       if (error) throw error;
@@ -200,8 +197,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
         amount: '',
         ex_dividend_date: '',
         payment_date: '',
-        frequency: 'Quarterly',
-        status: 'upcoming'
+        frequency: 'Quarterly'
       });
       fetchDividends();
     } catch (error) {
@@ -220,8 +216,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
           amount: parseFloat(dividendForm.amount),
           ex_dividend_date: dividendForm.ex_dividend_date,
           payment_date: dividendForm.payment_date,
-          frequency: dividendForm.frequency,
-          status: dividendForm.status
+          frequency: dividendForm.frequency
         })
         .eq('id', editingDividend.id);
 
@@ -233,8 +228,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
         amount: '',
         ex_dividend_date: '',
         payment_date: '',
-        frequency: 'Quarterly',
-        status: 'upcoming'
+        frequency: 'Quarterly'
       });
       fetchDividends();
     } catch (error) {
@@ -268,6 +262,15 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
     const matchesFilter = filterActive === null || stock.is_active === filterActive;
     return matchesSearch && matchesFilter;
   });
+
+  const getDividendStatus = (paymentDate: string): 'upcoming' | 'paid' => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const payment = new Date(paymentDate);
+    payment.setHours(0, 0, 0, 0);
+
+    return today >= payment ? 'paid' : 'upcoming';
+  };
 
   const filteredDividends = dividends.filter(div => {
     if (!searchTerm) return true;
@@ -404,8 +407,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
                       amount: '',
                       ex_dividend_date: '',
                       payment_date: '',
-                      frequency: 'Quarterly',
-                      status: 'upcoming'
+                      frequency: 'Quarterly'
                     });
                   }
                 }}
@@ -568,18 +570,6 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
                     />
                   </div>
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Status</label>
-                    <select
-                      value={dividendForm.status}
-                      onChange={(e) => setDividendForm({ ...dividendForm, status: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                    >
-                      <option value="upcoming">Upcoming</option>
-                      <option value="ex-dividend">Ex-Dividend</option>
-                      <option value="paid">Paid</option>
-                    </select>
-                  </div>
                 </div>
                 <div className="flex justify-end space-x-3 mt-4">
                   <button
@@ -591,8 +581,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
                         amount: '',
                         ex_dividend_date: '',
                         payment_date: '',
-                        frequency: 'Quarterly',
-                        status: 'upcoming'
+                        frequency: 'Quarterly'
                       });
                     }}
                     className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors flex items-center space-x-2"
@@ -687,6 +676,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
                 ) : (
                   filteredDividends.map(dividend => {
                     const stock = (dividend.stocks || dividend.stock) as unknown as Stock;
+                    const status = getDividendStatus(dividend.payment_date);
                     return (
                       <div
                         key={dividend.id}
@@ -697,13 +687,11 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
                             <div className="flex items-center space-x-3 mb-2">
                               <h3 className="text-lg font-bold">{stock?.symbol}</h3>
                               <span className={`px-2 py-1 rounded text-xs ${
-                                dividend.status === 'paid'
+                                status === 'paid'
                                   ? 'bg-green-500/20 text-green-400'
-                                  : dividend.status === 'ex-dividend'
-                                  ? 'bg-yellow-500/20 text-yellow-400'
                                   : 'bg-blue-500/20 text-blue-400'
                               }`}>
-                                {dividend.status}
+                                {status}
                               </span>
                             </div>
                             <p className="text-gray-400 text-sm mb-2">{stock?.name}</p>
@@ -735,8 +723,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
                                   amount: dividend.amount?.toString() || '',
                                   ex_dividend_date: dividend.ex_dividend_date,
                                   payment_date: dividend.payment_date,
-                                  frequency: dividend.frequency,
-                                  status: dividend.status
+                                  frequency: dividend.frequency
                                 });
                                 setIsAddingDividend(false);
                               }}
