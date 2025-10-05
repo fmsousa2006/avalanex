@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 interface StockTrendsProps {
   data: Array<{
@@ -14,13 +15,13 @@ interface StockTrendsProps {
 }
 
 interface PriceDataPoint {
-  timestamp: number;
-  price: number;
+  timestamp: string;
+  close_price: number;
 }
 
 interface StockData {
   symbol: string;
-  prices: PriceDataPoint[];
+  prices: number[];
   currentPrice: number;
   changePercent: number;
   isRealData: boolean;
@@ -29,48 +30,39 @@ interface StockData {
 export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
   const [stocksData, setStocksData] = useState<Map<string, StockData>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
 
-  const FINNHUB_API_KEY = import.meta.env.VITE_FINNHUB_API_KEY;
-  const isApiConfigured = FINNHUB_API_KEY && FINNHUB_API_KEY !== 'your-finnhub-api-key-here';
-
-  const fetchRealStockData = async (symbol: string): Promise<StockData | null> => {
-    if (!isApiConfigured) {
-      console.log(`📊 Finnhub API not configured for ${symbol}`);
-      return null;
-    }
-
+  const fetchStockDataFromDatabase = async (symbol: string): Promise<StockData | null> => {
     try {
-      const to = Math.floor(Date.now() / 1000);
-      const from = to - (30 * 24 * 60 * 60);
+      console.log(`📊 Fetching ${symbol} from database...`);
 
-      const url = `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_API_KEY}`;
+      const { data: stockData, error: stockError } = await supabase
+        .from('stocks')
+        .select('id, symbol, current_price')
+        .eq('symbol', symbol)
+        .maybeSingle();
 
-      console.log(`📡 Fetching real data for ${symbol}...`);
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        console.error(`❌ HTTP error for ${symbol}: ${response.status}`);
+      if (stockError || !stockData) {
+        console.warn(`⚠️ Stock ${symbol} not found in database`);
         return null;
       }
 
-      const candleData = await response.json();
+      const { data: priceData, error: priceError } = await supabase
+        .from('stock_prices_30d')
+        .select('timestamp, close_price')
+        .eq('stock_id', stockData.id)
+        .order('timestamp', { ascending: true });
 
-      if (candleData.s !== 'ok' || !candleData.c || candleData.c.length === 0) {
-        console.warn(`⚠️ No data returned for ${symbol}`);
+      if (priceError || !priceData || priceData.length === 0) {
+        console.warn(`⚠️ No 30-day price data for ${symbol}`);
         return null;
       }
 
-      const prices: PriceDataPoint[] = candleData.t.map((timestamp: number, index: number) => ({
-        timestamp,
-        price: candleData.c[index]
-      }));
-
-      const firstPrice = prices[0].price;
-      const lastPrice = prices[prices.length - 1].price;
+      const prices = priceData.map((p: PriceDataPoint) => p.close_price);
+      const firstPrice = prices[0];
+      const lastPrice = prices[prices.length - 1];
       const changePercent = ((lastPrice - firstPrice) / firstPrice) * 100;
 
-      console.log(`✅ Loaded ${prices.length} real data points for ${symbol}, change: ${changePercent.toFixed(2)}%`);
+      console.log(`✅ Loaded ${prices.length} data points for ${symbol} from database`);
 
       return {
         symbol,
@@ -80,19 +72,13 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
         isRealData: true
       };
     } catch (error) {
-      console.error(`❌ Error fetching ${symbol}:`, error);
+      console.error(`❌ Error fetching ${symbol} from database:`, error);
       return null;
     }
   };
 
   useEffect(() => {
     const loadAllStockData = async () => {
-      if (!isApiConfigured) {
-        console.log('📊 Finnhub API not configured, skipping data fetch');
-        setApiError('Finnhub API key not configured');
-        return;
-      }
-
       const top3 = data
         .sort((a, b) => b.value - a.value)
         .slice(0, 3);
@@ -102,22 +88,17 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
       }
 
       setIsLoading(true);
-      setApiError(null);
 
       const newStocksData = new Map<string, StockData>();
 
       for (const stock of top3) {
-        const stockData = await fetchRealStockData(stock.symbol);
+        const stockData = await fetchStockDataFromDatabase(stock.symbol);
 
         if (stockData) {
           newStocksData.set(stock.symbol, stockData);
         }
 
-        await new Promise(resolve => setTimeout(resolve, 250));
-      }
-
-      if (newStocksData.size === 0) {
-        setApiError('Failed to fetch data from Finnhub API');
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       setStocksData(newStocksData);
@@ -125,7 +106,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
     };
 
     loadAllStockData();
-  }, [data, isApiConfigured]);
+  }, [data]);
 
   const top3Holdings = data
     .sort((a, b) => b.value - a.value)
@@ -152,7 +133,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
         {isLoading && (
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-            <span className="text-sm text-blue-500">Loading real data...</span>
+            <span className="text-sm text-blue-500">Loading data...</span>
           </div>
         )}
       </div>
@@ -168,7 +149,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
           let trendPrices: number[] = [];
 
           if (hasRealData && stockData.prices) {
-            trendPrices = stockData.prices.map(p => p.price);
+            trendPrices = stockData.prices;
           } else {
             trendPrices = [stock.price];
           }
@@ -185,7 +166,12 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                   <span className="text-sm text-gray-300">{stock.name}</span>
                   {hasRealData && (
                     <span className="text-xs bg-green-900/30 text-green-400 px-2 py-0.5 rounded">
-                      Live Data
+                      30-Day Data
+                    </span>
+                  )}
+                  {!hasRealData && (
+                    <span className="text-xs bg-gray-700 text-gray-400 px-2 py-0.5 rounded">
+                      Current Price
                     </span>
                   )}
                 </div>
@@ -228,8 +214,11 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                     />
                   </svg>
                 ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500 text-sm">
-                    {isLoading ? 'Loading...' : 'No data available'}
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <div className="text-gray-500 text-xs">No historical data</div>
+                      <div className="text-gray-400 text-xs mt-1">Showing current price</div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -246,20 +235,6 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
       {top3Holdings.length === 0 && (
         <div className="text-center py-8 text-gray-400">
           <p>No holdings to display</p>
-        </div>
-      )}
-
-      {!isApiConfigured && top3Holdings.length > 0 && (
-        <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-600/30 rounded-lg">
-          <p className="text-sm text-yellow-400">
-            Configure Finnhub API key to view live 30-day price trends
-          </p>
-        </div>
-      )}
-
-      {apiError && isApiConfigured && (
-        <div className="mt-4 p-3 bg-red-900/20 border border-red-600/30 rounded-lg">
-          <p className="text-sm text-red-400">{apiError}</p>
         </div>
       )}
     </div>
