@@ -92,6 +92,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
         .order('payment_date', { ascending: false });
 
       if (error) throw error;
+      console.log('Fetched dividends:', data);
       setDividends(data || []);
     } catch (error) {
       console.error('Error fetching dividends:', error);
@@ -269,7 +270,8 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
   });
 
   const filteredDividends = dividends.filter(div => {
-    const stock = div.stock as Stock;
+    if (!searchTerm) return true;
+    const stock = div.stocks as unknown as Stock;
     return stock?.symbol?.toLowerCase().includes(searchTerm.toLowerCase()) ||
            stock?.name?.toLowerCase().includes(searchTerm.toLowerCase());
   });
@@ -684,7 +686,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
                   </div>
                 ) : (
                   filteredDividends.map(dividend => {
-                    const stock = dividend.stock as Stock;
+                    const stock = (dividend.stocks || dividend.stock) as unknown as Stock;
                     return (
                       <div
                         key={dividend.id}
