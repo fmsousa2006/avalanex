@@ -60,14 +60,14 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
       const prices = priceData.map((p: PriceDataPoint) => p.close_price);
       const firstPrice = prices[0];
       const lastPrice = prices[prices.length - 1];
-      const changePercent = ((lastPrice - firstPrice) / firstPrice) * 100;
+      const changePercent = ((stockData.current_price - firstPrice) / firstPrice) * 100;
 
-      console.log(`✅ Loaded ${prices.length} data points for ${symbol} from database`);
+      console.log(`✅ Loaded ${prices.length} data points for ${symbol} from database. Current price: $${stockData.current_price}`);
 
       return {
         symbol,
         prices,
-        currentPrice: lastPrice,
+        currentPrice: stockData.current_price,
         changePercent,
         isRealData: true
       };
