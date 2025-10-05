@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { finnhubService } from '../lib/finnhub';
 
 interface StockTrendsProps {
   data: Array<{
@@ -14,107 +13,123 @@ interface StockTrendsProps {
   }>;
 }
 
-export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
-  const [realPriceData, setRealPriceData] = useState<{ [symbol: string]: number[] }>({});
-  const [isLoadingRealData, setIsLoadingRealData] = useState(false);
+interface PriceDataPoint {
+  timestamp: number;
+  price: number;
+}
 
-  const fetchReal30DayData = async (symbol: string): Promise<number[]> => {
-    if (!finnhubService.isConfigured()) {
-      console.log(`📊 [StockTrends] Finnhub not configured, using mock data for ${symbol}`);
-      return [];
+interface StockData {
+  symbol: string;
+  prices: PriceDataPoint[];
+  currentPrice: number;
+  changePercent: number;
+  isRealData: boolean;
+}
+
+export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
+  const [stocksData, setStocksData] = useState<Map<string, StockData>>(new Map());
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  const FINNHUB_API_KEY = import.meta.env.VITE_FINNHUB_API_KEY;
+  const isApiConfigured = FINNHUB_API_KEY && FINNHUB_API_KEY !== 'your-finnhub-api-key-here';
+
+  const fetchRealStockData = async (symbol: string): Promise<StockData | null> => {
+    if (!isApiConfigured) {
+      console.log(`📊 Finnhub API not configured for ${symbol}`);
+      return null;
     }
 
     try {
       const to = Math.floor(Date.now() / 1000);
       const from = to - (30 * 24 * 60 * 60);
 
-      const candleData = await finnhubService.getCandles(symbol, 'D', from, to);
+      const url = `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_API_KEY}`;
 
-      if (!candleData || !candleData.c || candleData.c.length === 0) {
-        console.warn(`⚠️ [StockTrends] No candle data available for ${symbol}`);
-        return [];
+      console.log(`📡 Fetching real data for ${symbol}...`);
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.error(`❌ HTTP error for ${symbol}: ${response.status}`);
+        return null;
       }
 
-      console.log(`✅ [StockTrends] Loaded ${candleData.c.length} data points for ${symbol}`);
-      return candleData.c;
+      const candleData = await response.json();
+
+      if (candleData.s !== 'ok' || !candleData.c || candleData.c.length === 0) {
+        console.warn(`⚠️ No data returned for ${symbol}`);
+        return null;
+      }
+
+      const prices: PriceDataPoint[] = candleData.t.map((timestamp: number, index: number) => ({
+        timestamp,
+        price: candleData.c[index]
+      }));
+
+      const firstPrice = prices[0].price;
+      const lastPrice = prices[prices.length - 1].price;
+      const changePercent = ((lastPrice - firstPrice) / firstPrice) * 100;
+
+      console.log(`✅ Loaded ${prices.length} real data points for ${symbol}, change: ${changePercent.toFixed(2)}%`);
+
+      return {
+        symbol,
+        prices,
+        currentPrice: lastPrice,
+        changePercent,
+        isRealData: true
+      };
     } catch (error) {
-      console.warn(`⚠️ [StockTrends] Error fetching data for ${symbol}:`, error);
-      return [];
+      console.error(`❌ Error fetching ${symbol}:`, error);
+      return null;
     }
   };
 
-  const fetchReal30DayDataForSymbols = async (symbols: string[]) => {
-    if (!finnhubService.isConfigured()) {
-      console.log('📊 [StockTrends] Finnhub not configured');
-      return;
-    }
+  useEffect(() => {
+    const loadAllStockData = async () => {
+      if (!isApiConfigured) {
+        console.log('📊 Finnhub API not configured, skipping data fetch');
+        setApiError('Finnhub API key not configured');
+        return;
+      }
 
-    setIsLoadingRealData(true);
+      const top3 = data
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 3);
 
-    try {
-      const realData: { [symbol: string]: number[] } = {};
+      if (top3.length === 0) {
+        return;
+      }
 
-      for (const symbol of symbols) {
-        const prices = await fetchReal30DayData(symbol);
-        if (prices.length > 0) {
-          realData[symbol] = prices;
+      setIsLoading(true);
+      setApiError(null);
+
+      const newStocksData = new Map<string, StockData>();
+
+      for (const stock of top3) {
+        const stockData = await fetchRealStockData(stock.symbol);
+
+        if (stockData) {
+          newStocksData.set(stock.symbol, stockData);
         }
-        await new Promise(resolve => setTimeout(resolve, 200));
+
+        await new Promise(resolve => setTimeout(resolve, 250));
       }
 
-      setRealPriceData(realData);
-    } catch (error) {
-      console.warn('⚠️ [StockTrends] Error fetching real 30d data:', error);
-    } finally {
-      setIsLoadingRealData(false);
-    }
-  };
+      if (newStocksData.size === 0) {
+        setApiError('Failed to fetch data from Finnhub API');
+      }
 
-  // Get top 3 holdings by value
+      setStocksData(newStocksData);
+      setIsLoading(false);
+    };
+
+    loadAllStockData();
+  }, [data, isApiConfigured]);
+
   const top3Holdings = data
     .sort((a, b) => b.value - a.value)
     .slice(0, 3);
-
-  // Fetch real data when component mounts or data changes
-  useEffect(() => {
-    if (top3Holdings.length > 0) {
-      const symbols = top3Holdings.map(stock => stock.symbol);
-      fetchReal30DayDataForSymbols(symbols);
-    }
-  }, [data]);
-
-  // Get trend data - prioritize real data, fallback to mock
-  const getTrendData = (symbol: string, currentPrice: number): { data: number[], isReal: boolean } => {
-    // Use real data if available, otherwise generate mock data
-    if (realPriceData[symbol] && realPriceData[symbol].length > 0) {
-      return { data: realPriceData[symbol], isReal: true };
-    }
-
-    // Fallback to generated data
-    const mockData = [];
-    let price = currentPrice * 0.95; // Start 5% below current price
-    
-    for (let i = 0; i < 30; i++) {
-      const change = (Math.random() - 0.5) * 0.04; // ±2% daily change
-      price = price * (1 + change);
-      mockData.push(price);
-    }
-    
-    // Ensure the last price matches current price
-    mockData[29] = currentPrice;
-    return { data: mockData, isReal: false };
-  };
-
-  // Calculate real change percentage from 30-day data
-  const calculateRealChangePercent = (symbol: string, currentPrice: number): number => {
-    if (realPriceData[symbol] && realPriceData[symbol].length > 1) {
-      const firstPrice = realPriceData[symbol][0];
-      const lastPrice = realPriceData[symbol][realPriceData[symbol].length - 1];
-      return ((lastPrice - firstPrice) / firstPrice) * 100;
-    }
-    // Fallback to portfolio data change percent if no real data
-    return 0;
-  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -134,36 +149,45 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
     <div className="bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-semibold text-white">Top 3 Holdings (30 Days)</h2>
-        {isLoadingRealData && (
-          <div className="text-sm text-blue-600">Loading real data...</div>
+        {isLoading && (
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+            <span className="text-sm text-blue-500">Loading real data...</span>
+          </div>
         )}
       </div>
-      
+
       <div className="space-y-6">
-        {top3Holdings.map((stock, index) => {
-          const { data: trendData, isReal: hasRealData } = getTrendData(stock.symbol, stock.price);
-          
-          // Use real change percentage if we have real data, otherwise use portfolio data
-          const displayChangePercent = hasRealData 
-            ? calculateRealChangePercent(stock.symbol, stock.price)
-            : stock.changePercent;
-          
-          // Use real current price if available (last price from real data)
-          const displayPrice = hasRealData && realPriceData[stock.symbol] && realPriceData[stock.symbol].length > 0
-            ? realPriceData[stock.symbol][realPriceData[stock.symbol].length - 1]
-            : stock.price;
-          
-          // Calculate min and max for scaling
-          const minPrice = Math.min(...trendData);
-          const maxPrice = Math.max(...trendData);
+        {top3Holdings.map((stock) => {
+          const stockData = stocksData.get(stock.symbol);
+          const hasRealData = stockData?.isRealData || false;
+
+          const displayPrice = hasRealData ? stockData.currentPrice : stock.price;
+          const displayChangePercent = hasRealData ? stockData.changePercent : stock.changePercent;
+
+          let trendPrices: number[] = [];
+
+          if (hasRealData && stockData.prices) {
+            trendPrices = stockData.prices.map(p => p.price);
+          } else {
+            trendPrices = [stock.price];
+          }
+
+          const minPrice = Math.min(...trendPrices);
+          const maxPrice = Math.max(...trendPrices);
           const priceRange = maxPrice - minPrice;
-          
+
           return (
             <div key={stock.symbol} className="border-b border-gray-600 last:border-b-0 pb-6 last:pb-0">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-3">
                   <span className="text-base font-semibold text-white">{stock.symbol}</span>
                   <span className="text-sm text-gray-300">{stock.name}</span>
+                  {hasRealData && (
+                    <span className="text-xs bg-green-900/30 text-green-400 px-2 py-0.5 rounded">
+                      Live Data
+                    </span>
+                  )}
                 </div>
                 <div className="text-right">
                   <div className="text-base font-semibold text-white">
@@ -174,38 +198,42 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                   </div>
                 </div>
               </div>
-              
-              {/* Mini Chart */}
+
               <div className="h-16 relative bg-gray-750 rounded-lg p-2">
-                <svg width="100%" height="100%" className="overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
-                  <polyline
-                    fill="none"
-                    stroke={displayChangePercent >= 0 ? "#10b981" : "#ef4444"}
-                    strokeWidth="2"
-                    points={trendData.map((price, i) => {
-                      const x = (i / (trendData.length - 1)) * 100;
-                      const y = priceRange > 0 ? ((maxPrice - price) / priceRange) * 100 : 50;
-                      return `${x},${y}`;
-                    }).join(' ')}
-                  />
-                  {/* Add gradient fill under the line */}
-                  <defs>
-                    <linearGradient id={`gradient-${stock.symbol}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor={displayChangePercent >= 0 ? "#10b981" : "#ef4444"} stopOpacity="0.3"/>
-                      <stop offset="100%" stopColor={displayChangePercent >= 0 ? "#10b981" : "#ef4444"} stopOpacity="0.05"/>
-                    </linearGradient>
-                  </defs>
-                  <polygon
-                    fill={`url(#gradient-${stock.symbol})`}
-                    points={`${trendData.map((price, i) => {
-                      const x = (i / (trendData.length - 1)) * 100;
-                      const y = priceRange > 0 ? ((maxPrice - price) / priceRange) * 100 : 50;
-                      return `${x},${y}`;
-                    }).join(' ')} 100,100 0,100`}
-                  />
-                </svg>
+                {trendPrices.length > 1 ? (
+                  <svg width="100%" height="100%" className="overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id={`gradient-${stock.symbol}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor={displayChangePercent >= 0 ? "#10b981" : "#ef4444"} stopOpacity="0.3"/>
+                        <stop offset="100%" stopColor={displayChangePercent >= 0 ? "#10b981" : "#ef4444"} stopOpacity="0.05"/>
+                      </linearGradient>
+                    </defs>
+                    <polygon
+                      fill={`url(#gradient-${stock.symbol})`}
+                      points={`${trendPrices.map((price, i) => {
+                        const x = (i / (trendPrices.length - 1)) * 100;
+                        const y = priceRange > 0 ? ((maxPrice - price) / priceRange) * 100 : 50;
+                        return `${x},${y}`;
+                      }).join(' ')} 100,100 0,100`}
+                    />
+                    <polyline
+                      fill="none"
+                      stroke={displayChangePercent >= 0 ? "#10b981" : "#ef4444"}
+                      strokeWidth="2"
+                      points={trendPrices.map((price, i) => {
+                        const x = (i / (trendPrices.length - 1)) * 100;
+                        const y = priceRange > 0 ? ((maxPrice - price) / priceRange) * 100 : 50;
+                        return `${x},${y}`;
+                      }).join(' ')}
+                    />
+                  </svg>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+                    {isLoading ? 'Loading...' : 'No data available'}
+                  </div>
+                )}
               </div>
-              
+
               <div className="flex justify-between text-xs text-gray-400 mt-2">
                 <span>{stock.shares} shares</span>
                 <span>{formatCurrency(displayPrice * stock.shares)} total</span>
@@ -214,18 +242,24 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
           );
         })}
       </div>
-      
+
       {top3Holdings.length === 0 && (
         <div className="text-center py-8 text-gray-400">
           <p>No holdings to display</p>
         </div>
       )}
 
-      {!finnhubService.isConfigured() && top3Holdings.length > 0 && (
+      {!isApiConfigured && top3Holdings.length > 0 && (
         <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-600/30 rounded-lg">
           <p className="text-sm text-yellow-400">
             Configure Finnhub API key to view live 30-day price trends
           </p>
+        </div>
+      )}
+
+      {apiError && isApiConfigured && (
+        <div className="mt-4 p-3 bg-red-900/20 border border-red-600/30 rounded-lg">
+          <p className="text-sm text-red-400">{apiError}</p>
         </div>
       )}
     </div>
