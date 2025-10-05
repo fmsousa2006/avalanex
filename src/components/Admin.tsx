@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Users,
   TrendingUp,
@@ -11,12 +11,19 @@ import {
   ArrowRight,
   CheckCircle2
 } from 'lucide-react';
+import StockManagement from './StockManagement';
 
 interface AdminProps {
   onClose: () => void;
 }
 
 const Admin: React.FC<AdminProps> = ({ onClose }) => {
+  const [activeView, setActiveView] = useState<string | null>(null);
+
+  if (activeView === 'stock-management') {
+    return <StockManagement onBack={() => setActiveView(null)} />;
+  }
+
   const adminPanels = [
     {
       icon: Users,
@@ -156,6 +163,11 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
           {adminPanels.map((panel, index) => (
             <div
               key={index}
+              onClick={() => {
+                if (panel.title === 'Stock Management') {
+                  setActiveView('stock-management');
+                }
+              }}
               className="group bg-gray-800 rounded-xl border border-gray-700 hover:border-gray-600 transition-all duration-300 overflow-hidden hover:shadow-2xl hover:shadow-gray-900/50 cursor-pointer"
             >
               <div className="p-6">
