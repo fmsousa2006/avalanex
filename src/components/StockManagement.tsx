@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit2, Trash2, TrendingUp, Calendar, DollarSign, ArrowLeft, Save, X, Filter, RefreshCw } from 'lucide-react';
+import { Search, Plus, CreditCard as Edit2, Trash2, TrendingUp, Calendar, DollarSign, ArrowLeft, Save, X, Filter, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Stock {
