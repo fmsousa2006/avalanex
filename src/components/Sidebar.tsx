@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, HelpCircle, Users, FileText, BarChart3, LogOut, Briefcase, TestTube } from 'lucide-react';
+import { User, HelpCircle, Users, FileText, BarChart3, LogOut, Briefcase, TestTube, Shield } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -17,6 +17,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onLogout // Add this prop
 }) => {
   const menuItems = [
+    { icon: Shield, label: 'Admin' },
     { icon: BarChart3, label: 'Dashboard', active: true },
     { icon: Briefcase, label: 'Portfolio', onClick: onPortfolioClick },
     { icon: TestTube, label: 'Testing', onClick: onTestingClick },
