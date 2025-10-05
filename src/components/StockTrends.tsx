@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { finnhubService } from '../lib/finnhub';
 
 interface StockTrendsProps {
   data: Array<{
@@ -18,101 +18,53 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
   const [realPriceData, setRealPriceData] = useState<{ [symbol: string]: number[] }>({});
   const [isLoadingRealData, setIsLoadingRealData] = useState(false);
 
-  // Helper function to check if Supabase environment is properly configured
-  const isSupabaseEnvConfigured = () => {
-    const url = import.meta.env.VITE_SUPABASE_URL;
-    const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
-    return url && 
-           key && 
-           url !== 'https://your-project-ref.supabase.co' &&
-           url !== 'https://placeholder.supabase.co' &&
-           key !== 'your-anon-key-here' &&
-           key !== 'placeholder-anon-key';
-  };
-
-  // Fetch real 30-day price data from Supabase
   const fetchReal30DayData = async (symbol: string): Promise<number[]> => {
-    if (!isSupabaseEnvConfigured()) {
-      console.log(`📊 [StockTrends] Supabase not configured, using mock data for ${symbol}`);
-      return [];
-    }
-
-    // Check if Supabase is properly configured
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
-    if (!supabaseUrl || !supabaseKey || 
-        supabaseUrl === 'https://your-project-ref.supabase.co' || 
-        supabaseKey === 'your-anon-key-here' ||
-        supabaseUrl.includes('your-project-ref')) {
-      console.warn('⚠️ [StockTrends] Supabase not configured properly, using mock data');
+    if (!finnhubService.isConfigured()) {
+      console.log(`📊 [StockTrends] Finnhub not configured, using mock data for ${symbol}`);
       return [];
     }
 
     try {
-      // Get stock ID
-      const { data: stock, error: stockError } = await supabase
-        .from('stocks')
-        .select('id')
-        .eq('symbol', symbol)
-        .maybeSingle();
+      const to = Math.floor(Date.now() / 1000);
+      const from = to - (30 * 24 * 60 * 60);
 
-      if (stockError || !stock) {
-        console.warn(`⚠️ [StockTrends] Database error fetching stock ${symbol}:`, stockError.message);
+      const candleData = await finnhubService.getCandles(symbol, 'D', from, to);
+
+      if (!candleData || !candleData.c || candleData.c.length === 0) {
+        console.warn(`⚠️ [StockTrends] No candle data available for ${symbol}`);
         return [];
       }
 
-      // Get 30-day price data
-      const { data: priceData, error: priceError } = await supabase
-        .from('stock_prices_30d')
-        .select('close_price, timestamp')
-        .eq('stock_id', stock.id)
-        .order('timestamp', { ascending: true });
-
-      if (priceError) {
-        console.warn(`⚠️ [StockTrends] Database error fetching 30d data for ${symbol}:`, priceError.message);
-        return [];
-      }
-
-      if (priceData && priceData.length > 0) {
-        const prices = priceData.map(d => parseFloat(d.close_price));
-        console.log(`✅ [StockTrends] Loaded ${priceData.length} data points for ${symbol}`);
-        console.warn(`⚠️ [StockTrends] Database error for ${symbol}:`, error.message);
-      } else {
-        console.warn(`⚠️ [StockTrends] No 30d data found for ${symbol}`);
-        return [];
-      }
+      console.log(`✅ [StockTrends] Loaded ${candleData.c.length} data points for ${symbol}`);
+      return candleData.c;
     } catch (error) {
-      console.warn(`⚠️ [StockTrends] Network error for ${symbol}:`, error);
+      console.warn(`⚠️ [StockTrends] Error fetching data for ${symbol}:`, error);
       return [];
     }
   };
 
-  // Fetch real data for multiple symbols
   const fetchReal30DayDataForSymbols = async (symbols: string[]) => {
-    if (!isSupabaseEnvConfigured()) {
-      console.log('📊 [StockTrends] Supabase not configured, showing empty state');
+    if (!finnhubService.isConfigured()) {
+      console.log('📊 [StockTrends] Finnhub not configured');
       return;
     }
 
     setIsLoadingRealData(true);
-    
+
     try {
       const realData: { [symbol: string]: number[] } = {};
-      
+
       for (const symbol of symbols) {
         const prices = await fetchReal30DayData(symbol);
         if (prices.length > 0) {
           realData[symbol] = prices;
         }
-        // Add small delay between requests to avoid overwhelming the database
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
-      
+
       setRealPriceData(realData);
     } catch (error) {
-      console.warn('⚠️ [StockTrends] Error fetching real 30d data, using mock data:', error);
+      console.warn('⚠️ [StockTrends] Error fetching real 30d data:', error);
     } finally {
       setIsLoadingRealData(false);
     }
@@ -210,19 +162,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
             <div key={stock.symbol} className="border-b border-gray-600 last:border-b-0 pb-6 last:pb-0">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-3">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-base font-semibold text-white">{stock.symbol}</span>
-                    {hasRealData && (
-                      <span className="px-2 py-1 text-xs bg-green-900/30 text-green-400 rounded-full border border-green-600/30">
-                        Real Data
-                      </span>
-                    )}
-                    {!hasRealData && (
-                      <span className="px-2 py-1 text-xs bg-yellow-900/30 text-yellow-400 rounded-full border border-yellow-600/30">
-                        Mock Data
-                      </span>
-                    )}
-                  </div>
+                  <span className="text-base font-semibold text-white">{stock.symbol}</span>
                   <span className="text-sm text-gray-300">{stock.name}</span>
                 </div>
                 <div className="text-right">
@@ -273,19 +213,19 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
             </div>
           );
         })}
-        {/* Check if API key is configured */}
-        {(() => {
-          const apiKey = import.meta.env.VITE_FINNHUB_API_KEY;
-          if (!apiKey || apiKey === 'your-finnhub-api-key-here') {
-            console.warn(`⚠️ [StockTrends] Finnhub API key not configured, using mock data`);
-            return null;
-          }
-        })()}
       </div>
       
       {top3Holdings.length === 0 && (
         <div className="text-center py-8 text-gray-400">
           <p>No holdings to display</p>
+        </div>
+      )}
+
+      {!finnhubService.isConfigured() && top3Holdings.length > 0 && (
+        <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-600/30 rounded-lg">
+          <p className="text-sm text-yellow-400">
+            Configure Finnhub API key to view live 30-day price trends
+          </p>
         </div>
       )}
     </div>
