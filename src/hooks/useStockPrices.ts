@@ -129,7 +129,7 @@ class FinnhubService {
           .from('stocks')
           .update({
             current_price: quote.c,
-            updated_at: new Date().toISOString()
+            last_price_update: new Date().toISOString()
           })
           .eq('id', stockId);
 
