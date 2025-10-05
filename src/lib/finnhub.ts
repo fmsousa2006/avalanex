@@ -201,7 +201,7 @@ export class FinnhubService {
   async getHistoricalData(symbol: string, from: number, to: number) {
     try {
       const response = await fetch(
-        `${this.baseUrl}/stock/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${this.apiKey}`
+        `${FINNHUB_BASE_URL}/stock/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${this.apiKey}`
       );
 
       if (!response.ok) {
