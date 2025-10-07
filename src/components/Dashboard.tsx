@@ -8,6 +8,7 @@ import TransactionHistory from './TransactionHistory';
 import DividendTracker from './DividendTracker';
 import DividendCalendar from './DividendCalendar';
 import DividendsReceived from './DividendsReceived';
+import DividendList from './DividendList';
 import FutureDividends from './FuturePayments';
 import Sidebar from './Sidebar';
 import PortfolioModal from './PortfolioModal';
@@ -53,6 +54,7 @@ export const Dashboard = () => {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [hoveredStock, setHoveredStock] = useState<string | null>(null);
   const [isDividendCalendarOpen, setIsDividendCalendarOpen] = useState(false);
+  const [dividendListKey, setDividendListKey] = useState(0);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
   const [editTransaction, setEditTransaction] = useState<{
@@ -567,14 +569,27 @@ export const Dashboard = () => {
           {/* Secondary Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* Dividends Received */}
-            <DividendsReceived portfolioId={currentPortfolio?.id} />
+            <DividendsReceived
+              key={dividendListKey}
+              portfolioId={currentPortfolio?.id}
+            />
 
             {/* Upcoming Dividends */}
-            <FutureDividends 
+            <FutureDividends
               portfolioId={currentPortfolio?.id}
               onCalendarClick={() => setIsDividendCalendarOpen(true)}
             />
           </div>
+
+          {/* Dividend History List */}
+          {currentPortfolio?.id && (
+            <div className="mb-8">
+              <DividendList
+                portfolioId={currentPortfolio.id}
+                onUpdate={() => setDividendListKey(prev => prev + 1)}
+              />
+            </div>
+          )}
 
           {/* Bottom Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
