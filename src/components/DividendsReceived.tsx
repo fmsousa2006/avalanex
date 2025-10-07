@@ -103,7 +103,7 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-2">
             <DollarSign className="w-5 h-5 text-emerald-400" />
-            <h2 className="text-xl font-semibold">Dividends Received</h2>
+            <h2 className="text-xl font-semibold">Dividend Growth</h2>
           </div>
           <button
             onClick={() => setShowAddModal(true)}
@@ -127,7 +127,7 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-2">
               <DollarSign className="w-5 h-5 text-emerald-400" />
-              <h2 className="text-xl font-semibold">Dividends Received</h2>
+              <h2 className="text-xl font-semibold">Dividend Growth</h2>
             </div>
             <button
               onClick={() => setShowAddModal(true)}
@@ -189,7 +189,7 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-2">
             <DollarSign className="w-5 h-5 text-emerald-400" />
-            <h2 className="text-xl font-semibold">Dividends Received</h2>
+            <h2 className="text-xl font-semibold">Dividend Growth</h2>
           </div>
           <button
             onClick={() => setShowAddModal(true)}

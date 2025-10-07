@@ -568,7 +568,7 @@ export const Dashboard = () => {
 
           {/* Secondary Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {/* Dividends Received */}
+            {/* Dividend Growth */}
             <DividendsReceived
               key={dividendListKey}
               portfolioId={currentPortfolio?.id}
