@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   TrendingUp,
@@ -12,6 +12,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import StockManagement from './StockManagement';
+import { supabase } from '../lib/supabase';
 
 interface AdminProps {
   onClose: () => void;
@@ -19,6 +20,24 @@ interface AdminProps {
 
 const Admin: React.FC<AdminProps> = ({ onClose }) => {
   const [activeView, setActiveView] = useState<string | null>(null);
+  const [stockCount, setStockCount] = useState<number>(0);
+
+  useEffect(() => {
+    fetchStockCount();
+  }, []);
+
+  const fetchStockCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('stocks')
+        .select('*', { count: 'exact', head: true });
+
+      if (error) throw error;
+      setStockCount(count || 0);
+    } catch (error) {
+      console.error('Error fetching stock count:', error);
+    }
+  };
 
   if (activeView === 'stock-management') {
     return <StockManagement onBack={() => setActiveView(null)} />;
@@ -38,7 +57,7 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
       icon: TrendingUp,
       title: 'Stock Management',
       description: 'Add, edit, or remove stocks and manage dividend schedules',
-      stats: '342 Stocks Tracked',
+      stats: `${stockCount} Stock${stockCount !== 1 ? 's' : ''} Tracked`,
       color: 'from-emerald-500 to-emerald-600',
       iconBg: 'bg-emerald-500/20',
       iconColor: 'text-emerald-400'
