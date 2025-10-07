@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DollarSign, Plus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import AddDividendModal from './AddDividendModal';
 
 const isSupabaseEnvConfigured = () => {
   const url = import.meta.env.VITE_SUPABASE_URL;
@@ -28,6 +29,7 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoveredBar, setHoveredBar] = useState<{ year: number; month: number; x: number; y: number } | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
   const chartRef = useRef<HTMLDivElement>(null);
 
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -103,6 +105,13 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
             <DollarSign className="w-5 h-5 text-emerald-400" />
             <h2 className="text-xl font-semibold">Dividends Received</h2>
           </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="p-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+            title="Add Dividend"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
         </div>
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-400"></div>
@@ -113,23 +122,41 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
 
   if (monthlyData.length === 0) {
     return (
-      <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-2">
-            <DollarSign className="w-5 h-5 text-emerald-400" />
-            <h2 className="text-xl font-semibold">Dividends Received</h2>
+      <>
+        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-2">
+              <DollarSign className="w-5 h-5 text-emerald-400" />
+              <h2 className="text-xl font-semibold">Dividends Received</h2>
+            </div>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="p-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+              title="Add Dividend"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <DollarSign className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+              <p className="text-gray-400 font-medium text-lg">No dividend payments yet</p>
+              <p className="text-gray-500 text-sm mt-2">
+                Click the + button to record your first dividend payment
+              </p>
+            </div>
           </div>
         </div>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <DollarSign className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 font-medium text-lg">No dividend payments yet</p>
-            <p className="text-gray-500 text-sm mt-2">
-              Dividend payments will appear here once recorded
-            </p>
-          </div>
-        </div>
-      </div>
+        {showAddModal && portfolioId && (
+          <AddDividendModal
+            portfolioId={portfolioId}
+            onClose={() => setShowAddModal(false)}
+            onSuccess={() => {
+              fetchDividendData();
+            }}
+          />
+        )}
+      </>
     );
   }
 
@@ -157,13 +184,21 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
   const usableHeight = chartHeight - chartTop - chartBottom;
 
   return (
-    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-2">
-          <DollarSign className="w-5 h-5 text-emerald-400" />
-          <h2 className="text-xl font-semibold">Dividends Received</h2>
+    <>
+      <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-2">
+            <DollarSign className="w-5 h-5 text-emerald-400" />
+            <h2 className="text-xl font-semibold">Dividends Received</h2>
+          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="p-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+            title="Add Dividend"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
         </div>
-      </div>
 
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-gray-750 rounded-lg p-4">
@@ -286,7 +321,18 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
           </div>
         </div>
       )}
-    </div>
+      </div>
+
+      {showAddModal && portfolioId && (
+        <AddDividendModal
+          portfolioId={portfolioId}
+          onClose={() => setShowAddModal(false)}
+          onSuccess={() => {
+            fetchDividendData();
+          }}
+        />
+      )}
+    </>
   );
 };
 
