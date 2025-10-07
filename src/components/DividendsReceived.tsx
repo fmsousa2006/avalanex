@@ -28,7 +28,7 @@ interface DividendsReceivedProps {
 const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) => {
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hoveredBar, setHoveredBar] = useState<{ year: number; month: number; x: number; y: number } | null>(null);
+  const [hoveredBar, setHoveredBar] = useState<{ month: number; x: number; y: number } | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const chartRef = useRef<HTMLDivElement>(null);
 
@@ -247,7 +247,21 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
               const hasData = values.some(v => v > 0);
 
               return (
-                <div key={monthIndex} className="flex-1 flex flex-col justify-end items-center">
+                <div
+                  key={monthIndex}
+                  className="flex-1 flex flex-col justify-end items-center relative"
+                  onMouseEnter={(e) => {
+                    if (hasData) {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setHoveredBar({
+                        month: monthIndex,
+                        x: rect.left + rect.width / 2,
+                        y: rect.top
+                      });
+                    }
+                  }}
+                  onMouseLeave={() => setHoveredBar(null)}
+                >
                   <div className="w-full flex justify-center items-end space-x-1 px-1" style={{ height: '100%' }}>
                     {hasData ? (
                       values.map((value, yearIndex) => {
@@ -258,24 +272,15 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
                         return value > 0 ? (
                           <div
                             key={yearIndex}
-                            className="relative group cursor-pointer transition-all duration-200 hover:opacity-80"
+                            className="relative cursor-pointer transition-all duration-200"
                             style={{
                               width: `${Math.max(8, 100 / (uniqueYears.length * 1.5))}%`,
                               height: `${heightPercent}%`,
                               backgroundColor: color.bg,
                               borderRadius: '2px 2px 0 0',
-                              minHeight: value > 0 ? '2px' : '0'
+                              minHeight: value > 0 ? '2px' : '0',
+                              opacity: hoveredBar?.month === monthIndex ? 0.7 : 1
                             }}
-                            onMouseEnter={(e) => {
-                              const rect = e.currentTarget.getBoundingClientRect();
-                              setHoveredBar({
-                                year,
-                                month: monthIndex,
-                                x: rect.left + rect.width / 2,
-                                y: rect.top
-                              });
-                            }}
-                            onMouseLeave={() => setHoveredBar(null)}
                           />
                         ) : null;
                       })
@@ -304,23 +309,47 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
         </div>
       </div>
 
-      {hoveredBar && (
-        <div
-          className="fixed bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl border border-gray-700 z-50 pointer-events-none"
-          style={{
-            left: hoveredBar.x,
-            top: hoveredBar.y - 10,
-            transform: 'translate(-50%, -100%)'
-          }}
-        >
-          <div className="text-xs text-gray-400 mb-1">
-            {monthNames[hoveredBar.month]} {hoveredBar.year}
+      {hoveredBar && (() => {
+        const monthData = uniqueYears.map(year => {
+          const data = monthlyData.find(d => d.year === year && d.month === hoveredBar.month);
+          return { year, amount: data?.amount || 0 };
+        }).filter(d => d.amount > 0);
+
+        if (monthData.length === 0) return null;
+
+        return (
+          <div
+            className="fixed bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl border border-gray-700 z-50 pointer-events-none"
+            style={{
+              left: hoveredBar.x,
+              top: hoveredBar.y - 10,
+              transform: 'translate(-50%, -100%)',
+              minWidth: '160px'
+            }}
+          >
+            <div className="text-sm font-semibold mb-3 pb-2 border-b border-gray-700">
+              {monthNames[hoveredBar.month]}
+            </div>
+            <div className="space-y-2">
+              {monthData.map((item, index) => {
+                const color = yearColors[uniqueYears.indexOf(item.year) % yearColors.length];
+                return (
+                  <div key={item.year} className="flex items-center justify-between space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: color.bg }}
+                      />
+                      <span className="text-sm text-gray-300">{item.year}:</span>
+                    </div>
+                    <span className="text-sm font-bold">${item.amount.toFixed(2)}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div className="text-lg font-bold text-emerald-400">
-            ${monthlyData.find(d => d.year === hoveredBar.year && d.month === hoveredBar.month)?.amount.toFixed(2) || '0.00'}
-          </div>
-        </div>
-      )}
+        );
+      })()}
       </div>
 
       {showAddModal && portfolioId && (
