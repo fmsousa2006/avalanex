@@ -670,8 +670,7 @@ export const Dashboard = () => {
                     exDividendDate: div.ex_dividend_date,
                     paymentDate: div.payment_date,
                     yield: div.dividend_yield || 0,
-                    frequency: div.frequency,
-                    status: div.status
+                    frequency: div.frequency
                   }))}
                 />
               ) : (

@@ -11,7 +11,7 @@ interface DividendData {
   paymentDate: string;
   yield: number;
   frequency: string;
-  status: 'upcoming' | 'ex-dividend' | 'paid';
+  status?: 'upcoming' | 'ex-dividend' | 'paid';
 }
 
 interface DividendTrackerProps {

@@ -131,7 +131,6 @@ export const usePortfolio = () => {
       record_date: div.exDividendDate,
       dividend_yield: div.yield,
       frequency: div.frequency as 'Monthly' | 'Quarterly' | 'Semi-Annual' | 'Annual',
-      status: div.status,
       created_at: new Date().toISOString(),
       stock: {
         id: `mock-stock-${index}`,
@@ -633,22 +632,27 @@ export const usePortfolio = () => {
 
   // Calculate next dividend
   const calculateNextDividend = () => {
-    const upcomingDividends = dividends.filter(div => 
-      div.status === 'upcoming' && new Date(div.payment_date) > new Date()
-    );
-    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const upcomingDividends = dividends.filter(div => {
+      const paymentDate = new Date(div.payment_date);
+      paymentDate.setHours(0, 0, 0, 0);
+      return paymentDate >= today;
+    });
+
     if (upcomingDividends.length === 0) {
       setNextDividend(null);
       return;
     }
-    
-    const nextDiv = upcomingDividends.sort((a, b) => 
+
+    const nextDiv = upcomingDividends.sort((a, b) =>
       new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime()
     )[0];
-    
+
     const holding = holdings.find(h => h.stock_id === nextDiv.stock_id);
     const totalAmount = holding ? holding.shares * nextDiv.amount : nextDiv.amount;
-    
+
     setNextDividend({
       symbol: nextDiv.stock?.symbol || '',
       amount: nextDiv.amount,
