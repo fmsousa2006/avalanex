@@ -314,7 +314,7 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
 
           return (
             <div
-              className="absolute bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl border border-gray-700 z-50 pointer-events-none"
+              className="absolute bg-gray-900/90 backdrop-blur-sm text-white px-4 py-3 rounded-lg shadow-xl border border-gray-700 z-50 pointer-events-none"
               style={{
                 left: `${hoveredBar.x}px`,
                 top: `${hoveredBar.y - 8}px`,
