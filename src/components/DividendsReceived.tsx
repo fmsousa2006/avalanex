@@ -50,10 +50,11 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
       setLoading(true);
 
       const { data: dividendPayments, error } = await supabase
-        .from('dividend_payments')
+        .from('transactions')
         .select('*')
         .eq('portfolio_id', portfolioId)
-        .order('payment_date', { ascending: true });
+        .eq('type', 'dividend')
+        .order('transaction_date', { ascending: true });
 
       if (error) throw error;
 
@@ -66,7 +67,7 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
       const monthlyMap: { [key: string]: number } = {};
 
       dividendPayments.forEach(payment => {
-        const date = new Date(payment.payment_date);
+        const date = new Date(payment.transaction_date);
         const year = date.getFullYear();
         const month = date.getMonth();
         const key = `${year}-${month}`;
