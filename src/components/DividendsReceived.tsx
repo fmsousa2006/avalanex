@@ -256,13 +256,19 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
                       const columnRect = e.currentTarget.getBoundingClientRect();
 
                       const barsContainer = e.currentTarget.querySelector('.w-full.flex') as HTMLElement;
-                      const topBarPosition = barsContainer?.getBoundingClientRect().top || columnRect.top;
+                      if (barsContainer) {
+                        const bars = Array.from(barsContainer.children) as HTMLElement[];
+                        const topMostBar = bars.reduce((top, bar) => {
+                          const barRect = bar.getBoundingClientRect();
+                          return barRect.top < top ? barRect.top : top;
+                        }, columnRect.bottom);
 
-                      setHoveredBar({
-                        month: monthIndex,
-                        x: columnRect.left + columnRect.width / 2 - chartRect.left,
-                        y: topBarPosition - chartRect.top
-                      });
+                        setHoveredBar({
+                          month: monthIndex,
+                          x: columnRect.left + columnRect.width / 2 - chartRect.left,
+                          y: topMostBar - chartRect.top
+                        });
+                      }
                     }
                   }}
                   onMouseLeave={() => setHoveredBar(null)}
@@ -311,7 +317,7 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
               className="absolute bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl border border-gray-700 z-50 pointer-events-none"
               style={{
                 left: `${hoveredBar.x}px`,
-                top: `${hoveredBar.y - 20}px`,
+                top: `${hoveredBar.y - 8}px`,
                 transform: 'translate(-50%, -100%)',
                 minWidth: '160px'
               }}
