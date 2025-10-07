@@ -298,6 +298,48 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
           </div>
         </div>
 
+        {hoveredBar && (() => {
+          const monthData = uniqueYears.map(year => {
+            const data = monthlyData.find(d => d.year === year && d.month === hoveredBar.month);
+            return { year, amount: data?.amount || 0 };
+          }).filter(d => d.amount > 0);
+
+          if (monthData.length === 0) return null;
+
+          return (
+            <div
+              className="absolute bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl border border-gray-700 z-50 pointer-events-none"
+              style={{
+                left: `${hoveredBar.x}px`,
+                top: `${hoveredBar.y - 10}px`,
+                transform: 'translate(-50%, -100%)',
+                minWidth: '160px'
+              }}
+            >
+              <div className="text-sm font-semibold mb-3 pb-2 border-b border-gray-700">
+                {monthNames[hoveredBar.month]}
+              </div>
+              <div className="space-y-2">
+                {monthData.map((item, index) => {
+                  const color = yearColors[uniqueYears.indexOf(item.year) % yearColors.length];
+                  return (
+                    <div key={item.year} className="flex items-center justify-between space-x-4">
+                      <div className="flex items-center space-x-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: color.bg }}
+                        />
+                        <span className="text-sm text-gray-300">{item.year}:</span>
+                      </div>
+                      <span className="text-sm font-bold">${item.amount.toFixed(2)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         <div className="flex justify-center items-center space-x-6 mt-6 pt-4 border-t border-gray-700">
           {uniqueYears.map((year, index) => {
             const color = yearColors[index % yearColors.length];
@@ -313,48 +355,6 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
           })}
         </div>
       </div>
-
-      {hoveredBar && (() => {
-        const monthData = uniqueYears.map(year => {
-          const data = monthlyData.find(d => d.year === year && d.month === hoveredBar.month);
-          return { year, amount: data?.amount || 0 };
-        }).filter(d => d.amount > 0);
-
-        if (monthData.length === 0) return null;
-
-        return (
-          <div
-            className="absolute bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl border border-gray-700 z-50 pointer-events-none"
-            style={{
-              left: `${hoveredBar.x}px`,
-              top: `${hoveredBar.y - 10}px`,
-              transform: 'translate(-50%, -100%)',
-              minWidth: '160px'
-            }}
-          >
-            <div className="text-sm font-semibold mb-3 pb-2 border-b border-gray-700">
-              {monthNames[hoveredBar.month]}
-            </div>
-            <div className="space-y-2">
-              {monthData.map((item, index) => {
-                const color = yearColors[uniqueYears.indexOf(item.year) % yearColors.length];
-                return (
-                  <div key={item.year} className="flex items-center justify-between space-x-4">
-                    <div className="flex items-center space-x-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: color.bg }}
-                      />
-                      <span className="text-sm text-gray-300">{item.year}:</span>
-                    </div>
-                    <span className="text-sm font-bold">${item.amount.toFixed(2)}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
       </div>
 
       {showAddModal && portfolioId && (
