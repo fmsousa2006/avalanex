@@ -1,29 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { DollarSign, Calendar, Database, Plus } from 'lucide-react';
+import { DollarSign, Plus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-// Helper function to check if Supabase environment is properly configured
 const isSupabaseEnvConfigured = () => {
   const url = import.meta.env.VITE_SUPABASE_URL;
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  
-  return url && 
-         key && 
+
+  return url &&
+         key &&
          url !== 'https://your-project-ref.supabase.co' &&
          url !== 'https://placeholder.supabase.co' &&
          key !== 'your-anon-key-here' &&
          key !== 'placeholder-anon-key';
 };
 
-interface DividendPayment {
+interface MonthlyData {
   year: number;
+  month: number;
   amount: number;
-  count: number;
-  stocks: Array<{
-    symbol: string;
-    amount: number;
-    payments: number;
-  }>;
 }
 
 interface DividendsReceivedProps {
@@ -31,411 +25,266 @@ interface DividendsReceivedProps {
 }
 
 const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) => {
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; data: DividendPayment } | null>(null);
-  const [chartDimensions, setChartDimensions] = useState({ width: 600, height: 300 });
-  const [dividendData, setDividendData] = useState<DividendPayment[]>([]);
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [hoveredBar, setHoveredBar] = useState<{ year: number; month: number; x: number; y: number } | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
-  // Update chart dimensions on resize
-  useEffect(() => {
-    const updateDimensions = () => {
-      if (chartRef.current) {
-        const containerWidth = chartRef.current.offsetWidth;
-        const containerHeight = Math.max(250, containerWidth * 0.4);
-        setChartDimensions({
-          width: Math.max(400, containerWidth - 40),
-          height: Math.min(containerHeight, 350)
-        });
-      }
-    };
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-    updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    
-    return () => window.removeEventListener('resize', updateDimensions);
-  }, []);
+  const yearColors = [
+    { bg: '#f97316', label: 'bg-orange-500' },
+    { bg: '#3b82f6', label: 'bg-blue-500' },
+    { bg: '#8b5cf6', label: 'bg-violet-500' }
+  ];
 
-  // Fetch dividend data from Supabase
   const fetchDividendData = async () => {
-    // Check if Supabase is configured before attempting connection
     const supabaseConfigured = isSupabaseEnvConfigured();
-    
-    if (!supabaseConfigured) {
-      console.warn('Supabase not configured, skipping dividend data fetch');
-      setDividendData([]);
-      setLoading(false);
-      return;
-    }
 
-    if (!portfolioId) {
+    if (!supabaseConfigured || !portfolioId) {
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
-      setError(null);
 
-      // Test Supabase connection first
-      const { error: connectionError } = await supabase
-        .from('portfolios')
-        .select('id')
-        .limit(1);
-
-      if (connectionError) {
-        throw new Error(`Supabase connection failed: ${connectionError.message}`);
-      }
-
-      // Get all dividend transactions for this portfolio
-      const { data: transactions, error: transactionError } = await supabase
-        .from('transactions')
-        .select(`
-          *,
-          stock:stocks(symbol, name)
-        `)
+      const { data: dividendPayments, error } = await supabase
+        .from('dividend_payments')
+        .select('*')
         .eq('portfolio_id', portfolioId)
-        .eq('type', 'dividend')
-        .eq('status', 'completed')
-        .order('transaction_date', { ascending: true });
+        .order('payment_date', { ascending: true });
 
-      if (transactionError) {
-        throw new Error(`Database query failed: ${transactionError.message}`);
-      }
+      if (error) throw error;
 
-      if (!transactions || transactions.length === 0) {
-        setDividendData([]);
+      if (!dividendPayments || dividendPayments.length === 0) {
+        setMonthlyData([]);
         setLoading(false);
         return;
       }
 
-      // Group transactions by year
-      const yearlyData: { [year: number]: DividendPayment } = {};
+      const monthlyMap: { [key: string]: number } = {};
 
-      transactions.forEach(transaction => {
-        const year = new Date(transaction.transaction_date).getFullYear();
-        const symbol = transaction.stock?.symbol || 'Unknown';
-        const amount = transaction.amount;
+      dividendPayments.forEach(payment => {
+        const date = new Date(payment.payment_date);
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const key = `${year}-${month}`;
 
-        if (!yearlyData[year]) {
-          yearlyData[year] = {
-            year,
-            amount: 0,
-            count: 0,
-            stocks: []
-          };
+        if (!monthlyMap[key]) {
+          monthlyMap[key] = 0;
         }
-
-        yearlyData[year].amount += amount;
-        yearlyData[year].count += 1;
-
-        // Find or create stock entry for this year
-        const existingStock = yearlyData[year].stocks.find(s => s.symbol === symbol);
-        if (existingStock) {
-          existingStock.amount += amount;
-          existingStock.payments += 1;
-        } else {
-          yearlyData[year].stocks.push({
-            symbol,
-            amount,
-            payments: 1
-          });
-        }
+        monthlyMap[key] += parseFloat(payment.amount.toString());
       });
 
-      // Convert to array and sort by year
-      const sortedData = Object.values(yearlyData).sort((a, b) => a.year - b.year);
-      setDividendData(sortedData);
+      const dataArray: MonthlyData[] = Object.entries(monthlyMap).map(([key, amount]) => {
+        const [year, month] = key.split('-').map(Number);
+        return { year, month, amount };
+      });
+
+      setMonthlyData(dataArray);
     } catch (err) {
       console.error('Error fetching dividend data:', err);
-      if (err instanceof Error) {
-        if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-          setError('Unable to connect to database. Please check your Supabase configuration in the .env file and restart the development server.');
-        } else {
-          setError(err.message);
-        }
-      } else {
-        setError('Failed to load dividend data');
-      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch data when portfolioId changes
   useEffect(() => {
     fetchDividendData();
   }, [portfolioId]);
 
-  // Show loading state
   if (loading) {
     return (
       <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-2">
-            <DollarSign className="w-5 h-5 text-green-400" />
+            <DollarSign className="w-5 h-5 text-emerald-400" />
             <h2 className="text-xl font-semibold">Dividends Received</h2>
           </div>
-          <button
-            onClick={() => alert('Add dividend functionality coming soon!')}
-            className="p-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
-            title="Add Dividend"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
         </div>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400"></div>
-          <span className="ml-3 text-gray-400">Loading dividend data...</span>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-400"></div>
         </div>
       </div>
     );
   }
 
-  // Show error state
-  if (error) {
+  if (monthlyData.length === 0) {
     return (
       <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-2">
-            <DollarSign className="w-5 h-5 text-green-400" />
+            <DollarSign className="w-5 h-5 text-emerald-400" />
             <h2 className="text-xl font-semibold">Dividends Received</h2>
           </div>
-          <button
-            onClick={() => alert('Add dividend functionality coming soon!')}
-            className="p-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
-            title="Add Dividend"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <Database className="w-12 h-12 text-red-400 mx-auto mb-4" />
-            <p className="text-red-400 font-medium">Error loading dividend data</p>
-            <p className="text-gray-400 text-sm mt-2">{error}</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show no data state
-  if (dividendData.length === 0) {
-    return (
-      <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-2">
-            <DollarSign className="w-5 h-5 text-green-400" />
-            <h2 className="text-xl font-semibold">Dividends Received</h2>
-          </div>
-          <button
-            onClick={() => alert('Add dividend functionality coming soon!')}
-            className="p-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
-            title="Add Dividend"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
         </div>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <DollarSign className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 font-medium text-lg">No dividend data available</p>
+            <p className="text-gray-400 font-medium text-lg">No dividend payments yet</p>
             <p className="text-gray-500 text-sm mt-2">
-              Dividend payments will appear here once you receive them from your stock holdings.
-            </p>
-            <p className="text-gray-500 text-sm mt-1">
-              Add dividend transactions to see your dividend history.
+              Dividend payments will appear here once recorded
             </p>
           </div>
         </div>
       </div>
     );
-  };
+  }
 
-  const maxAmount = Math.max(...dividendData.map(d => d.amount));
-  
-  const chartWidth = chartDimensions.width;
-  const chartHeight = chartDimensions.height;
-  const padding = { top: 20, right: 20, bottom: 60, left: 60 };
-  const chartAreaWidth = chartWidth - padding.left - padding.right;
-  const chartAreaHeight = chartHeight - padding.top - padding.bottom;
+  const uniqueYears = [...new Set(monthlyData.map(d => d.year))].sort().slice(-3);
+  const maxAmount = Math.max(...monthlyData.map(d => d.amount));
 
-  const handleBarHover = (event: React.MouseEvent, yearData: DividendPayment) => {
-    if (!chartRef.current) return;
-    
-    const containerRect = chartRef.current.getBoundingClientRect();
-    const mouseX = event.clientX - containerRect.left;
-    const mouseY = event.clientY - containerRect.top;
-    
-    setTooltip({
-      x: mouseX,
-      y: mouseY,
-      data: yearData
+  const getDataForMonth = (month: number) => {
+    return uniqueYears.map(year => {
+      const data = monthlyData.find(d => d.year === year && d.month === month);
+      return data ? data.amount : 0;
     });
   };
 
-  const handleMouseLeave = () => {
-    setTooltip(null);
-  };
+  const totalAllTime = monthlyData.reduce((sum, d) => sum + d.amount, 0);
+  const currentYear = new Date().getFullYear();
+  const currentYearTotal = monthlyData
+    .filter(d => d.year === currentYear)
+    .reduce((sum, d) => sum + d.amount, 0);
 
-  const totalDividends = dividendData.reduce((sum, year) => sum + year.amount, 0);
-  const totalPayments = dividendData.reduce((sum, year) => sum + year.count, 0);
-  const currentYearDividends = dividendData.find(d => d.year === new Date().getFullYear())?.amount || 0;
+  const yAxisSteps = 5;
+  const yAxisMax = Math.ceil(maxAmount / 10) * 10;
+  const chartHeight = 300;
+  const chartTop = 20;
+  const chartBottom = 60;
+  const usableHeight = chartHeight - chartTop - chartBottom;
 
   return (
     <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-2">
-          <DollarSign className="w-5 h-5 text-green-400" />
+          <DollarSign className="w-5 h-5 text-emerald-400" />
           <h2 className="text-xl font-semibold">Dividends Received</h2>
         </div>
-        <button
-          onClick={() => alert('Add dividend functionality coming soon!')}
-          className="p-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
-          title="Add Dividend"
-        >
-          <Plus className="w-4 h-4" />
-        </button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-gray-750 rounded-lg p-4">
-          <p className="text-gray-400 text-sm">Total All Time</p>
-          <p className="text-2xl font-bold text-green-400">${totalDividends.toLocaleString()}</p>
+          <p className="text-gray-400 text-sm mb-1">Total All Time</p>
+          <p className="text-2xl font-bold text-emerald-400">${totalAllTime.toFixed(2)}</p>
         </div>
         <div className="bg-gray-750 rounded-lg p-4">
-          <p className="text-gray-400 text-sm">This Year</p>
-          <p className="text-2xl font-bold">${currentYearDividends.toLocaleString()}</p>
-        </div>
-        <div className="bg-gray-750 rounded-lg p-4">
-          <p className="text-gray-400 text-sm">Total Payments</p>
-          <p className="text-2xl font-bold">{totalPayments}</p>
+          <p className="text-gray-400 text-sm mb-1">This Year ({currentYear})</p>
+          <p className="text-2xl font-bold">${currentYearTotal.toFixed(2)}</p>
         </div>
       </div>
 
-      {/* Bar Chart */}
-      <div className="relative" ref={chartRef}>
-        <svg 
-          width={chartWidth} 
-          height={chartHeight} 
-          className="w-full h-auto"
-          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-          preserveAspectRatio="xMidYMid meet"
-        >
-          {/* Chart background */}
-          <rect 
-            x={padding.left} 
-            y={padding.top} 
-            width={chartAreaWidth} 
-            height={chartAreaHeight} 
-            fill="transparent" 
-            stroke="#374151" 
-            strokeWidth="1"
-            opacity="0.3"
-          />
+      <div className="relative bg-gray-850 rounded-lg p-6" ref={chartRef}>
+        <div className="relative" style={{ height: `${chartHeight}px` }}>
+          <svg className="absolute inset-0 w-full h-full">
+            <defs>
+              <pattern id="grid" width="100%" height={usableHeight / yAxisSteps} patternUnits="userSpaceOnUse">
+                <line x1="0" y1="0" x2="100%" y2="0" stroke="#374151" strokeWidth="1" opacity="0.3" strokeDasharray="4,4" />
+              </pattern>
+            </defs>
 
-          {/* Horizontal grid lines */}
-          {[0, 0.25, 0.5, 0.75, 1].map((ratio) => (
-            <line
-              key={ratio}
-              x1={padding.left}
-              y1={padding.top + chartAreaHeight * ratio}
-              x2={padding.left + chartAreaWidth}
-              y2={padding.top + chartAreaHeight * ratio}
-              stroke="#374151"
-              strokeWidth="0.5"
-              opacity="0.5"
-            />
-          ))}
+            <g transform={`translate(0, ${chartTop})`}>
+              <rect width="100%" height={usableHeight} fill="url(#grid)" />
 
-          {/* Bars */}
-          {dividendData.map((yearData, index) => {
-            const barWidth = chartAreaWidth / dividendData.length * 0.7;
-            const barX = padding.left + (index + 0.15) * (chartAreaWidth / dividendData.length);
-            const barHeight = (yearData.amount / maxAmount) * chartAreaHeight;
-            const barY = padding.top + chartAreaHeight - barHeight;
+              {Array.from({ length: yAxisSteps + 1 }).map((_, i) => {
+                const value = (yAxisMax / yAxisSteps) * (yAxisSteps - i);
+                const y = (usableHeight / yAxisSteps) * i;
+                return (
+                  <text
+                    key={i}
+                    x="0"
+                    y={y}
+                    className="fill-gray-500 text-xs"
+                    dominantBaseline="middle"
+                  >
+                    {value}
+                  </text>
+                );
+              })}
+            </g>
+          </svg>
 
-            return (
-              <rect
-                key={yearData.year}
-                x={barX}
-                y={barY}
-                width={barWidth}
-                height={barHeight}
-                fill="#10b981"
-                className="cursor-pointer hover:fill-emerald-400 transition-colors"
-                onMouseMove={(e) => handleBarHover(e, yearData)}
-                onMouseLeave={handleMouseLeave}
-              />
-            );
-          })}
+          <div className="absolute inset-0 flex" style={{ paddingTop: `${chartTop}px`, paddingBottom: `${chartBottom}px`, paddingLeft: '40px' }}>
+            {monthNames.map((monthName, monthIndex) => {
+              const values = getDataForMonth(monthIndex);
+              const hasData = values.some(v => v > 0);
 
-          {/* Year labels */}
-          {dividendData.map((yearData, index) => {
-            const labelX = padding.left + (index + 0.5) * (chartAreaWidth / dividendData.length);
-            return (
-              <text
-                key={`label-${yearData.year}`}
-                x={labelX}
-                y={chartHeight - padding.bottom + 20}
-                textAnchor="middle"
-                className="fill-gray-400 text-sm"
-              >
-                {yearData.year}
-              </text>
-            );
-          })}
+              return (
+                <div key={monthIndex} className="flex-1 flex flex-col justify-end items-center">
+                  <div className="w-full flex justify-center items-end space-x-1 px-1" style={{ height: '100%' }}>
+                    {hasData ? (
+                      values.map((value, yearIndex) => {
+                        const heightPercent = (value / yAxisMax) * 100;
+                        const year = uniqueYears[yearIndex];
+                        const color = yearColors[yearIndex % yearColors.length];
 
-          {/* Y-axis labels */}
-          {[0, 0.25, 0.5, 0.75, 1].map((ratio) => (
-            <text
-              key={`y-${ratio}`}
-              x={padding.left - 10}
-              y={padding.top + chartAreaHeight * (1 - ratio) + 5}
-              textAnchor="end"
-              className="fill-gray-400 text-xs"
-            >
-              ${(maxAmount * ratio).toLocaleString()}
-            </text>
-          ))}
-        </svg>
-
-        {/* Tooltip */}
-        {tooltip && (
-          <div
-            className="absolute bg-gray-700 text-white p-4 rounded-lg shadow-lg border border-gray-600 z-10 pointer-events-none min-w-48"
-            style={{
-              left: tooltip.x + 10,
-              top: tooltip.y - 10,
-              transform: tooltip.x > chartWidth - 200 ? 'translateX(-100%)' : 'none'
-            }}
-          >
-            <div className="text-sm font-semibold mb-2">{tooltip.data.year} Dividends</div>
-            <div className="text-lg font-bold text-green-400 mb-2">
-              ${tooltip.data.amount.toLocaleString()}
-            </div>
-            <div className="text-xs text-gray-300 mb-2">
-              {tooltip.data.count} payments received
-            </div>
-            <div className="space-y-1">
-              {tooltip.data.stocks.slice(0, 3).map((stock) => (
-                <div key={stock.symbol} className="flex justify-between text-xs">
-                  <span>{stock.symbol}</span>
-                  <span>${stock.amount.toFixed(0)}</span>
+                        return value > 0 ? (
+                          <div
+                            key={yearIndex}
+                            className="relative group cursor-pointer transition-all duration-200 hover:opacity-80"
+                            style={{
+                              width: `${Math.max(8, 100 / (uniqueYears.length * 1.5))}%`,
+                              height: `${heightPercent}%`,
+                              backgroundColor: color.bg,
+                              borderRadius: '2px 2px 0 0',
+                              minHeight: value > 0 ? '2px' : '0'
+                            }}
+                            onMouseEnter={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setHoveredBar({
+                                year,
+                                month: monthIndex,
+                                x: rect.left + rect.width / 2,
+                                y: rect.top
+                              });
+                            }}
+                            onMouseLeave={() => setHoveredBar(null)}
+                          />
+                        ) : null;
+                      })
+                    ) : null}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-2">{monthName}</div>
                 </div>
-              ))}
-              {tooltip.data.stocks.length > 3 && (
-                <div className="text-xs text-gray-400">
-                  +{tooltip.data.stocks.length - 3} more stocks
-                </div>
-              )}
-            </div>
+              );
+            })}
           </div>
-        )}
+        </div>
+
+        <div className="flex justify-center items-center space-x-6 mt-6 pt-4 border-t border-gray-700">
+          {uniqueYears.map((year, index) => {
+            const color = yearColors[index % yearColors.length];
+            return (
+              <div key={year} className="flex items-center space-x-2">
+                <div
+                  className="w-4 h-4 rounded"
+                  style={{ backgroundColor: color.bg }}
+                />
+                <span className="text-sm text-gray-400">{year}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
+
+      {hoveredBar && (
+        <div
+          className="fixed bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl border border-gray-700 z-50 pointer-events-none"
+          style={{
+            left: hoveredBar.x,
+            top: hoveredBar.y - 10,
+            transform: 'translate(-50%, -100%)'
+          }}
+        >
+          <div className="text-xs text-gray-400 mb-1">
+            {monthNames[hoveredBar.month]} {hoveredBar.year}
+          </div>
+          <div className="text-lg font-bold text-emerald-400">
+            ${monthlyData.find(d => d.year === hoveredBar.year && d.month === hoveredBar.month)?.amount.toFixed(2) || '0.00'}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
