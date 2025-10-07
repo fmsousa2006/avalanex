@@ -311,7 +311,7 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
               className="absolute bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl border border-gray-700 z-50 pointer-events-none"
               style={{
                 left: `${hoveredBar.x}px`,
-                top: `${hoveredBar.y - 10}px`,
+                top: `${hoveredBar.y - 20}px`,
                 transform: 'translate(-50%, -100%)',
                 minWidth: '160px'
               }}
