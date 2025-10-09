@@ -9,17 +9,17 @@ const corsHeaders = {
 
 const FINNHUB_API_KEY = "d1vrncpr01qmbi8ppsrgd1vrncpr01qmbi8ppss0";
 const RATE_LIMIT_PER_MINUTE = 60;
-const DELAY_MS = (60 * 1000) / RATE_LIMIT_PER_MINUTE; // ~1 second between calls
+const DELAY_MS = (60 * 1000) / RATE_LIMIT_PER_MINUTE;
 
 interface StockQuote {
-  c: number; // Current price
-  d: number; // Change
-  dp: number; // Percent change
-  h: number; // High price of the day
-  l: number; // Low price of the day
-  o: number; // Open price of the day
-  pc: number; // Previous close price
-  t: number; // Timestamp
+  c: number;
+  d: number;
+  dp: number;
+  h: number;
+  l: number;
+  o: number;
+  pc: number;
+  t: number;
 }
 
 interface Stock {
@@ -35,13 +35,11 @@ function isMarketHours(): boolean {
   const hours = nyTime.getHours();
   const minutes = nyTime.getMinutes();
   
-  // Check if weekday (Monday = 1, Friday = 5)
   if (day === 0 || day === 6) return false;
   
-  // Check if between 9:30 AM and 4:00 PM EST
   const currentMinutes = hours * 60 + minutes;
-  const marketOpen = 9 * 60 + 30; // 9:30 AM
-  const marketClose = 16 * 60; // 4:00 PM
+  const marketOpen = 9 * 60 + 30;
+  const marketClose = 16 * 60;
   
   return currentMinutes >= marketOpen && currentMinutes < marketClose;
 }
@@ -75,7 +73,6 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Check if market is open
     if (!isMarketHours()) {
       return new Response(
         JSON.stringify({
@@ -93,7 +90,6 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get all active stocks
     const { data: stocks, error: fetchError } = await supabase
       .from("stocks")
       .select("id, symbol, name")
@@ -118,15 +114,12 @@ Deno.serve(async (req: Request) => {
     let errorCount = 0;
     const timestamp = new Date().toISOString();
 
-    // Process stocks with rate limiting
     for (let i = 0; i < stocks.length; i++) {
       const stock = stocks[i] as Stock;
       
-      // Fetch quote
       const quote = await fetchQuote(stock.symbol);
       
       if (quote && quote.c > 0) {
-        // Update stock current price
         await supabase
           .from("stocks")
           .update({
@@ -137,7 +130,6 @@ Deno.serve(async (req: Request) => {
           })
           .eq("id", stock.id);
 
-        // Insert into stock_prices for historical tracking
         await supabase
           .from("stock_prices")
           .insert({
@@ -148,31 +140,38 @@ Deno.serve(async (req: Request) => {
             high_price: quote.h,
             low_price: quote.l,
             close_price: quote.c,
-            volume: 0, // Finnhub quote doesn't include volume
+            volume: 0,
+          });
+
+        await supabase
+          .from("api_calls")
+          .insert({
+            service: "finnhub",
+            endpoint: "quote",
+            symbol: stock.symbol,
+            status: "success",
           });
 
         successCount++;
         console.log(`✓ ${stock.symbol}: $${quote.c}`);
       } else {
+        await supabase
+          .from("api_calls")
+          .insert({
+            service: "finnhub",
+            endpoint: "quote",
+            symbol: stock.symbol,
+            status: "error",
+          });
+
         errorCount++;
         console.log(`✗ ${stock.symbol}: Failed to fetch`);
       }
 
-      // Rate limiting: wait between requests
       if (i < stocks.length - 1) {
         await sleep(DELAY_MS);
       }
     }
-
-    // Track API calls
-    await supabase
-      .from("api_calls_tracking")
-      .insert({
-        api_name: "finnhub",
-        endpoint: "quote",
-        calls_made: successCount,
-        timestamp: timestamp,
-      });
 
     return new Response(
       JSON.stringify({
