@@ -237,7 +237,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
 
               <div className="relative">
                 <div
-                  className="h-24 relative bg-gray-900/50 rounded-lg overflow-hidden cursor-crosshair"
+                  className="h-32 relative bg-gray-900/50 rounded-lg overflow-hidden cursor-crosshair"
                   onMouseMove={handleMouseMove}
                   onMouseLeave={handleMouseLeave}
                 >
