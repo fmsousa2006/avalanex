@@ -496,7 +496,7 @@ export const Dashboard = () => {
           {/* Main Dashboard Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* Portfolio Chart */}
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 flex flex-col">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold">Portfolio Allocation</h2>
                 <button
@@ -509,20 +509,22 @@ export const Dashboard = () => {
               </div>
 
               {currentPortfolioData.holdings.length > 0 ? (
-                <PortfolioChart
-                  data={currentPortfolioData.holdings.map(holding => ({
-                    symbol: holding.symbol,
-                    name: holding.name,
-                    shares: holding.shares,
-                    price: holding.currentPrice,
-                    value: holding.totalValue,
-                    cost: holding.shares * holding.averageCost,
-                    change: holding.gainLoss,
-                    changePercent: holding.gainLossPercent
-                  }))}
-                  onHover={setHoveredStock}
-                  hoveredStock={hoveredStock}
-                />
+                <div className="flex-1">
+                  <PortfolioChart
+                    data={currentPortfolioData.holdings.map(holding => ({
+                      symbol: holding.symbol,
+                      name: holding.name,
+                      shares: holding.shares,
+                      price: holding.currentPrice,
+                      value: holding.totalValue,
+                      cost: holding.shares * holding.averageCost,
+                      change: holding.gainLoss,
+                      changePercent: holding.gainLossPercent
+                    }))}
+                    onHover={setHoveredStock}
+                    hoveredStock={hoveredStock}
+                  />
+                </div>
               ) : (
                 <div className="flex items-center justify-center h-64">
                   <div className="text-center">
@@ -537,7 +539,7 @@ export const Dashboard = () => {
             </div>
 
             {/* Stock Trends */}
-            <div>
+            <div className="h-full">
               <StockTrends
                 data={currentPortfolioData.holdings.map(holding => ({
                   symbol: holding.symbol,
