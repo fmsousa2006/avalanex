@@ -582,15 +582,16 @@ export const Dashboard = () => {
             />
           </div>
 
-          {/* Secondary Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {/* Dividend Growth */}
+          {/* Dividend Growth */}
+          <div className="mb-8">
             <DividendsReceived
               key={dividendListKey}
               portfolioId={currentPortfolio?.id}
             />
+          </div>
 
-            {/* Upcoming Dividends */}
+          {/* Upcoming Dividends */}
+          <div className="mb-8">
             <FutureDividends
               portfolioId={currentPortfolio?.id}
               onCalendarClick={() => setIsDividendCalendarOpen(true)}
