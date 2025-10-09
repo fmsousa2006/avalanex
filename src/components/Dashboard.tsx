@@ -405,39 +405,26 @@ export const Dashboard = () => {
               </div>
             </div>
             
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={handleSyncPortfolioPrices}
-                disabled={isSyncing || !isFinnhubConfigured || !currentPortfolio || isUsingMockData}
-                className={`p-2 rounded-lg transition-colors ${
-                  isSyncing || !isFinnhubConfigured || !currentPortfolio || isUsingMockData
-                    ? 'bg-gray-600 cursor-not-allowed opacity-50'
-                    : 'bg-emerald-600 hover:bg-emerald-700'
-                }`}
-                title={
-                  !isFinnhubConfigured
-                    ? 'Finnhub API key not configured'
-                    : !currentPortfolio
-                    ? 'No portfolio selected'
-                    : isUsingMockData
-                    ? 'Cannot sync mock data'
-                    : 'Sync portfolio share prices'
-                }
-              >
-                <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
-              </button>
-              <button
-                onClick={() => {
-                  console.log('Menu button clicked - opening portfolio modal');
-                  setEditTransaction(null);
-                  setIsPortfolioModalOpen(true);
-                }}
-                className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                title="Add Transaction"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-            </div>
+            <button
+              onClick={handleSyncPortfolioPrices}
+              disabled={isSyncing || !isFinnhubConfigured || !currentPortfolio || isUsingMockData}
+              className={`p-2 rounded-lg transition-colors ${
+                isSyncing || !isFinnhubConfigured || !currentPortfolio || isUsingMockData
+                  ? 'bg-gray-600 cursor-not-allowed opacity-50'
+                  : 'bg-emerald-600 hover:bg-emerald-700'
+              }`}
+              title={
+                !isFinnhubConfigured
+                  ? 'Finnhub API key not configured'
+                  : !currentPortfolio
+                  ? 'No portfolio selected'
+                  : isUsingMockData
+                  ? 'Cannot sync mock data'
+                  : 'Sync portfolio share prices'
+              }
+            >
+              <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
+            </button>
           </div>
         </header>
 
