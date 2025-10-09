@@ -409,23 +409,22 @@ export const Dashboard = () => {
               <button
                 onClick={handleSyncPortfolioPrices}
                 disabled={isSyncing || !isFinnhubConfigured || !currentPortfolio || isUsingMockData}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                className={`p-2 rounded-lg transition-colors ${
                   isSyncing || !isFinnhubConfigured || !currentPortfolio || isUsingMockData
                     ? 'bg-gray-600 cursor-not-allowed opacity-50'
                     : 'bg-emerald-600 hover:bg-emerald-700'
                 }`}
                 title={
-                  !isFinnhubConfigured 
-                    ? 'Finnhub API key not configured' 
-                    : !currentPortfolio 
-                    ? 'No portfolio selected' 
-                    : isUsingMockData 
-                    ? 'Cannot sync mock data' 
-                    : 'Sync stock prices with Finnhub'
+                  !isFinnhubConfigured
+                    ? 'Finnhub API key not configured'
+                    : !currentPortfolio
+                    ? 'No portfolio selected'
+                    : isUsingMockData
+                    ? 'Cannot sync mock data'
+                    : 'Sync portfolio share prices'
                 }
               >
-                <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                <span>{isSyncing ? 'Syncing...' : 'Sync Prices'}</span>
+                <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
               </button>
               <button
                 onClick={() => {
