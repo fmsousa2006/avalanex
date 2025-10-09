@@ -1,4 +1,6 @@
 // Finnhub API service for fetching stock data
+import { supabase } from './supabase';
+
 const FINNHUB_API_KEY = import.meta.env.VITE_FINNHUB_API_KEY;
 const FINNHUB_BASE_URL = 'https://finnhub.io/api/v1';
 
@@ -33,6 +35,27 @@ export class FinnhubService {
     }
   }
 
+  // Log API call to database for tracking
+  private async logApiCall(
+    endpoint: string,
+    symbol: string | null,
+    status: 'success' | 'error' | 'no_data',
+    responseTime: number
+  ): Promise<void> {
+    try {
+      await supabase.from('api_calls').insert({
+        service: 'finnhub',
+        endpoint,
+        symbol,
+        status,
+        response_time_ms: responseTime
+      });
+    } catch (error) {
+      // Silent fail - don't break the API call if logging fails
+      console.error('Failed to log API call:', error);
+    }
+  }
+
   // Check if API is configured
   isConfigured(): boolean {
     return !!this.apiKey && this.apiKey !== 'your-finnhub-api-key-here';
@@ -45,27 +68,35 @@ export class FinnhubService {
       return null;
     }
 
+    const startTime = Date.now();
     try {
       const response = await fetch(
         `${FINNHUB_BASE_URL}/quote?symbol=${symbol}&token=${this.apiKey}`
       );
 
       if (!response.ok) {
+        const responseTime = Date.now() - startTime;
+        await this.logApiCall('quote', symbol, 'error', responseTime);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data: StockQuote = await response.json();
-      
+      const responseTime = Date.now() - startTime;
+
       // Check if we got valid data
       if (data.c === 0 && data.d === 0 && data.dp === 0) {
         console.warn(`⚠️ [Finnhub] No data available for symbol ${symbol}`);
+        await this.logApiCall('quote', symbol, 'no_data', responseTime);
         return null;
       }
 
       console.log(`✅ [Finnhub] Fetched quote for ${symbol}: $${data.c}`);
+      await this.logApiCall('quote', symbol, 'success', responseTime);
       return data;
     } catch (error) {
       console.error(`❌ [Finnhub] Error fetching quote for ${symbol}:`, error);
+      const responseTime = Date.now() - startTime;
+      await this.logApiCall('quote', symbol, 'error', responseTime);
       return null;
     }
   }
@@ -82,27 +113,35 @@ export class FinnhubService {
       return null;
     }
 
+    const startTime = Date.now();
     try {
       const response = await fetch(
         `${FINNHUB_BASE_URL}/stock/candle?symbol=${symbol}&resolution=${resolution}&from=${from}&to=${to}&token=${this.apiKey}`
       );
 
       if (!response.ok) {
+        const responseTime = Date.now() - startTime;
+        await this.logApiCall('candles', symbol, 'error', responseTime);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data: CandleData = await response.json();
-      
+      const responseTime = Date.now() - startTime;
+
       // Check if we got valid data
       if (data.s !== 'ok' || !data.c || data.c.length === 0) {
         console.warn(`⚠️ [Finnhub] No candle data available for symbol ${symbol}`);
+        await this.logApiCall('candles', symbol, 'no_data', responseTime);
         return null;
       }
 
       console.log(`✅ [Finnhub] Fetched ${data.c.length} candles for ${symbol}`);
+      await this.logApiCall('candles', symbol, 'success', responseTime);
       return data;
     } catch (error) {
       console.error(`❌ [Finnhub] Error fetching candles for ${symbol}:`, error);
+      const responseTime = Date.now() - startTime;
+      await this.logApiCall('candles', symbol, 'error', responseTime);
       return null;
     }
   }
@@ -199,33 +238,42 @@ export class FinnhubService {
 
   // Get historical data method (inside the class)
   async getHistoricalData(symbol: string, from: number, to: number) {
+    const startTime = Date.now();
     try {
       const response = await fetch(
         `${FINNHUB_BASE_URL}/stock/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${this.apiKey}`
       );
 
       if (!response.ok) {
+        const responseTime = Date.now() - startTime;
+        await this.logApiCall('historical', symbol, 'error', responseTime);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      
+      const responseTime = Date.now() - startTime;
+
       // Check if the response indicates "no data"
       if (data.s === 'no_data') {
         console.warn(`⚠️ [Finnhub] No historical data available for ${symbol}`);
+        await this.logApiCall('historical', symbol, 'no_data', responseTime);
         return null;
       }
 
       if (data.s !== 'ok') {
         console.warn(`⚠️ [Finnhub] Historical data request failed for ${symbol}:`, data);
+        await this.logApiCall('historical', symbol, 'no_data', responseTime);
         return null;
       }
 
       console.log(`📊 [Finnhub] Received ${data.c?.length || 0} historical data points for ${symbol}`);
+      await this.logApiCall('historical', symbol, 'success', responseTime);
       return data;
 
     } catch (error) {
       console.error(`❌ [Finnhub] Error fetching historical data for ${symbol}:`, error);
+      const responseTime = Date.now() - startTime;
+      await this.logApiCall('historical', symbol, 'error', responseTime);
       return null;
     }
   }

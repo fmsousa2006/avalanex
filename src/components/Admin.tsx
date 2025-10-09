@@ -22,9 +22,11 @@ interface AdminProps {
 const Admin: React.FC<AdminProps> = ({ onClose }) => {
   const [activeView, setActiveView] = useState<string | null>(null);
   const [stockCount, setStockCount] = useState<number>(0);
+  const [apiCallsToday, setApiCallsToday] = useState<number>(0);
 
   useEffect(() => {
     fetchStockCount();
+    fetchApiCallsToday();
   }, []);
 
   const fetchStockCount = async () => {
@@ -37,6 +39,23 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
       setStockCount(count || 0);
     } catch (error) {
       console.error('Error fetching stock count:', error);
+    }
+  };
+
+  const fetchApiCallsToday = async () => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const { count, error } = await supabase
+        .from('api_calls')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', today.toISOString());
+
+      if (error) throw error;
+      setApiCallsToday(count || 0);
+    } catch (error) {
+      console.error('Error fetching API calls count:', error);
     }
   };
 
@@ -156,7 +175,7 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm mb-1">API Calls Today</p>
-                <p className="text-2xl font-bold">1,247</p>
+                <p className="text-2xl font-bold">{apiCallsToday.toLocaleString()}</p>
               </div>
               <Activity className="w-8 h-8 text-blue-400" />
             </div>
