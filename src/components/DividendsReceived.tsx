@@ -193,7 +193,7 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
 
   const yAxisSteps = 5;
   const yAxisMax = Math.ceil(maxAmount / 10) * 10;
-  const chartHeight = 300;
+  const chartHeight = 400;
   const chartTop = 20;
   const chartBottom = 60;
   const usableHeight = chartHeight - chartTop - chartBottom;
