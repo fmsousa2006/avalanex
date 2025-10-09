@@ -1,5 +1,6 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, HelpCircle } from 'lucide-react';
+import { getStockColorClass } from '../utils/stockColors';
 
 interface Stock {
   symbol: string;
@@ -23,21 +24,8 @@ export const TopGainersLosers: React.FC<TopGainersLosersProps> = ({ data, type }
     .slice(0, 5);
 
   const getStockIcon = (symbol: string) => {
-    const colors = [
-      'bg-green-500',
-      'bg-blue-500',
-      'bg-orange-500',
-      'bg-purple-500',
-      'bg-red-500',
-      'bg-cyan-500',
-      'bg-pink-500',
-      'bg-yellow-500',
-      'bg-emerald-500'
-    ];
-
-    const index = symbol.charCodeAt(0) % colors.length;
     return (
-      <div className={`w-10 h-10 ${colors[index]} rounded-lg flex items-center justify-center text-white font-bold text-sm`}>
+      <div className={`w-10 h-10 ${getStockColorClass(symbol)} rounded-lg flex items-center justify-center text-white font-bold text-sm`}>
         {symbol.charAt(0)}
       </div>
     );
