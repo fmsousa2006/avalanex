@@ -287,10 +287,10 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                             <circle
                               cx={currentHover.x}
                               cy={currentHover.y}
-                              r="2"
+                              r="0.8"
                               fill="#ffffff"
                               stroke="#3b82f6"
-                              strokeWidth="1"
+                              strokeWidth="0.3"
                               opacity="1"
                               shapeRendering="geometricPrecision"
                               vectorEffect="non-scaling-stroke"
