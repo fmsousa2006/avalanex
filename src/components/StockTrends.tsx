@@ -151,7 +151,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
   };
 
   return (
-    <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 h-full flex flex-col">
+    <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-white">Top 3 Positions</h2>
         {isLoading && (
@@ -162,7 +162,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
         )}
       </div>
 
-      <div className="space-y-6 flex-1">
+      <div className="space-y-6">
         {top3Holdings.map((stock) => {
           const stockData = stocksData.get(stock.symbol);
           const hasRealData = stockData?.isRealData || false;
