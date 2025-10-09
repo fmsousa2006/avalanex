@@ -30,6 +30,7 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
   const [loading, setLoading] = useState(true);
   const [hoveredBar, setHoveredBar] = useState<{ month: number; x: number; y: number } | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [hiddenYears, setHiddenYears] = useState<Set<number>>(new Set());
   const chartRef = useRef<HTMLDivElement>(null);
 
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -161,12 +162,26 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
   }
 
   const uniqueYears = [...new Set(monthlyData.map(d => d.year))].sort().slice(-3);
-  const maxAmount = Math.max(...monthlyData.map(d => d.amount));
+  const visibleYears = uniqueYears.filter(year => !hiddenYears.has(year));
+  const maxAmount = Math.max(...monthlyData.filter(d => !hiddenYears.has(d.year)).map(d => d.amount), 0);
 
   const getDataForMonth = (month: number) => {
     return uniqueYears.map(year => {
+      if (hiddenYears.has(year)) return 0;
       const data = monthlyData.find(d => d.year === year && d.month === month);
       return data ? data.amount : 0;
+    });
+  };
+
+  const toggleYear = (year: number) => {
+    setHiddenYears(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(year)) {
+        newSet.delete(year);
+      } else {
+        newSet.add(year);
+      }
+      return newSet;
     });
   };
 
@@ -349,14 +364,30 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
         <div className="flex justify-center items-center space-x-6 mt-6 pt-4 border-t border-gray-700">
           {uniqueYears.map((year, index) => {
             const color = yearColors[index % yearColors.length];
+            const isHidden = hiddenYears.has(year);
             return (
-              <div key={year} className="flex items-center space-x-2">
+              <button
+                key={year}
+                onClick={() => toggleYear(year)}
+                className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
+              >
                 <div
-                  className="w-4 h-4 rounded"
-                  style={{ backgroundColor: color.bg }}
+                  className="w-4 h-4 rounded transition-opacity"
+                  style={{
+                    backgroundColor: color.bg,
+                    opacity: isHidden ? 0.3 : 1
+                  }}
                 />
-                <span className="text-sm text-gray-400">{year}</span>
-              </div>
+                <span
+                  className="text-sm transition-opacity"
+                  style={{
+                    color: isHidden ? '#6b7280' : '#9ca3af',
+                    textDecoration: isHidden ? 'line-through' : 'none'
+                  }}
+                >
+                  {year}
+                </span>
+              </button>
             );
           })}
         </div>
