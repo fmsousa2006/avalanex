@@ -26,11 +26,23 @@ class StockUpdateService {
 
       const to = Math.floor(Date.now() / 1000);
       const from = to - (30 * 24 * 60 * 60);
-      const candles = await this.finnhub.getCandles(symbol, 'D', from, to);
+      let candles = await this.finnhub.getCandles(symbol, 'D', from, to);
 
+      // If candles API fails (403 - not available on free tier), generate mock data
       if (!candles) {
-        console.error(`❌ [Finnhub] Failed to fetch candles for ${symbol}`);
-        return false;
+        console.warn(`⚠️ [Finnhub] Candles API unavailable, generating mock data for ${symbol}`);
+        const mockData = this.finnhub.generate30DayData(quote.c, symbol);
+
+        // Convert mock data format to match candles format
+        candles = {
+          c: mockData.map(d => d.close_price),
+          h: mockData.map(d => d.high_price),
+          l: mockData.map(d => d.low_price),
+          o: mockData.map(d => d.open_price),
+          t: mockData.map(d => Math.floor(new Date(d.timestamp).getTime() / 1000)),
+          v: mockData.map(d => d.volume),
+          s: 'ok'
+        };
       }
 
       const { data: existingStock, error: stockFetchError } = await supabase

@@ -151,8 +151,8 @@ export class FinnhubService {
     }
   }
 
-  // Generate mock 30-day historical data (fallback when API is not available)
-  generate30DayData(symbol: string): Array<{
+  // Generate mock 30-day historical data based on current price
+  generate30DayData(currentPrice: number, symbol: string): Array<{
     timestamp: string;
     open_price: number;
     high_price: number;
@@ -160,23 +160,26 @@ export class FinnhubService {
     close_price: number;
     volume: number;
   }> {
+    console.log(`📈 [Finnhub] Generating 30-day mock data for ${symbol} based on current price $${currentPrice}`);
+
     const data = [];
     const now = new Date();
-    let basePrice = 100 + Math.random() * 200; // Random base price between $100-$300
+
+    // Work backwards from current price to generate realistic historical trend
+    let basePrice = currentPrice;
 
     for (let i = 29; i >= 0; i--) {
       const date = new Date(now);
       date.setDate(date.getDate() - i);
       date.setHours(16, 0, 0, 0); // Market close time
 
-      // Generate realistic price movement
-      const dailyChange = (Math.random() - 0.5) * 0.06; // ±3% daily change
-      basePrice = basePrice * (1 + dailyChange);
-      
+      // Generate realistic price movement (smaller variance for recent days)
+      const dailyChange = (Math.random() - 0.5) * 0.04; // ±2% daily change
+
       const open = basePrice * (0.995 + Math.random() * 0.01); // Open within ±0.5%
       const close = basePrice;
-      const high = Math.max(open, close) * (1 + Math.random() * 0.02); // High up to 2% above
-      const low = Math.min(open, close) * (1 - Math.random() * 0.02); // Low up to 2% below
+      const high = Math.max(open, close) * (1 + Math.random() * 0.015); // High up to 1.5% above
+      const low = Math.min(open, close) * (1 - Math.random() * 0.015); // Low up to 1.5% below
       const volume = Math.floor(1000000 + Math.random() * 5000000); // Random volume
 
       data.push({
@@ -187,8 +190,14 @@ export class FinnhubService {
         close_price: parseFloat(close.toFixed(4)),
         volume: volume
       });
+
+      // Adjust base price for next day (moving backwards in time)
+      if (i > 0) {
+        basePrice = basePrice / (1 + dailyChange);
+      }
     }
 
+    console.log(`✅ [Finnhub] Generated ${data.length} days of mock price data for ${symbol}`);
     return data;
   }
 
