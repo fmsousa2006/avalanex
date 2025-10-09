@@ -123,9 +123,11 @@ export class FinnhubService {
       );
 
       if (!response.ok) {
+        const errorText = await response.text();
         const responseTime = Date.now() - startTime;
+        console.error(`❌ [Finnhub] Candles API error for ${symbol}: ${response.status} - ${errorText}`);
         await this.logApiCall('candles', symbol, 'error', responseTime);
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
 
       const data: CandleData = await response.json();
