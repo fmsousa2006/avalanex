@@ -287,10 +287,8 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                             <circle
                               cx={currentHover.x}
                               cy={currentHover.y}
-                              r="2"
-                              fill="#60a5fa"
-                              stroke="#ffffff"
-                              strokeWidth="1"
+                              r="1.5"
+                              fill="#3b82f6"
                               vectorEffect="non-scaling-stroke"
                             />
                           </>
@@ -299,7 +297,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
 
                       {currentHover && currentHover.date && (
                         <div
-                          className="absolute bg-gray-950 text-white text-xs rounded-lg px-3 py-2 pointer-events-none z-10 shadow-xl border border-gray-700"
+                          className="absolute bg-gray-950/50 text-white text-xs rounded-lg px-3 py-2 pointer-events-none z-10 shadow-xl border border-gray-700/50 backdrop-blur-sm"
                           style={{
                             left: `${currentHover.x}%`,
                             top: '50%',
