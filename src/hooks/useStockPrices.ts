@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { finnhubService, StockQuote, CandleData } from '../lib/finnhub';
 
 interface StockPriceData {
   timestamp: string;
@@ -12,139 +11,91 @@ interface StockPriceData {
 }
 
 class StockUpdateService {
-  private finnhub = finnhubService;
-
   async updateStock(symbol: string): Promise<boolean> {
     try {
-      console.log(`📊 [Finnhub] Syncing ${symbol}...`);
+      console.log(`📊 [Database] Checking ${symbol} data...`);
 
-      const quote = await this.finnhub.getQuote(symbol);
-      if (!quote) {
-        console.error(`❌ [Finnhub] Failed to fetch quote for ${symbol}`);
-        return false;
-      }
-
-      const to = Math.floor(Date.now() / 1000);
-      const from = to - (30 * 24 * 60 * 60);
-      let candles = await this.finnhub.getCandles(symbol, 'D', from, to);
-
-      // If candles API fails (403 - not available on free tier), generate mock data
-      if (!candles) {
-        console.warn(`⚠️ [Finnhub] Candles API unavailable, generating mock data for ${symbol}`);
-        const mockData = this.finnhub.generate30DayData(quote.c, symbol);
-
-        // Convert mock data format to match candles format
-        candles = {
-          c: mockData.map(d => d.close_price),
-          h: mockData.map(d => d.high_price),
-          l: mockData.map(d => d.low_price),
-          o: mockData.map(d => d.open_price),
-          t: mockData.map(d => Math.floor(new Date(d.timestamp).getTime() / 1000)),
-          v: mockData.map(d => d.volume),
-          s: 'ok'
-        };
-      }
-
+      // Get stock from database
       const { data: existingStock, error: stockFetchError } = await supabase
         .from('stocks')
-        .select('id')
+        .select('id, current_price, last_price_update')
         .eq('symbol', symbol)
         .maybeSingle();
 
-      let stockId: string;
-
-      if (existingStock) {
-        stockId = existingStock.id;
-
-        const { error: updateError } = await supabase
-          .from('stocks')
-          .update({
-            current_price: quote.c,
-            last_price_update: new Date().toISOString()
-          })
-          .eq('id', stockId);
-
-        if (updateError) {
-          console.error(`❌ [Finnhub] Error updating stock ${symbol}:`, updateError);
-          return false;
-        }
-      } else {
-        const { data: newStock, error: stockCreateError } = await supabase
-          .from('stocks')
-          .insert([{
-            symbol,
-            name: `${symbol} Inc.`,
-            current_price: quote.c
-          }])
-          .select('id')
-          .single();
-
-        if (stockCreateError) {
-          console.error(`❌ [Finnhub] Error creating stock ${symbol}:`, stockCreateError);
-          return false;
-        }
-        stockId = newStock.id;
-      }
-
-      const { error: holdingsUpdateError } = await supabase
-        .from('portfolio_holdings')
-        .update({
-          current_price: quote.c,
-          last_updated: new Date().toISOString()
-        })
-        .eq('stock_id', stockId);
-
-      if (holdingsUpdateError) {
-        console.warn(`⚠️ [Finnhub] Error updating holdings for ${symbol}:`, holdingsUpdateError);
-      }
-
-      const historicalData: StockPriceData[] = [];
-      for (let i = 0; i < candles.c.length; i++) {
-        const timestamp = new Date(candles.t[i] * 1000);
-        timestamp.setHours(16, 0, 0, 0);
-
-        historicalData.push({
-          timestamp: timestamp.toISOString(),
-          open_price: candles.o[i],
-          high_price: candles.h[i],
-          low_price: candles.l[i],
-          close_price: candles.c[i],
-          volume: candles.v[i] || 0
-        });
-      }
-
-      const { error: deleteError } = await supabase
-        .from('stock_prices_30d')
-        .delete()
-        .eq('stock_id', stockId);
-
-      if (deleteError) {
-        console.warn(`⚠️ [Finnhub] Error deleting old data for ${symbol}:`, deleteError);
-      }
-
-      const price30DRecords = historicalData.map(dataPoint => ({
-        stock_id: stockId,
-        timestamp: dataPoint.timestamp,
-        open_price: dataPoint.open_price,
-        high_price: dataPoint.high_price,
-        low_price: dataPoint.low_price,
-        close_price: dataPoint.close_price,
-        volume: dataPoint.volume
-      }));
-
-      const { error: insertError } = await supabase
-        .from('stock_prices_30d')
-        .insert(price30DRecords);
-
-      if (insertError) {
-        console.error(`❌ [Finnhub] Error inserting 30d data for ${symbol}:`, insertError);
+      if (stockFetchError) {
+        console.error(`❌ [Database] Error fetching stock ${symbol}:`, stockFetchError);
         return false;
       }
 
-      console.log(`✅ [Finnhub] Successfully synced ${symbol} - Price: $${quote.c}, 30-day data: ${historicalData.length} points`);
+      if (!existingStock) {
+        console.warn(`⚠️ [Database] Stock ${symbol} not found in database. Use Stock Management to add it.`);
+        return false;
+      }
+
+      const stockId = existingStock.id;
+
+      // Check if we have recent price data (within last hour)
+      const lastUpdate = existingStock.last_price_update ? new Date(existingStock.last_price_update) : null;
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+      if (lastUpdate && lastUpdate > oneHourAgo) {
+        console.log(`✅ [Database] ${symbol} has recent data (updated ${lastUpdate.toLocaleString()})`);
+      } else {
+        console.warn(`⚠️ [Database] ${symbol} data is stale. Automatic sync will update during market hours.`);
+      }
+
+      // Get 30-day historical data from stock_prices table
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+      const { data: historicalData, error: historyError } = await supabase
+        .from('stock_prices')
+        .select('timestamp, open_price, high_price, low_price, close_price, volume')
+        .eq('stock_id', stockId)
+        .gte('timestamp', thirtyDaysAgo.toISOString())
+        .order('timestamp', { ascending: true });
+
+      if (historyError) {
+        console.error(`❌ [Database] Error fetching historical data for ${symbol}:`, historyError);
+        return false;
+      }
+
+      // If we don't have enough historical data, copy from stock_prices_30d table as fallback
+      if (!historicalData || historicalData.length === 0) {
+        console.log(`📥 [Database] No hourly data found, using 30d backup table for ${symbol}...`);
+
+        const { data: backup30d, error: backup30dError } = await supabase
+          .from('stock_prices_30d')
+          .select('timestamp, open_price, high_price, low_price, close_price, volume')
+          .eq('stock_id', stockId)
+          .order('timestamp', { ascending: true });
+
+        if (!backup30dError && backup30d && backup30d.length > 0) {
+          console.log(`✅ [Database] Found ${backup30d.length} days of backup data for ${symbol}`);
+        } else {
+          console.warn(`⚠️ [Database] No historical data available for ${symbol}. Data will accumulate from automatic syncs.`);
+        }
+      } else {
+        console.log(`✅ [Database] Found ${historicalData.length} price records for ${symbol}`);
+      }
+
+      // Update portfolio holdings with current price
+      if (existingStock.current_price) {
+        const { error: holdingsUpdateError } = await supabase
+          .from('portfolio_holdings')
+          .update({
+            current_price: existingStock.current_price,
+            last_updated: new Date().toISOString()
+          })
+          .eq('stock_id', stockId);
+
+        if (holdingsUpdateError) {
+          console.warn(`⚠️ [Database] Error updating holdings for ${symbol}:`, holdingsUpdateError);
+        }
+      }
+
       return true;
     } catch (error) {
-      console.error(`❌ [Finnhub] Error updating ${symbol}:`, error);
+      console.error(`❌ [Database] Error updating ${symbol}:`, error);
       return false;
     }
   }
@@ -152,7 +103,7 @@ class StockUpdateService {
   async updateMultipleStocks(symbols: string[]): Promise<{ success: string[], failed: string[] }> {
     const results = { success: [] as string[], failed: [] as string[] };
 
-    console.log(`📊 [Finnhub] Syncing ${symbols.length} stocks...`);
+    console.log(`📊 [Database] Checking ${symbols.length} stocks...`);
 
     for (const symbol of symbols) {
       try {
@@ -162,17 +113,15 @@ class StockUpdateService {
         } else {
           results.failed.push(symbol);
         }
-
-        await new Promise(resolve => setTimeout(resolve, 1200));
       } catch (error) {
-        console.error(`❌ [Finnhub] Failed to update ${symbol}:`, error);
+        console.error(`❌ [Database] Failed to update ${symbol}:`, error);
         results.failed.push(symbol);
       }
     }
 
-    console.log(`✅ [Finnhub] Synced ${results.success.length}/${symbols.length} stocks successfully`);
+    console.log(`✅ [Database] Checked ${results.success.length}/${symbols.length} stocks successfully`);
     if (results.failed.length > 0) {
-      console.warn(`⚠️ [Finnhub] Failed to sync: ${results.failed.join(', ')}`);
+      console.warn(`⚠️ [Database] Failed to check: ${results.failed.join(', ')}`);
     }
     return results;
   }
@@ -184,7 +133,6 @@ export const useStockPrices = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const finnhubApiKey = import.meta.env.VITE_FINNHUB_API_KEY;
   const isSupabaseConfigured = !!(
     import.meta.env.VITE_SUPABASE_URL &&
     import.meta.env.VITE_SUPABASE_ANON_KEY &&
@@ -192,16 +140,9 @@ export const useStockPrices = () => {
     import.meta.env.VITE_SUPABASE_ANON_KEY !== 'your-anon-key-here'
   );
 
-  const isConfigured = !!(finnhubApiKey && finnhubApiKey !== 'your-finnhub-api-key-here');
-
   const updateStockPricesWithHistoricalData = useCallback(async (symbols: string[]) => {
     if (!isSupabaseConfigured) {
       setError('Supabase is not properly configured. Please check your environment variables.');
-      return { success: [], failed: symbols };
-    }
-
-    if (!isConfigured) {
-      setError('Finnhub API key not configured. Please add VITE_FINNHUB_API_KEY to your .env file.');
       return { success: [], failed: symbols };
     }
 
@@ -212,62 +153,55 @@ export const useStockPrices = () => {
       const results = await stockUpdateService.updateMultipleStocks(symbols);
       return results;
     } catch (err) {
-      console.error('Error updating stock prices:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update stock prices');
+      console.error('Error checking stock data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to check stock data');
       return { success: [], failed: symbols };
     } finally {
       setLoading(false);
     }
-  }, [isSupabaseConfigured, isConfigured]);
+  }, [isSupabaseConfigured]);
 
   const autoFetch30DayDataForPortfolio = useCallback(async (portfolioData: { holdings: Array<{ stock?: { symbol: string } }> }) => {
-    if (!isSupabaseConfigured || !isConfigured || portfolioData.holdings.length === 0) {
+    if (!isSupabaseConfigured || portfolioData.holdings.length === 0) {
       return { success: [], failed: [] };
     }
 
-    console.log('🔄 [Dashboard] Auto-fetching data for portfolio stocks...');
+    console.log('🔄 [Dashboard] Checking portfolio stock data...');
 
     const symbols = portfolioData.holdings.map(holding => holding.stock?.symbol).filter(Boolean) as string[];
     return await updateStockPricesWithHistoricalData(symbols);
-  }, [updateStockPricesWithHistoricalData, isSupabaseConfigured, isConfigured]);
+  }, [updateStockPricesWithHistoricalData, isSupabaseConfigured]);
 
   const testSyncO1D = useCallback(async () => {
-    if (!isConfigured) {
-      throw new Error('Finnhub API key not configured');
-    }
     setLoading(true);
     try {
       const success = await stockUpdateService.updateStock('O');
       if (!success) {
-        throw new Error('Failed to sync O stock data');
+        throw new Error('Failed to check O stock data');
       }
-      console.log('✅ O stock sync completed');
+      console.log('✅ O stock data checked');
     } finally {
       setLoading(false);
     }
-  }, [isConfigured]);
+  }, []);
 
   const testSyncNVDA1D = useCallback(async () => {
-    if (!isConfigured) {
-      throw new Error('Finnhub API key not configured');
-    }
-
     setLoading(true);
     try {
       const success = await stockUpdateService.updateStock('NVDA');
       if (!success) {
-        throw new Error('Failed to sync NVDA stock data');
+        throw new Error('Failed to check NVDA stock data');
       }
-      console.log('✅ NVDA stock sync completed');
+      console.log('✅ NVDA stock data checked');
     } finally {
       setLoading(false);
     }
-  }, [isConfigured]);
+  }, []);
 
   return {
     loading,
     error,
-    isConfigured: isConfigured && isSupabaseConfigured,
+    isConfigured: isSupabaseConfigured,
     updateStockPricesWithHistoricalData,
     autoFetch30DayDataForPortfolio,
     testSyncO1D,
