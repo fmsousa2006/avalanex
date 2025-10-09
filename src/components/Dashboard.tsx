@@ -4,6 +4,7 @@ import { usePortfolio } from '../hooks/usePortfolio';
 import { useStockPrices } from '../hooks/useStockPrices';
 import PortfolioChart from './PortfolioChart';
 import { StockTrends } from './StockTrends';
+import { TopGainersLosers } from './TopGainersLosers';
 import TransactionHistory from './TransactionHistory';
 import DividendTracker from './DividendTracker';
 import DividendCalendar from './DividendCalendar';
@@ -550,6 +551,33 @@ export const Dashboard = () => {
                 }))}
               />
             </div>
+          </div>
+
+          {/* Top Gainers and Losers Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Top Gainers */}
+            <TopGainersLosers
+              type="gainers"
+              data={currentPortfolioData.holdings.map(holding => ({
+                symbol: holding.symbol,
+                name: holding.name,
+                value: holding.totalValue,
+                change: holding.gainLoss,
+                changePercent: holding.gainLossPercent
+              }))}
+            />
+
+            {/* Top Losers */}
+            <TopGainersLosers
+              type="losers"
+              data={currentPortfolioData.holdings.map(holding => ({
+                symbol: holding.symbol,
+                name: holding.name,
+                value: holding.totalValue,
+                change: holding.gainLoss,
+                changePercent: holding.gainLossPercent
+              }))}
+            />
           </div>
 
           {/* Secondary Grid */}
