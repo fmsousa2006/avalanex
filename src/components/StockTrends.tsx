@@ -40,9 +40,18 @@ interface StockData {
   isRealData: boolean;
 }
 
+interface HoverData {
+  x: number;
+  y: number;
+  price: number;
+  date: string;
+  index: number;
+}
+
 export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
   const [stocksData, setStocksData] = useState<Map<string, StockData>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
+  const [hoverData, setHoverData] = useState<Map<string, HoverData | null>>(new Map());
 
   const fetchStockDataFromDatabase = async (symbol: string): Promise<StockData | null> => {
     try {
@@ -173,6 +182,37 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
           const maxPrice = Math.max(...trendPrices);
           const priceRange = maxPrice - minPrice;
 
+          const currentHover = hoverData.get(stock.symbol);
+
+          const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const percentage = x / rect.width;
+            const index = Math.round(percentage * (trendPrices.length - 1));
+
+            if (index >= 0 && index < trendPrices.length) {
+              const price = trendPrices[index];
+              const y = priceRange > 0 ? ((maxPrice - price) / priceRange) * 80 + 10 : 50;
+              const date = stockData?.timestamps?.[index] || '';
+
+              setHoverData(prev => new Map(prev).set(stock.symbol, {
+                x: percentage * 100,
+                y,
+                price,
+                date,
+                index
+              }));
+            }
+          };
+
+          const handleMouseLeave = () => {
+            setHoverData(prev => {
+              const newMap = new Map(prev);
+              newMap.set(stock.symbol, null);
+              return newMap;
+            });
+          };
+
           return (
             <div key={stock.symbol} className="space-y-3">
               <div className="flex items-start justify-between">
@@ -196,10 +236,14 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
               </div>
 
               <div className="relative">
-                <div className="h-24 relative bg-gray-900/50 rounded-lg overflow-hidden">
+                <div
+                  className="h-24 relative bg-gray-900/50 rounded-lg overflow-hidden cursor-crosshair"
+                  onMouseMove={handleMouseMove}
+                  onMouseLeave={handleMouseLeave}
+                >
                   {trendPrices.length > 1 ? (
                     <>
-                      <svg width="100%" height="100%" className="absolute inset-0" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      <svg width="100%" height="100%" className="absolute inset-0 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
                         <defs>
                           <linearGradient id={`gradient-${stock.symbol}`} x1="0%" y1="0%" x2="0%" y2="100%">
                             <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3"/>
@@ -227,11 +271,54 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                             return `${x},${y}`;
                           }).join(' ')}
                         />
+
+                        {currentHover && (
+                          <>
+                            <line
+                              x1={currentHover.x}
+                              y1="0"
+                              x2={currentHover.x}
+                              y2="100"
+                              stroke="#9ca3af"
+                              strokeWidth="0.5"
+                              strokeDasharray="2,2"
+                              vectorEffect="non-scaling-stroke"
+                            />
+                            <circle
+                              cx={currentHover.x}
+                              cy={currentHover.y}
+                              r="2"
+                              fill="#60a5fa"
+                              stroke="#ffffff"
+                              strokeWidth="1"
+                              vectorEffect="non-scaling-stroke"
+                            />
+                          </>
+                        )}
                       </svg>
-                      <div className="absolute right-2 top-2 text-[10px] text-gray-500">
+
+                      {currentHover && currentHover.date && (
+                        <div
+                          className="absolute bg-gray-950 text-white text-xs rounded-lg px-3 py-2 pointer-events-none z-10 shadow-xl border border-gray-700"
+                          style={{
+                            left: `${currentHover.x}%`,
+                            top: '50%',
+                            transform: currentHover.x > 50 ? 'translate(-110%, -50%)' : 'translate(10%, -50%)'
+                          }}
+                        >
+                          <div className="font-medium mb-1">{formatAxisDate(currentHover.date)}</div>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                            <span className="font-semibold">{stock.symbol}:</span>
+                            <span>{formatCurrency(currentHover.price)}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="absolute right-2 top-2 text-[10px] text-gray-500 pointer-events-none">
                         max: {formatAxisPrice(maxPrice)}
                       </div>
-                      <div className="absolute right-2 bottom-2 text-[10px] text-gray-500">
+                      <div className="absolute right-2 bottom-2 text-[10px] text-gray-500 pointer-events-none">
                         min: {formatAxisPrice(minPrice)}
                       </div>
                     </>
