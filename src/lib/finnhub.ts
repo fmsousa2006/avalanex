@@ -43,12 +43,15 @@ export class FinnhubService {
     responseTime: number
   ): Promise<void> {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+
       await supabase.from('api_calls').insert({
         service: 'finnhub',
         endpoint,
         symbol,
         status,
-        response_time_ms: responseTime
+        response_time_ms: responseTime,
+        user_id: user?.id || null
       });
     } catch (error) {
       // Silent fail - don't break the API call if logging fails
