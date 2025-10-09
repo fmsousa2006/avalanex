@@ -185,7 +185,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                   <svg width="100%" height="100%" className="absolute inset-0" viewBox="0 0 100 100" preserveAspectRatio="none">
                     <defs>
                       <linearGradient id={`gradient-${stock.symbol}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4"/>
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3"/>
                         <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.05"/>
                       </linearGradient>
                     </defs>
@@ -199,10 +199,11 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                     />
                     <polyline
                       fill="none"
-                      stroke="#3b82f6"
-                      strokeWidth="2.5"
+                      stroke="#60a5fa"
+                      strokeWidth="1.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
+                      vectorEffect="non-scaling-stroke"
                       points={trendPrices.map((price, i) => {
                         const x = (i / (trendPrices.length - 1)) * 100;
                         const y = priceRange > 0 ? ((maxPrice - price) / priceRange) * 80 + 10 : 50;
