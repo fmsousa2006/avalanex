@@ -127,13 +127,13 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-6">
+    <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg font-semibold text-white">Top 3 Holdings (30 Days)</h2>
+        <h2 className="text-xl font-semibold text-white">Top 3 Holdings</h2>
         {isLoading && (
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-            <span className="text-sm text-blue-500">Loading data...</span>
+            <span className="text-sm text-gray-400">Loading...</span>
           </div>
         )}
       </div>
@@ -159,73 +159,67 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
           const priceRange = maxPrice - minPrice;
 
           return (
-            <div key={stock.symbol} className="border-b border-gray-600 last:border-b-0 pb-6 last:pb-0">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center space-x-3">
-                  <span className="text-base font-semibold text-white">{stock.symbol}</span>
-                  <span className="text-sm text-gray-300">{stock.name}</span>
-                  {hasRealData && (
-                    <span className="text-xs bg-green-900/30 text-green-400 px-2 py-0.5 rounded">
-                      30-Day Data
+            <div key={stock.symbol} className="space-y-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center space-x-2 mb-1">
+                    <span className="text-lg font-bold text-white">{stock.symbol}</span>
+                    <span className={`text-sm font-semibold ${displayChangePercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {formatPercentage(displayChangePercent)}
                     </span>
-                  )}
-                  {!hasRealData && (
-                    <span className="text-xs bg-gray-700 text-gray-400 px-2 py-0.5 rounded">
-                      Current Price
-                    </span>
-                  )}
+                  </div>
+                  <div className="text-sm text-gray-400">{stock.name}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-base font-semibold text-white">
+                  <div className="text-lg font-bold text-white">
                     {formatCurrency(displayPrice)}
                   </div>
-                  <div className={`text-sm font-medium ${displayChangePercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {formatPercentage(displayChangePercent)}
+                  <div className="text-xs text-gray-400">
+                    {stock.shares} shares
                   </div>
                 </div>
               </div>
 
-              <div className="h-16 relative bg-gray-750 rounded-lg p-2">
+              <div className="h-24 relative bg-gray-900/50 rounded-lg overflow-hidden">
                 {trendPrices.length > 1 ? (
-                  <svg width="100%" height="100%" className="overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <svg width="100%" height="100%" className="absolute inset-0" viewBox="0 0 100 100" preserveAspectRatio="none">
                     <defs>
                       <linearGradient id={`gradient-${stock.symbol}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor={displayChangePercent >= 0 ? "#10b981" : "#ef4444"} stopOpacity="0.3"/>
-                        <stop offset="100%" stopColor={displayChangePercent >= 0 ? "#10b981" : "#ef4444"} stopOpacity="0.05"/>
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4"/>
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.05"/>
                       </linearGradient>
                     </defs>
                     <polygon
                       fill={`url(#gradient-${stock.symbol})`}
-                      points={`${trendPrices.map((price, i) => {
+                      points={`0,100 ${trendPrices.map((price, i) => {
                         const x = (i / (trendPrices.length - 1)) * 100;
-                        const y = priceRange > 0 ? ((maxPrice - price) / priceRange) * 100 : 50;
+                        const y = priceRange > 0 ? ((maxPrice - price) / priceRange) * 80 + 10 : 50;
                         return `${x},${y}`;
-                      }).join(' ')} 100,100 0,100`}
+                      }).join(' ')} 100,100`}
                     />
                     <polyline
                       fill="none"
-                      stroke={displayChangePercent >= 0 ? "#10b981" : "#ef4444"}
-                      strokeWidth="2"
+                      stroke="#3b82f6"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                       points={trendPrices.map((price, i) => {
                         const x = (i / (trendPrices.length - 1)) * 100;
-                        const y = priceRange > 0 ? ((maxPrice - price) / priceRange) * 100 : 50;
+                        const y = priceRange > 0 ? ((maxPrice - price) / priceRange) * 80 + 10 : 50;
                         return `${x},${y}`;
                       }).join(' ')}
                     />
                   </svg>
                 ) : (
                   <div className="flex items-center justify-center h-full">
-                    <div className="text-center">
-                      <div className="text-gray-500 text-xs">No historical data</div>
-                      <div className="text-gray-400 text-xs mt-1">Showing current price</div>
-                    </div>
+                    <div className="text-xs text-gray-500">No historical data available</div>
                   </div>
                 )}
               </div>
 
-              <div className="flex justify-between text-xs text-gray-400 mt-2">
-                <span>{stock.shares} shares</span>
-                <span>{formatCurrency(displayPrice * stock.shares)} total</span>
+              <div className="flex justify-between items-center text-xs text-gray-500">
+                <span>Total value: {formatCurrency(displayPrice * stock.shares)}</span>
+                {hasRealData && <span>30-day trend</span>}
               </div>
             </div>
           );
@@ -233,7 +227,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
       </div>
 
       {top3Holdings.length === 0 && (
-        <div className="text-center py-8 text-gray-400">
+        <div className="text-center py-12 text-gray-500">
           <p>No holdings to display</p>
         </div>
       )}
