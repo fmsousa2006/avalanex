@@ -144,7 +144,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
   return (
     <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-white">Top 3 Holdings</h2>
+        <h2 className="text-xl font-semibold text-white">Top 3 Positions</h2>
         {isLoading && (
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
@@ -242,17 +242,29 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                   )}
                 </div>
 
-                {trendPrices.length > 1 && stockData?.timestamps && stockData.timestamps.length > 0 && (
-                  <div className="flex justify-between items-center text-[10px] text-gray-500 mt-1 px-1">
-                    <span>{formatAxisDate(stockData.timestamps[0])}</span>
-                    <span>{formatAxisDate(stockData.timestamps[stockData.timestamps.length - 1])}</span>
-                  </div>
-                )}
+                {trendPrices.length > 1 && stockData?.timestamps && stockData.timestamps.length > 0 && (() => {
+                  const timestamps = stockData.timestamps;
+                  const firstDate = timestamps[0];
+                  const lastDate = timestamps[timestamps.length - 1];
+                  const midIndex1 = Math.floor(timestamps.length / 3);
+                  const midIndex2 = Math.floor((timestamps.length * 2) / 3);
+                  const midDate1 = timestamps[midIndex1];
+                  const midDate2 = timestamps[midIndex2];
+
+                  return (
+                    <div className="flex justify-between items-center text-[10px] text-gray-500 mt-1 px-1">
+                      <span>{formatAxisDate(firstDate)}</span>
+                      <span>{formatAxisDate(midDate1)}</span>
+                      <span>{formatAxisDate(midDate2)}</span>
+                      <span>{formatAxisDate(lastDate)}</span>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="flex justify-between items-center text-xs text-gray-500 mt-2">
                 <span>Total value: {formatCurrency(displayPrice * stock.shares)}</span>
-                {hasRealData && <span>30-day trend</span>}
+                {hasRealData && <span>1-month trend</span>}
               </div>
             </div>
           );
