@@ -11,12 +11,22 @@ const COLOR_MAP = [
   { hex: '#6366f1', class: 'bg-indigo-500' }    // indigo
 ];
 
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+}
+
 export const getStockColor = (symbol: string): string => {
-  const index = symbol.charCodeAt(0) % COLOR_MAP.length;
+  const index = hashString(symbol) % COLOR_MAP.length;
   return COLOR_MAP[index].hex;
 };
 
 export const getStockColorClass = (symbol: string): string => {
-  const index = symbol.charCodeAt(0) % COLOR_MAP.length;
+  const index = hashString(symbol) % COLOR_MAP.length;
   return COLOR_MAP[index].class;
 };
