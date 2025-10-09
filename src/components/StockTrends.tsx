@@ -289,6 +289,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                               cy={currentHover.y}
                               r="1"
                               fill="#3b82f6"
+                              opacity="1"
                               vectorEffect="non-scaling-stroke"
                             />
                           </>
