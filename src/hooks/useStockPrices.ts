@@ -1,26 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-
-interface StockQuote {
-  c: number;
-  d: number;
-  dp: number;
-  h: number;
-  l: number;
-  o: number;
-  pc: number;
-  t: number;
-}
-
-interface CandleData {
-  c: number[];
-  h: number[];
-  l: number[];
-  o: number[];
-  s: string;
-  t: number[];
-  v: number[];
-}
+import { finnhubService, StockQuote, CandleData } from '../lib/finnhub';
 
 interface StockPriceData {
   timestamp: string;
@@ -31,84 +11,23 @@ interface StockPriceData {
   volume: number;
 }
 
-class FinnhubService {
-  private apiKey: string;
-  private baseUrl = 'https://finnhub.io/api/v1';
-
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
-  }
-
-  async getQuote(symbol: string): Promise<StockQuote | null> {
-    try {
-      console.log(`📡 [Finnhub] Fetching quote for ${symbol}...`);
-
-      const response = await fetch(
-        `${this.baseUrl}/quote?symbol=${symbol}&token=${this.apiKey}`
-      );
-
-      if (!response.ok) {
-        console.error(`❌ [Finnhub] HTTP error for ${symbol}: ${response.status}`);
-        return null;
-      }
-
-      const data: StockQuote = await response.json();
-
-      if (data.c === 0 && data.d === 0 && data.dp === 0) {
-        console.warn(`⚠️ [Finnhub] No data available for symbol ${symbol}`);
-        return null;
-      }
-
-      console.log(`✅ [Finnhub] Fetched quote for ${symbol}: $${data.c}`);
-      return data;
-    } catch (error) {
-      console.error(`❌ [Finnhub] Error fetching quote for ${symbol}:`, error);
-      return null;
-    }
-  }
-
-  async getCandles(symbol: string): Promise<CandleData | null> {
-    try {
-      const to = Math.floor(Date.now() / 1000);
-      const from = to - (30 * 24 * 60 * 60);
-
-      console.log(`📡 [Finnhub] Fetching 30-day candles for ${symbol}...`);
-
-      const response = await fetch(
-        `${this.baseUrl}/stock/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${this.apiKey}`
-      );
-
-      if (!response.ok) {
-        console.error(`❌ [Finnhub] HTTP error for ${symbol}: ${response.status}`);
-        return null;
-      }
-
-      const data: CandleData = await response.json();
-
-      if (data.s !== 'ok' || !data.c || data.c.length === 0) {
-        console.warn(`⚠️ [Finnhub] No candle data available for ${symbol}`);
-        return null;
-      }
-
-      console.log(`✅ [Finnhub] Fetched ${data.c.length} candles for ${symbol}`);
-      return data;
-    } catch (error) {
-      console.error(`❌ [Finnhub] Error fetching candles for ${symbol}:`, error);
-      return null;
-    }
-  }
+class StockUpdateService {
+  private finnhub = finnhubService;
 
   async updateStock(symbol: string): Promise<boolean> {
     try {
       console.log(`📊 [Finnhub] Syncing ${symbol}...`);
 
-      const quote = await this.getQuote(symbol);
+      const quote = await this.finnhub.getQuote(symbol);
       if (!quote) {
         console.error(`❌ [Finnhub] Failed to fetch quote for ${symbol}`);
         return false;
       }
 
-      const candles = await this.getCandles(symbol);
+      const to = Math.floor(Date.now() / 1000);
+      const from = to - (30 * 24 * 60 * 60);
+      const candles = await this.finnhub.getCandles(symbol, 'D', from, to);
+
       if (!candles) {
         console.error(`❌ [Finnhub] Failed to fetch candles for ${symbol}`);
         return false;
@@ -245,17 +164,9 @@ class FinnhubService {
     }
     return results;
   }
-
-  async updateStockWith30DayData(symbol: string): Promise<boolean> {
-    return this.updateStock(symbol);
-  }
-
-  async updateMultipleStocksWith30DayData(symbols: string[]): Promise<{ success: string[], failed: string[] }> {
-    return this.updateMultipleStocks(symbols);
-  }
 }
 
-const createFinnhubService = (apiKey: string) => new FinnhubService(apiKey);
+const stockUpdateService = new StockUpdateService();
 
 export const useStockPrices = () => {
   const [loading, setLoading] = useState(false);
@@ -286,8 +197,7 @@ export const useStockPrices = () => {
     setError(null);
 
     try {
-      const finnhub = createFinnhubService(finnhubApiKey);
-      const results = await finnhub.updateMultipleStocks(symbols);
+      const results = await stockUpdateService.updateMultipleStocks(symbols);
       return results;
     } catch (err) {
       console.error('Error updating stock prices:', err);
@@ -296,7 +206,7 @@ export const useStockPrices = () => {
     } finally {
       setLoading(false);
     }
-  }, [isSupabaseConfigured, isConfigured, finnhubApiKey]);
+  }, [isSupabaseConfigured, isConfigured]);
 
   const autoFetch30DayDataForPortfolio = useCallback(async (portfolioData: { holdings: Array<{ stock?: { symbol: string } }> }) => {
     if (!isSupabaseConfigured || !isConfigured || portfolioData.holdings.length === 0) {
@@ -315,8 +225,7 @@ export const useStockPrices = () => {
     }
     setLoading(true);
     try {
-      const finnhub = createFinnhubService(finnhubApiKey);
-      const success = await finnhub.updateStock('O');
+      const success = await stockUpdateService.updateStock('O');
       if (!success) {
         throw new Error('Failed to sync O stock data');
       }
@@ -324,7 +233,7 @@ export const useStockPrices = () => {
     } finally {
       setLoading(false);
     }
-  }, [isConfigured, finnhubApiKey]);
+  }, [isConfigured]);
 
   const testSyncNVDA1D = useCallback(async () => {
     if (!isConfigured) {
@@ -333,8 +242,7 @@ export const useStockPrices = () => {
 
     setLoading(true);
     try {
-      const finnhub = createFinnhubService(finnhubApiKey);
-      const success = await finnhub.updateStock('NVDA');
+      const success = await stockUpdateService.updateStock('NVDA');
       if (!success) {
         throw new Error('Failed to sync NVDA stock data');
       }
@@ -342,7 +250,7 @@ export const useStockPrices = () => {
     } finally {
       setLoading(false);
     }
-  }, [isConfigured, finnhubApiKey]);
+  }, [isConfigured]);
 
   return {
     loading,
