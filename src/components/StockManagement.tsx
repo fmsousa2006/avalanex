@@ -9,6 +9,8 @@ interface Stock {
   sector: string;
   current_price: number;
   is_active: boolean;
+  index_membership?: string[];
+  price_change_percent_24h?: number;
 }
 
 interface Dividend {
@@ -628,6 +630,18 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
                             }`}>
                               {stock.is_active ? 'Active' : 'Inactive'}
                             </span>
+                            {stock.index_membership && stock.index_membership.length > 0 && (
+                              <div className="flex items-center space-x-1">
+                                {stock.index_membership.map(index => (
+                                  <span
+                                    key={index}
+                                    className="px-2 py-1 rounded text-xs bg-blue-500/20 text-blue-400 font-medium"
+                                  >
+                                    {index}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                           <p className="text-gray-400 mb-1">{stock.name}</p>
                           <div className="flex items-center space-x-4 text-sm">
@@ -635,6 +649,13 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
                             <span className="text-emerald-400 font-medium">
                               ${stock.current_price?.toFixed(2) || '0.00'}
                             </span>
+                            {stock.price_change_percent_24h !== undefined && stock.price_change_percent_24h !== null && (
+                              <span className={`font-medium ${
+                                stock.price_change_percent_24h >= 0 ? 'text-green-400' : 'text-red-400'
+                              }`}>
+                                {stock.price_change_percent_24h >= 0 ? '+' : ''}{stock.price_change_percent_24h.toFixed(2)}%
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
