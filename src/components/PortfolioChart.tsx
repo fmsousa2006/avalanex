@@ -100,11 +100,11 @@ const PortfolioChart: React.FC<PortfolioChartProps> = ({ data, onHover, hoveredS
   };
 
   return (
-    <div className="relative" ref={containerRef}>
-      <svg 
+    <div className="relative h-full flex items-center justify-center" ref={containerRef}>
+      <svg
         ref={svgRef}
-        width="440" 
-        height="440" 
+        width="440"
+        height="440"
         className="mx-auto w-full h-auto max-w-md"
         viewBox="0 0 440 440"
         preserveAspectRatio="xMidYMid meet"

@@ -493,9 +493,9 @@ export const Dashboard = () => {
           </div>
 
           {/* Main Dashboard Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 lg:h-[600px]">
             {/* Portfolio Chart */}
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 flex flex-col">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold">Portfolio Allocation</h2>
                 <button
@@ -506,9 +506,9 @@ export const Dashboard = () => {
                   <span>Add Transaction</span>
                 </button>
               </div>
-              
+
               {currentPortfolioData.holdings.length > 0 ? (
-                <PortfolioChart 
+                <PortfolioChart
                   data={currentPortfolioData.holdings.map(holding => ({
                     symbol: holding.symbol,
                     name: holding.name,
@@ -523,7 +523,7 @@ export const Dashboard = () => {
                   hoveredStock={hoveredStock}
                 />
               ) : (
-                <div className="flex items-center justify-center h-64">
+                <div className="flex items-center justify-center flex-1">
                   <div className="text-center">
                     <PieChart className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                     <p className="text-gray-400 font-medium text-lg">No holdings yet</p>
@@ -536,20 +536,18 @@ export const Dashboard = () => {
             </div>
 
             {/* Stock Trends */}
-            <div>
-              <StockTrends 
-                data={currentPortfolioData.holdings.map(holding => ({
-                  symbol: holding.symbol,
-                  name: holding.name,
-                  shares: holding.shares,
-                  price: holding.currentPrice,
-                  value: holding.totalValue,
-                  cost: holding.shares * holding.averageCost,
-                  change: holding.gainLoss,
-                  changePercent: holding.gainLossPercent
-                }))}
-              />
-            </div>
+            <StockTrends
+              data={currentPortfolioData.holdings.map(holding => ({
+                symbol: holding.symbol,
+                name: holding.name,
+                shares: holding.shares,
+                price: holding.currentPrice,
+                value: holding.totalValue,
+                cost: holding.shares * holding.averageCost,
+                change: holding.gainLoss,
+                changePercent: holding.gainLossPercent
+              }))}
+            />
           </div>
 
           {/* Secondary Grid */}
