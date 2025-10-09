@@ -226,11 +226,11 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                   <div className="text-sm text-gray-400">{stock.name}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg font-bold text-white">
-                    {formatCurrency(displayPrice)}
+                  <div className="text-2xl font-bold text-white">
+                    {formatCurrency(displayPrice * stock.shares)}
                   </div>
-                  <div className="text-xs text-gray-400">
-                    {stock.shares} shares
+                  <div className="text-xs text-gray-400 mt-0.5">
+                    {stock.shares} shares @ {formatCurrency(displayPrice)}
                   </div>
                 </div>
               </div>
@@ -351,10 +351,6 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                 })()}
               </div>
 
-              <div className="flex justify-between items-center text-xs text-gray-500 mt-2">
-                <span>Total value: {formatCurrency(displayPrice * stock.shares)}</span>
-                {hasRealData && <span>1-month trend</span>}
-              </div>
             </div>
           );
         })}
