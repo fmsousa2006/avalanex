@@ -19,9 +19,22 @@ interface PriceDataPoint {
   close_price: number;
 }
 
+const formatAxisDate = (timestamp: string) => {
+  const date = new Date(timestamp);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+const formatAxisPrice = (price: number) => {
+  if (price >= 1000) {
+    return `$${(price / 1000).toFixed(1)}k`;
+  }
+  return `$${price.toFixed(0)}`;
+};
+
 interface StockData {
   symbol: string;
   prices: number[];
+  timestamps?: string[];
   currentPrice: number;
   changePercent: number;
   isRealData: boolean;
@@ -58,6 +71,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
       }
 
       const prices = priceData.map((p: PriceDataPoint) => p.close_price);
+      const timestamps = priceData.map((p: PriceDataPoint) => p.timestamp);
       const firstPrice = prices[0];
       const lastPrice = prices[prices.length - 1];
       const changePercent = ((stockData.current_price - firstPrice) / firstPrice) * 100;
@@ -67,6 +81,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
       return {
         symbol,
         prices,
+        timestamps,
         currentPrice: stockData.current_price,
         changePercent,
         isRealData: true
@@ -180,45 +195,62 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                 </div>
               </div>
 
-              <div className="h-24 relative bg-gray-900/50 rounded-lg overflow-hidden">
-                {trendPrices.length > 1 ? (
-                  <svg width="100%" height="100%" className="absolute inset-0" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <defs>
-                      <linearGradient id={`gradient-${stock.symbol}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3"/>
-                        <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.05"/>
-                      </linearGradient>
-                    </defs>
-                    <polygon
-                      fill={`url(#gradient-${stock.symbol})`}
-                      points={`0,100 ${trendPrices.map((price, i) => {
-                        const x = (i / (trendPrices.length - 1)) * 100;
-                        const y = priceRange > 0 ? ((maxPrice - price) / priceRange) * 80 + 10 : 50;
-                        return `${x},${y}`;
-                      }).join(' ')} 100,100`}
-                    />
-                    <polyline
-                      fill="none"
-                      stroke="#60a5fa"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      vectorEffect="non-scaling-stroke"
-                      points={trendPrices.map((price, i) => {
-                        const x = (i / (trendPrices.length - 1)) * 100;
-                        const y = priceRange > 0 ? ((maxPrice - price) / priceRange) * 80 + 10 : 50;
-                        return `${x},${y}`;
-                      }).join(' ')}
-                    />
-                  </svg>
-                ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-xs text-gray-500">No historical data available</div>
+              <div className="relative">
+                <div className="h-24 relative bg-gray-900/50 rounded-lg overflow-hidden">
+                  {trendPrices.length > 1 ? (
+                    <>
+                      <svg width="100%" height="100%" className="absolute inset-0" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <defs>
+                          <linearGradient id={`gradient-${stock.symbol}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3"/>
+                            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.05"/>
+                          </linearGradient>
+                        </defs>
+                        <polygon
+                          fill={`url(#gradient-${stock.symbol})`}
+                          points={`0,100 ${trendPrices.map((price, i) => {
+                            const x = (i / (trendPrices.length - 1)) * 100;
+                            const y = priceRange > 0 ? ((maxPrice - price) / priceRange) * 80 + 10 : 50;
+                            return `${x},${y}`;
+                          }).join(' ')} 100,100`}
+                        />
+                        <polyline
+                          fill="none"
+                          stroke="#60a5fa"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          vectorEffect="non-scaling-stroke"
+                          points={trendPrices.map((price, i) => {
+                            const x = (i / (trendPrices.length - 1)) * 100;
+                            const y = priceRange > 0 ? ((maxPrice - price) / priceRange) * 80 + 10 : 50;
+                            return `${x},${y}`;
+                          }).join(' ')}
+                        />
+                      </svg>
+                      <div className="absolute right-2 top-2 text-[10px] text-gray-500">
+                        max: {formatAxisPrice(maxPrice)}
+                      </div>
+                      <div className="absolute right-2 bottom-2 text-[10px] text-gray-500">
+                        min: {formatAxisPrice(minPrice)}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-xs text-gray-500">No historical data available</div>
+                    </div>
+                  )}
+                </div>
+
+                {trendPrices.length > 1 && stockData?.timestamps && stockData.timestamps.length > 0 && (
+                  <div className="flex justify-between items-center text-[10px] text-gray-500 mt-1 px-1">
+                    <span>{formatAxisDate(stockData.timestamps[0])}</span>
+                    <span>{formatAxisDate(stockData.timestamps[stockData.timestamps.length - 1])}</span>
                   </div>
                 )}
               </div>
 
-              <div className="flex justify-between items-center text-xs text-gray-500">
+              <div className="flex justify-between items-center text-xs text-gray-500 mt-2">
                 <span>Total value: {formatCurrency(displayPrice * stock.shares)}</span>
                 {hasRealData && <span>30-day trend</span>}
               </div>
