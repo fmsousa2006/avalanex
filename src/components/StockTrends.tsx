@@ -292,6 +292,8 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                               stroke="#3b82f6"
                               strokeWidth="1"
                               opacity="1"
+                              shapeRendering="geometricPrecision"
+                              vectorEffect="non-scaling-stroke"
                             />
                           </>
                         )}
