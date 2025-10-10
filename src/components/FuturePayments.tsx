@@ -295,7 +295,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
             </div>
 
             {/* Bars */}
-            <div className="relative flex items-end justify-center gap-3 px-2" style={{ height: `${chartHeight}px` }}>
+            <div className="relative flex items-end justify-between px-2" style={{ height: `${chartHeight}px` }}>
               {monthlyDividends.map((month, index) => {
                 const barHeight = maxAmount > 0 ? (month.amount / maxAmount) * (chartHeight - 20) : 0;
                 const paidHeight = maxAmount > 0 ? (month.paidAmount / maxAmount) * (chartHeight - 20) : 0;
@@ -304,26 +304,20 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                 const hasPaidDividends = month.paidAmount > 0;
 
                 return (
-                  <div key={month.month} className="flex flex-col items-center relative" style={{ width: '2.5%' }}>
-                    {/* Amount label on top of bar */}
-                    {month.amount > 0 && (
-                      <div
-                        className="absolute text-xs font-medium text-gray-300 whitespace-nowrap"
-                        style={{
-                          bottom: `${barHeight + 6}px`,
-                          left: '50%',
-                          transform: 'translateX(-50%)'
-                        }}
-                      >
-                        ${month.amount.toFixed(0)}
-                      </div>
-                    )}
-
+                  <div key={month.month} className="flex flex-col items-center flex-1 relative">
                     {/* Bar container */}
-                    <div className="w-full flex flex-col justify-end" style={{ height: `${chartHeight - 20}px` }}>
+                    <div className="w-full flex flex-col items-center justify-end" style={{ height: `${chartHeight - 20}px` }}>
+                      {/* Amount label on top of bar */}
+                      {month.amount > 0 && (
+                        <div className="text-xs font-medium text-gray-300 mb-1">
+                          ${month.amount.toFixed(0)}
+                        </div>
+                      )}
+
                       <div
-                        className="w-full rounded-t transition-all duration-300 hover:opacity-80 cursor-pointer relative overflow-hidden"
+                        className="rounded-t transition-all duration-300 hover:opacity-80 cursor-pointer relative overflow-hidden"
                         style={{
+                          width: '50%',
                           height: `${Math.max(barHeight, month.amount > 0 ? 4 : 0)}px`,
                         }}
                         title={`${month.month}: $${month.amount.toFixed(2)}${hasPaidDividends && isCurrentMonth ? ` (Paid: $${month.paidAmount.toFixed(2)})` : ''}`}
