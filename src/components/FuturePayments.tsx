@@ -295,7 +295,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
             </div>
 
             {/* Bars */}
-            <div className="relative flex items-end justify-between gap-3 px-2" style={{ height: `${chartHeight}px` }}>
+            <div className="relative flex items-end justify-center gap-3 px-2" style={{ height: `${chartHeight}px` }}>
               {monthlyDividends.map((month, index) => {
                 const barHeight = maxAmount > 0 ? (month.amount / maxAmount) * (chartHeight - 20) : 0;
                 const paidHeight = maxAmount > 0 ? (month.paidAmount / maxAmount) * (chartHeight - 20) : 0;
@@ -304,7 +304,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                 const hasPaidDividends = month.paidAmount > 0;
 
                 return (
-                  <div key={month.month} className="flex flex-col items-center flex-1 relative">
+                  <div key={month.month} className="flex flex-col items-center relative" style={{ width: '5%' }}>
                     {/* Amount label on top of bar */}
                     {month.amount > 0 && (
                       <div
