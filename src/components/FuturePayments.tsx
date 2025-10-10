@@ -215,119 +215,139 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
     );
   }
 
-  const maxAmount = Math.max(...monthlyDividends.map(m => m.amount));
-  const chartHeight = 200;
+  const maxAmount = Math.max(...monthlyDividends.map(m => m.amount), 1);
+  const chartHeight = 240;
 
   return (
     <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-2">
-          <h2 className="text-xl font-semibold text-white">Upcoming Dividends</h2>
-          <HelpCircle className="w-4 h-4 text-gray-400" />
-        </div>
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={onCalendarClick}
-            className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
-          >
-            <span>Calendar</span>
-            <Calendar className="w-4 h-4" />
-          </button>
-          <button className="text-gray-400 hover:text-white transition-colors">
-            <MoreHorizontal className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      {/* Summary Stats */}
-      <div className="flex items-start space-x-8 mb-8">
-        <div>
-          <div className="flex items-center space-x-2 mb-1">
-            <div className="w-1 h-6 bg-blue-400 rounded"></div>
-            <span className="text-gray-400 text-sm">Next 12m</span>
-          </div>
-          <div className="text-xl font-bold text-white">
-            ${next12MonthsTotal.toFixed(2)}
-          </div>
-        </div>
-        <div>
-          <div className="flex items-center space-x-2 mb-1">
-            <div className="w-1 h-6 bg-blue-400 rounded"></div>
-            <span className="text-gray-400 text-sm">Monthly</span>
-          </div>
-          <div className="text-xl font-bold text-white">
-            ${monthlyAverage.toFixed(2)}
-          </div>
-        </div>
-      </div>
-
-      {/* Chart */}
-      <div className="relative">
-        {/* Average line */}
-        <div 
-          className="absolute w-full border-t border-dashed border-blue-400 opacity-50"
-          style={{ 
-            top: `${chartHeight - (monthlyAverage / maxAmount) * chartHeight}px` 
-          }}
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="text-xl font-semibold text-white">Upcoming Dividends</h2>
+        <button
+          onClick={onCalendarClick}
+          className="text-gray-400 hover:text-white transition-colors"
         >
-          <span className="absolute right-0 -top-3 text-xs text-blue-400">
-            avg ${monthlyAverage.toFixed(0)}
-          </span>
-        </div>
+          <Calendar className="w-5 h-5" />
+        </button>
+      </div>
 
-        {/* Grid lines */}
-        {[0.25, 0.5, 0.75].map((ratio) => (
-          <div
-            key={ratio}
-            className="absolute w-full border-t border-dashed border-gray-600 opacity-30"
-            style={{ top: `${chartHeight * (1 - ratio)}px` }}
-          />
-        ))}
-
-        {/* Bars */}
-        <div className="flex items-end justify-between space-x-2" style={{ height: `${chartHeight}px` }}>
-          {monthlyDividends.map((month, index) => {
-            const barHeight = maxAmount > 0 ? (month.amount / maxAmount) * chartHeight : 0;
-            const isHighlighted = month.amount > monthlyAverage;
-            
-            return (
-              <div key={month.month} className="flex flex-col items-center flex-1">
-                {/* Amount label */}
-                {month.amount > 0 && (
-                  <div className="text-xs text-gray-400 mb-2">
-                    ${month.amount.toFixed(1)}
-                  </div>
-                )}
-                
-                {/* Bar */}
-                <div
-                  className={`w-full rounded-t transition-all duration-300 hover:opacity-80 cursor-pointer ${
-                    isHighlighted ? 'bg-blue-400' : 'bg-blue-500'
-                  }`}
-                  style={{ height: `${barHeight}px`, minHeight: month.amount > 0 ? '8px' : '0px' }}
-                  title={`${month.month}: $${month.amount.toFixed(2)}`}
-                />
-                
-                {/* Month label */}
-                <div className="text-xs text-gray-400 mt-2">
-                  {month.month}
-                </div>
+      {monthlyDividends.length > 0 && monthlyDividends.some(m => m.amount > 0) ? (
+        <>
+          {/* Summary Stats */}
+          <div className="flex items-start space-x-8 mb-8">
+            <div>
+              <div className="flex items-center space-x-2 mb-1">
+                <div className="w-1 h-6 bg-blue-400 rounded"></div>
+                <span className="text-gray-400 text-sm">Next 12m</span>
               </div>
-            );
-          })}
-          ) : (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <Calendar className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-400 font-medium text-lg">No upcoming dividends</p>
-                <p className="text-gray-500 text-sm mt-2">
-                  Future dividend payments will appear here once you have dividend-paying stocks in your portfolio.
-                </p>
+              <div className="text-2xl font-bold text-white">
+                ${next12MonthsTotal.toFixed(2)}
               </div>
             </div>
+            <div>
+              <div className="flex items-center space-x-2 mb-1">
+                <div className="w-1 h-6 bg-blue-400 rounded"></div>
+                <span className="text-gray-400 text-sm">Monthly</span>
+              </div>
+              <div className="text-2xl font-bold text-white">
+                ${monthlyAverage.toFixed(2)}
+              </div>
+            </div>
+          </div>
+
+          {/* Chart Container */}
+          <div className="relative pt-8" style={{ height: `${chartHeight + 60}px` }}>
+            {/* Horizontal grid lines */}
+            <div className="absolute inset-x-0" style={{ top: '8px', height: `${chartHeight}px` }}>
+              {[0, 0.33, 0.66, 1].map((ratio) => {
+                const value = maxAmount * (1 - ratio);
+                return (
+                  <div
+                    key={ratio}
+                    className="absolute w-full border-t border-dashed border-gray-700"
+                    style={{ top: `${chartHeight * ratio}px` }}
+                  />
+                );
+              })}
+
+              {/* Average line - highlighted */}
+              {monthlyAverage > 0 && (
+                <div
+                  className="absolute w-full border-t border-dashed border-blue-400"
+                  style={{
+                    top: `${chartHeight * (1 - monthlyAverage / maxAmount)}px`,
+                    opacity: 0.5
+                  }}
+                >
+                  <span className="absolute right-0 -top-3 text-xs text-blue-400">
+                    avg
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Bars */}
+            <div className="relative flex items-end justify-between gap-3 px-2" style={{ height: `${chartHeight}px` }}>
+              {monthlyDividends.map((month, index) => {
+                const barHeight = maxAmount > 0 ? (month.amount / maxAmount) * (chartHeight - 20) : 0;
+                const isCurrentMonth = index === 0;
+
+                return (
+                  <div key={month.month} className="flex flex-col items-center flex-1 relative">
+                    {/* Amount label on top of bar */}
+                    {month.amount > 0 && (
+                      <div
+                        className="absolute text-xs font-medium text-gray-300 whitespace-nowrap"
+                        style={{
+                          bottom: `${barHeight + 6}px`,
+                          left: '50%',
+                          transform: 'translateX(-50%)'
+                        }}
+                      >
+                        ${month.amount.toFixed(0)}
+                      </div>
+                    )}
+
+                    {/* Bar with gradient */}
+                    <div className="w-full flex flex-col justify-end" style={{ height: `${chartHeight - 20}px` }}>
+                      <div
+                        className={`w-full rounded-t transition-all duration-300 hover:opacity-80 cursor-pointer relative overflow-hidden ${
+                          isCurrentMonth
+                            ? 'bg-gradient-to-t from-purple-500 to-blue-400'
+                            : 'bg-gradient-to-t from-blue-600 to-blue-400'
+                        }`}
+                        style={{
+                          height: `${Math.max(barHeight, month.amount > 0 ? 4 : 0)}px`,
+                        }}
+                        title={`${month.month}: $${month.amount.toFixed(2)}`}
+                      >
+                        {isCurrentMonth && month.amount > 0 && (
+                          <div className="absolute inset-0 bg-gradient-to-t from-purple-400 to-transparent opacity-30" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Month label */}
+                    <div className={`text-xs mt-3 ${isCurrentMonth ? 'text-white font-medium' : 'text-gray-500'}`}>
+                      {month.month}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <Calendar className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <p className="text-gray-400 font-medium text-lg">No upcoming dividends</p>
+            <p className="text-gray-500 text-sm mt-2">
+              Future dividend payments will appear here once you have dividend-paying stocks in your portfolio.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
