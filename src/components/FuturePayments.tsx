@@ -23,6 +23,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
   const [loading, setLoading] = useState(true);
   const [next12MonthsTotal, setNext12MonthsTotal] = useState(0);
   const [monthlyAverage, setMonthlyAverage] = useState(0);
+  const [hoveredMonth, setHoveredMonth] = useState<string | null>(null);
 
   // Helper function to check if Supabase environment is properly configured
   const isSupabaseEnvConfigured = () => {
@@ -304,7 +305,59 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                 const hasPaidDividends = month.paidAmount > 0;
 
                 return (
-                  <div key={month.month} className="flex flex-col items-center flex-1 relative">
+                  <div
+                    key={month.month}
+                    className="flex flex-col items-center flex-1 relative group"
+                    onMouseEnter={() => setHoveredMonth(month.month)}
+                    onMouseLeave={() => setHoveredMonth(null)}
+                  >
+                    {/* Tooltip */}
+                    {hoveredMonth === month.month && month.amount > 0 && (
+                      <div
+                        className="absolute z-50 bg-gray-800/95 rounded-lg p-4 shadow-xl border border-gray-700"
+                        style={{
+                          bottom: `${chartHeight + 40}px`,
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          minWidth: '200px',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        <div className="text-white font-medium mb-3">
+                          {month.month}: ${month.amount.toFixed(2)}
+                        </div>
+
+                        <div className="space-y-2">
+                          {isCurrentMonth && hasPaidDividends && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                              <span className="text-gray-300">Paid: ${month.paidAmount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 text-sm">
+                            <div className="w-3 h-3 rounded-full bg-blue-400"></div>
+                            <span className="text-gray-300">
+                              {isCurrentMonth && hasPaidDividends ? 'Declared' : 'Declared'}: ${(month.amount - (isCurrentMonth && hasPaidDividends ? month.paidAmount : 0)).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {month.payments.length > 0 && (
+                          <>
+                            <div className="border-t border-gray-600 my-3"></div>
+                            <div className="space-y-1">
+                              {month.payments.map((payment, idx) => (
+                                <div key={idx} className="flex items-center gap-2 text-sm">
+                                  <div className={`w-2 h-2 rounded-full ${payment.amount <= (isCurrentMonth ? month.paidAmount : 0) ? 'bg-purple-500' : 'bg-blue-400'}`}></div>
+                                  <span className="text-gray-400">{payment.symbol}: ${payment.amount.toFixed(2)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+
                     {/* Bar container */}
                     <div className="w-full flex flex-col items-center justify-end" style={{ height: `${chartHeight - 20}px` }}>
                       {/* Amount label on top of bar */}
@@ -320,7 +373,6 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                           width: '50%',
                           height: `${Math.max(barHeight, month.amount > 0 ? 4 : 0)}px`,
                         }}
-                        title={`${month.month}: $${month.amount.toFixed(2)}${hasPaidDividends && isCurrentMonth ? ` (Paid: $${month.paidAmount.toFixed(2)})` : ''}`}
                       >
                         {/* Paid portion (purple) - only for current month */}
                         {isCurrentMonth && hasPaidDividends && paidHeight > 0 && (
