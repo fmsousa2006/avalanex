@@ -120,7 +120,7 @@ Deno.serve(async (req: Request) => {
       const quote = await fetchQuote(stock.symbol);
       
       if (quote && quote.c > 0) {
-        await supabase
+        const { error: updateError } = await supabase
           .from("stocks")
           .update({
             current_price: quote.c,
@@ -130,7 +130,11 @@ Deno.serve(async (req: Request) => {
           })
           .eq("id", stock.id);
 
-        await supabase
+        if (updateError) {
+          console.error(`Error updating stock ${stock.symbol}:`, updateError);
+        }
+
+        const { error: insertError } = await supabase
           .from("stock_prices")
           .insert({
             stock_id: stock.id,
@@ -142,6 +146,10 @@ Deno.serve(async (req: Request) => {
             close_price: quote.c,
             volume: 0,
           });
+
+        if (insertError) {
+          console.error(`Error inserting stock_prices for ${stock.symbol}:`, insertError);
+        }
 
         await supabase
           .from("api_calls")
