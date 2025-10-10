@@ -10,6 +10,7 @@ interface FutureDividendsProps {
 interface MonthlyDividend {
   month: string;
   amount: number;
+  paidAmount: number;
   payments: Array<{
     symbol: string;
     amount: number;
@@ -144,22 +145,28 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
       // Group dividends by month
       const monthlyData: { [key: string]: MonthlyDividend } = {};
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const today = new Date();
 
       dividends.forEach(dividend => {
         const date = new Date(dividend.payment_date);
         const monthKey = months[date.getMonth()];
         const holding = holdings.find(h => h.stock?.id === dividend.stock_id);
         const totalAmount = holding ? holding.shares * dividend.amount : dividend.amount;
+        const isPaid = date <= today;
 
         if (!monthlyData[monthKey]) {
           monthlyData[monthKey] = {
             month: monthKey,
             amount: 0,
+            paidAmount: 0,
             payments: []
           };
         }
 
         monthlyData[monthKey].amount += totalAmount;
+        if (isPaid) {
+          monthlyData[monthKey].paidAmount += totalAmount;
+        }
         monthlyData[monthKey].payments.push({
           symbol: dividend.stock?.symbol || 'Unknown',
           amount: totalAmount,
@@ -172,13 +179,14 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
       for (let i = 0; i < 12; i++) {
         const monthIndex = (startDate.getMonth() + i) % 12;
         const monthKey = months[monthIndex];
-        
+
         if (monthlyData[monthKey]) {
           dividendsArray.push(monthlyData[monthKey]);
         } else {
           dividendsArray.push({
             month: monthKey,
             amount: 0,
+            paidAmount: 0,
             payments: []
           });
         }
@@ -290,7 +298,10 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
             <div className="relative flex items-end justify-between gap-3 px-2" style={{ height: `${chartHeight}px` }}>
               {monthlyDividends.map((month, index) => {
                 const barHeight = maxAmount > 0 ? (month.amount / maxAmount) * (chartHeight - 20) : 0;
+                const paidHeight = maxAmount > 0 ? (month.paidAmount / maxAmount) * (chartHeight - 20) : 0;
+                const unpaidHeight = barHeight - paidHeight;
                 const isCurrentMonth = index === 0;
+                const hasPaidDividends = month.paidAmount > 0;
 
                 return (
                   <div key={month.month} className="flex flex-col items-center flex-1 relative">
@@ -308,22 +319,30 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                       </div>
                     )}
 
-                    {/* Bar with gradient */}
+                    {/* Bar container */}
                     <div className="w-full flex flex-col justify-end" style={{ height: `${chartHeight - 20}px` }}>
                       <div
-                        className={`w-full rounded-t transition-all duration-300 hover:opacity-80 cursor-pointer relative overflow-hidden ${
-                          isCurrentMonth
-                            ? 'bg-gradient-to-t from-purple-500 to-blue-400'
-                            : 'bg-gradient-to-t from-blue-600 to-blue-400'
-                        }`}
+                        className="w-full rounded-t transition-all duration-300 hover:opacity-80 cursor-pointer relative overflow-hidden"
                         style={{
                           height: `${Math.max(barHeight, month.amount > 0 ? 4 : 0)}px`,
                         }}
-                        title={`${month.month}: $${month.amount.toFixed(2)}`}
+                        title={`${month.month}: $${month.amount.toFixed(2)}${hasPaidDividends && isCurrentMonth ? ` (Paid: $${month.paidAmount.toFixed(2)})` : ''}`}
                       >
-                        {isCurrentMonth && month.amount > 0 && (
-                          <div className="absolute inset-0 bg-gradient-to-t from-purple-400 to-transparent opacity-30" />
+                        {/* Paid portion (purple) - only for current month */}
+                        {isCurrentMonth && hasPaidDividends && paidHeight > 0 && (
+                          <div
+                            className="absolute bottom-0 left-0 right-0 bg-purple-500"
+                            style={{ height: `${paidHeight}px` }}
+                          />
                         )}
+                        {/* Unpaid portion (blue) */}
+                        <div
+                          className="absolute left-0 right-0 bg-blue-400 rounded-t"
+                          style={{
+                            bottom: isCurrentMonth && hasPaidDividends ? `${paidHeight}px` : '0',
+                            height: isCurrentMonth && hasPaidDividends ? `${unpaidHeight}px` : '100%'
+                          }}
+                        />
                       </div>
                     </div>
 
