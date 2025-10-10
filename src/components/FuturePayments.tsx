@@ -304,7 +304,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                 const hasPaidDividends = month.paidAmount > 0;
 
                 return (
-                  <div key={month.month} className="flex flex-col items-center relative" style={{ width: '5%' }}>
+                  <div key={month.month} className="flex flex-col items-center relative" style={{ width: '2.5%' }}>
                     {/* Amount label on top of bar */}
                     {month.amount > 0 && (
                       <div
