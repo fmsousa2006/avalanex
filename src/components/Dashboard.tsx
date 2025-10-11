@@ -16,6 +16,7 @@ import PortfolioModal from './PortfolioModal';
 import TestingModal from './TestingModal';
 import Admin from './Admin';
 import LogoShowcase from './LogoShowcase';
+import Logo1 from './logos/Logo1';
 import { supabase } from '../lib/supabase';
 
 console.log('🏠 Dashboard component rendering...');
@@ -398,10 +399,10 @@ export const Dashboard = () => {
         {/* Header */}
         <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <BarChart3 className="w-8 h-8 text-emerald-400" />
+            <div className="flex items-center space-x-4">
+              <Logo1 size={48} />
               <div>
-                <h1 className="text-2xl font-bold">Portfolio Dashboard</h1>
+                <h1 className="text-2xl font-bold">Avalanex</h1>
                 {isUsingMockData && (
                   <p className="text-sm text-yellow-400">Using demo data</p>
                 )}
