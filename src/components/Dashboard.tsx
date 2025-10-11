@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal, RefreshCw, Wallet } from 'lucide-react';
 import { usePortfolio } from '../hooks/usePortfolio';
 import { useStockPrices } from '../hooks/useStockPrices';
 import PortfolioChart from './PortfolioChart';
@@ -451,7 +451,7 @@ export const Dashboard = () => {
                     )}
                   </p>
                 </div>
-                <DollarSign className="w-8 h-8 text-emerald-400" />
+                <Wallet className="w-8 h-8 text-blue-400" />
               </div>
             </div>
 
