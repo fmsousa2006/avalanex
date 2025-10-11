@@ -450,6 +450,9 @@ export const Dashboard = () => {
                       <span className="text-xs text-yellow-400 ml-2">(Demo)</span>
                     )}
                   </p>
+                  <p className="text-sm text-gray-400 mt-1">
+                    ${currentPortfolioData.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} invested
+                  </p>
                 </div>
                 <Wallet className="w-8 h-8 text-blue-400" />
               </div>
