@@ -462,17 +462,17 @@ export const Dashboard = () => {
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <p className="text-gray-400 text-sm mb-1">Total Profit</p>
-                  <p className={`text-2xl font-bold ${currentPortfolioData.totalProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {currentPortfolioData.totalProfit >= 0 ? '+' : ''}${currentPortfolioData.totalProfit.toFixed(2)}
-                    <span className={`text-lg ml-2 ${currentPortfolioData.totalProfitPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {currentPortfolioData.totalProfitPercent >= 0 ? '+' : ''}{currentPortfolioData.totalProfitPercent.toFixed(2)}%
+                  <p className={`text-2xl font-bold ${currentPortfolioData.totalGainLoss >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {currentPortfolioData.totalGainLoss >= 0 ? '+' : ''}${currentPortfolioData.totalGainLoss.toFixed(2)}
+                    <span className={`text-lg ml-2 ${currentPortfolioData.totalGainLossPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {currentPortfolioData.totalGainLossPercent >= 0 ? '+' : ''}{currentPortfolioData.totalGainLossPercent.toFixed(2)}%
                     </span>
                   </p>
                   <p className={`text-sm mt-2 ${todaysChange.value >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {todaysChange.value >= 0 ? '+' : ''}${todaysChange.value.toFixed(2)} {todaysChange.value >= 0 ? '+' : ''}{todaysChange.percentage.toFixed(2)}% daily
                   </p>
                 </div>
-                {currentPortfolioData.totalProfit >= 0 ? (
+                {currentPortfolioData.totalGainLoss >= 0 ? (
                   <TrendingUp className="w-8 h-8 text-emerald-400" />
                 ) : (
                   <TrendingDown className="w-8 h-8 text-red-400" />
