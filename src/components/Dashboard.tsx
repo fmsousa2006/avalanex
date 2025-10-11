@@ -57,6 +57,7 @@ export const Dashboard = () => {
   const [hoveredStock, setHoveredStock] = useState<string | null>(null);
   const [isDividendCalendarOpen, setIsDividendCalendarOpen] = useState(false);
   const [dividendListKey, setDividendListKey] = useState(0);
+  const [futureDividendsKey, setFutureDividendsKey] = useState(0);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
   const [editTransaction, setEditTransaction] = useState<{
@@ -301,13 +302,17 @@ export const Dashboard = () => {
       }
       
       console.log('Transaction saved, refreshing data...');
-      
+
       // Force refresh all data
       if (currentPortfolio) {
         await fetchHoldings(currentPortfolio.id);
         await fetchTransactions(currentPortfolio.id);
         await fetchRecentTransactions();
-        
+
+        // Update keys to force dividend components to refresh
+        setFutureDividendsKey(prev => prev + 1);
+        setDividendListKey(prev => prev + 1);
+
         // Force re-render of all components by updating state
         // This ensures portfolio allocation, stats, and stock trends refresh
         setTimeout(() => {
@@ -315,9 +320,9 @@ export const Dashboard = () => {
           window.location.reload();
         }, 500);
       }
-      
+
       console.log('Data refreshed successfully');
-      
+
       // Close modal and reset edit state
       setIsPortfolioModalOpen(false);
       setEditTransaction(null);
@@ -593,6 +598,7 @@ export const Dashboard = () => {
           {/* Upcoming Dividends */}
           <div className="mb-8">
             <FutureDividends
+              key={futureDividendsKey}
               portfolioId={currentPortfolio?.id}
               onCalendarClick={() => setIsDividendCalendarOpen(true)}
             />
@@ -643,6 +649,8 @@ export const Dashboard = () => {
                   onDeleteTransaction={async (id) => {
                     try {
                       await deleteTransaction(id);
+                      setFutureDividendsKey(prev => prev + 1);
+                      setDividendListKey(prev => prev + 1);
                     } catch (error) {
                       console.error('Failed to delete transaction:', error);
                     }

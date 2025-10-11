@@ -565,26 +565,27 @@ export const usePortfolio = () => {
   const deleteTransaction = async (id: string) => {
     try {
       console.log('🗑️ [usePortfolio] Deleting transaction with ID:', id);
-      
+
       const { error } = await supabase
         .from('transactions')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
-      
+
       console.log('✅ [usePortfolio] Transaction deleted successfully, recalculating holdings...');
-      
+
       // Refresh data
       if (currentPortfolio) {
         // Recalculate portfolio holdings first
         await recalculatePortfolioHoldings(currentPortfolio.id);
-        
+
         // Then refresh all data
         await fetchTransactions(currentPortfolio.id);
         await fetchHoldings(currentPortfolio.id);
+        await fetchDividends(currentPortfolio.id);
       }
-      
+
       console.log('✅ [usePortfolio] Portfolio data refreshed after deletion');
     } catch (error) {
       console.error('Error deleting transaction:', error);
