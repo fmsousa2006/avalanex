@@ -156,10 +156,29 @@ const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onAddT
 
     // Handle ticker autocomplete
     if (field === 'ticker') {
-      const filtered = availableStocks.filter(stock => 
-        stock.symbol.toLowerCase().includes(value.toLowerCase()) ||
-        stock.name.toLowerCase().includes(value.toLowerCase())
-      ).slice(0, 8);
+      const searchValue = value.toLowerCase();
+      const filtered = availableStocks
+        .filter(stock =>
+          stock.symbol.toLowerCase().includes(searchValue) ||
+          stock.name.toLowerCase().includes(searchValue)
+        )
+        .sort((a, b) => {
+          // Prioritize exact symbol matches
+          const aSymbolMatch = a.symbol.toLowerCase() === searchValue;
+          const bSymbolMatch = b.symbol.toLowerCase() === searchValue;
+          if (aSymbolMatch && !bSymbolMatch) return -1;
+          if (!aSymbolMatch && bSymbolMatch) return 1;
+
+          // Then prioritize symbols that start with the search value
+          const aStartsWithSymbol = a.symbol.toLowerCase().startsWith(searchValue);
+          const bStartsWithSymbol = b.symbol.toLowerCase().startsWith(searchValue);
+          if (aStartsWithSymbol && !bStartsWithSymbol) return -1;
+          if (!aStartsWithSymbol && bStartsWithSymbol) return 1;
+
+          // Finally sort alphabetically by symbol
+          return a.symbol.localeCompare(b.symbol);
+        })
+        .slice(0, 20);
       setTickerSuggestions(filtered);
       setShowTickerSuggestions(value.length > 0 && filtered.length > 0);
     }
@@ -356,7 +375,7 @@ const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onAddT
               
               {/* Ticker Suggestions */}
               {showTickerSuggestions && (
-                <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-lg max-h-80 overflow-y-auto">
                   {tickerSuggestions.map((stock) => (
                     <button
                       key={stock.symbol}
