@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Calendar, Search, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
+import { X, Search, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface PortfolioModalProps {
@@ -56,7 +56,6 @@ const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onAddT
     fee: '0.00'
   });
 
-  const [showCalendar, setShowCalendar] = useState(false);
   const [showTickerSuggestions, setShowTickerSuggestions] = useState(false);
   const [tickerSuggestions, setTickerSuggestions] = useState<Array<{symbol: string, name: string}>>([]);
   const [availableStocks, setAvailableStocks] = useState<Array<{symbol: string, name: string}>>([]);
@@ -141,7 +140,6 @@ const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onAddT
         });
       }
       setErrors({});
-      setShowCalendar(false);
       setShowTickerSuggestions(false);
     }
   }, [isOpen, editTransaction]);
@@ -255,59 +253,6 @@ const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onAddT
     }
   };
 
-  const generateCalendarDays = () => {
-    const currentDate = new Date(formData.date);
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
-    
-    const days = [];
-    
-    // Empty cells for days before the first day of the month
-    for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(<div key={`empty-${i}`} className="h-8"></div>);
-    }
-    
-    // Days of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const isSelected = dateString === formData.date;
-      const isToday = dateString === new Date().toISOString().split('T')[0];
-      
-      days.push(
-        <button
-          key={day}
-          onClick={() => {
-            setFormData(prev => ({ ...prev, date: dateString }));
-            setShowCalendar(false);
-          }}
-          className={`h-8 w-8 text-sm rounded hover:bg-gray-600 transition-colors ${
-            isSelected ? 'bg-emerald-600 text-white' : 
-            isToday ? 'bg-blue-600 text-white' : 'text-gray-300'
-          }`}
-        >
-          {day}
-        </button>
-      );
-    }
-    
-    return days;
-  };
-
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    const currentDate = new Date(formData.date);
-    if (direction === 'prev') {
-      currentDate.setMonth(currentDate.getMonth() - 1);
-    } else {
-      currentDate.setMonth(currentDate.getMonth() + 1);
-    }
-    setFormData(prev => ({ ...prev, date: currentDate.toISOString().split('T')[0] }));
-  };
-
   if (!isOpen) return null;
 
   const totalValue = formData.shares && formData.price ? 
@@ -413,53 +358,17 @@ const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onAddT
             </label>
             <div className="relative">
               <input
-                type="text"
+                type="date"
                 value={formData.date}
-                readOnly
-                onClick={() => setShowCalendar(!showCalendar)}
-                className={`w-full px-4 py-3 bg-gray-800 border rounded-lg cursor-pointer focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                onChange={(e) => handleInputChange('date', e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
+                className={`w-full px-4 py-3 bg-gray-800 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
                   errors.date ? 'border-red-500' : 'border-gray-600'
                 }`}
               />
-              <Calendar className="absolute right-3 top-3 w-5 h-5 text-gray-400" />
             </div>
             {errors.date && (
               <p className="text-red-400 text-sm mt-1">{errors.date}</p>
-            )}
-
-            {/* Calendar Popup */}
-            {showCalendar && (
-              <div className="absolute z-20 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-lg p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <button
-                    onClick={() => navigateMonth('prev')}
-                    className="p-1 hover:bg-gray-700 rounded"
-                  >
-                    ←
-                  </button>
-                  <h3 className="font-semibold">
-                    {new Date(formData.date).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                  </h3>
-                  <button
-                    onClick={() => navigateMonth('next')}
-                    className="p-1 hover:bg-gray-700 rounded"
-                  >
-                    →
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-7 gap-1 mb-2">
-                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                    <div key={day} className="h-8 flex items-center justify-center text-xs font-medium text-gray-400">
-                      {day}
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="grid grid-cols-7 gap-1">
-                  {generateCalendarDays()}
-                </div>
-              </div>
             )}
           </div>
 
