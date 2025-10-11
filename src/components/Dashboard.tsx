@@ -16,6 +16,7 @@ import PortfolioModal from './PortfolioModal';
 import TestingModal from './TestingModal';
 import Admin from './Admin';
 import Logo1 from './logos/Logo1';
+import UserMenu from './UserMenu';
 import { supabase } from '../lib/supabase';
 
 console.log('🏠 Dashboard component rendering...');
@@ -410,27 +411,31 @@ export const Dashboard = () => {
                 <p className="text-sm text-yellow-400">Using demo data</p>
               )}
             </div>
-            
-            <button
-              onClick={handleSyncPortfolioPrices}
-              disabled={isSyncing || !isFinnhubConfigured || !currentPortfolio || isUsingMockData}
-              className={`p-2 rounded-lg transition-colors ${
-                isSyncing || !isFinnhubConfigured || !currentPortfolio || isUsingMockData
-                  ? 'bg-gray-600 cursor-not-allowed opacity-50'
-                  : 'bg-emerald-600 hover:bg-emerald-700'
-              }`}
-              title={
-                !isFinnhubConfigured
-                  ? 'Finnhub API key not configured'
-                  : !currentPortfolio
-                  ? 'No portfolio selected'
-                  : isUsingMockData
-                  ? 'Cannot sync mock data'
-                  : 'Sync portfolio share prices'
-              }
-            >
-              <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
-            </button>
+
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={handleSyncPortfolioPrices}
+                disabled={isSyncing || !isFinnhubConfigured || !currentPortfolio || isUsingMockData}
+                className={`p-2 rounded-lg transition-colors ${
+                  isSyncing || !isFinnhubConfigured || !currentPortfolio || isUsingMockData
+                    ? 'bg-gray-600 cursor-not-allowed opacity-50'
+                    : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
+                title={
+                  !isFinnhubConfigured
+                    ? 'Finnhub API key not configured'
+                    : !currentPortfolio
+                    ? 'No portfolio selected'
+                    : isUsingMockData
+                    ? 'Cannot sync mock data'
+                    : 'Sync portfolio share prices'
+                }
+              >
+                <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
+              </button>
+
+              <UserMenu onLogout={handleLogout} />
+            </div>
           </div>
         </header>
 
