@@ -15,6 +15,7 @@ import Sidebar from './Sidebar';
 import PortfolioModal from './PortfolioModal';
 import TestingModal from './TestingModal';
 import Admin from './Admin';
+import LogoShowcase from './LogoShowcase';
 import { supabase } from '../lib/supabase';
 
 console.log('🏠 Dashboard component rendering...');
@@ -53,6 +54,7 @@ export const Dashboard = () => {
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [isTestingModalOpen, setIsTestingModalOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isLogoShowcaseOpen, setIsLogoShowcaseOpen] = useState(false);
   const [hoveredStock, setHoveredStock] = useState<string | null>(null);
   const [isDividendCalendarOpen, setIsDividendCalendarOpen] = useState(false);
   const [dividendListKey, setDividendListKey] = useState(0);
@@ -406,26 +408,35 @@ export const Dashboard = () => {
               </div>
             </div>
             
-            <button
-              onClick={handleSyncPortfolioPrices}
-              disabled={isSyncing || !isFinnhubConfigured || !currentPortfolio || isUsingMockData}
-              className={`p-2 rounded-lg transition-colors ${
-                isSyncing || !isFinnhubConfigured || !currentPortfolio || isUsingMockData
-                  ? 'bg-gray-600 cursor-not-allowed opacity-50'
-                  : 'bg-emerald-600 hover:bg-emerald-700'
-              }`}
-              title={
-                !isFinnhubConfigured
-                  ? 'Finnhub API key not configured'
-                  : !currentPortfolio
-                  ? 'No portfolio selected'
-                  : isUsingMockData
-                  ? 'Cannot sync mock data'
-                  : 'Sync portfolio share prices'
-              }
-            >
-              <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsLogoShowcaseOpen(true)}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-sm font-medium"
+                title="View logo options"
+              >
+                View Logos
+              </button>
+              <button
+                onClick={handleSyncPortfolioPrices}
+                disabled={isSyncing || !isFinnhubConfigured || !currentPortfolio || isUsingMockData}
+                className={`p-2 rounded-lg transition-colors ${
+                  isSyncing || !isFinnhubConfigured || !currentPortfolio || isUsingMockData
+                    ? 'bg-gray-600 cursor-not-allowed opacity-50'
+                    : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
+                title={
+                  !isFinnhubConfigured
+                    ? 'Finnhub API key not configured'
+                    : !currentPortfolio
+                    ? 'No portfolio selected'
+                    : isUsingMockData
+                    ? 'Cannot sync mock data'
+                    : 'Sync portfolio share prices'
+                }
+              >
+                <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
         </header>
 
@@ -737,6 +748,11 @@ export const Dashboard = () => {
         onClose={() => setIsDividendCalendarOpen(false)}
         portfolioId={currentPortfolio?.id}
       />
+
+      {/* Logo Showcase Modal */}
+      {isLogoShowcaseOpen && (
+        <LogoShowcase onClose={() => setIsLogoShowcaseOpen(false)} />
+      )}
     </div>
   );
 };
