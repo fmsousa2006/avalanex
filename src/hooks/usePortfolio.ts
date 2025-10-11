@@ -677,16 +677,29 @@ export const usePortfolio = () => {
       const stockIds = holdings.map(h => h.stock_id);
 
       const now = new Date();
-      now.setHours(0, 0, 0, 0);
+      const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
+      let daysToSubtract = 1;
+      if (dayOfWeek === 0) {
+        daysToSubtract = 3;
+      } else if (dayOfWeek === 6) {
+        daysToSubtract = 2;
+      } else if (dayOfWeek === 1) {
+        daysToSubtract = 3;
+      }
+
+      const compareDate = new Date(now);
+      compareDate.setDate(compareDate.getDate() - daysToSubtract);
+      compareDate.setHours(0, 0, 0, 0);
 
       const { data: lastTradingDayPrices, error } = await supabase
         .from('stock_prices')
         .select('stock_id, close_price, timestamp')
         .in('stock_id', stockIds)
         .eq('resolution', '1d')
-        .lt('timestamp', now.toISOString())
-        .order('timestamp', { ascending: false })
-        .limit(stockIds.length);
+        .gte('timestamp', compareDate.toISOString())
+        .lt('timestamp', new Date(compareDate.getTime() + 24 * 60 * 60 * 1000).toISOString())
+        .order('timestamp', { ascending: false });
 
       if (error || !lastTradingDayPrices || lastTradingDayPrices.length === 0) {
         console.log('No previous trading day prices found, setting today\'s change to 0');
@@ -713,6 +726,16 @@ export const usePortfolio = () => {
       const changePercent = lastTradingDayTotalValue > 0
         ? (changeValue / lastTradingDayTotalValue) * 100
         : 0;
+
+      console.log('📊 Today\'s change calculation:', {
+        dayOfWeek,
+        daysToSubtract,
+        compareDate: compareDate.toISOString(),
+        currentTotalValue,
+        lastTradingDayTotalValue,
+        changeValue,
+        changePercent
+      });
 
       setTodaysChange({
         value: changeValue,
