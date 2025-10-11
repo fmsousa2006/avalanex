@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, Briefcase, TestTube, Shield } from 'lucide-react';
+import { BarChart3, Briefcase, Shield } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -19,8 +19,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const menuItems = [
     { icon: Shield, label: 'Admin', onClick: onAdminClick },
     { icon: BarChart3, label: 'Dashboard', active: true },
-    { icon: Briefcase, label: 'Portfolio', onClick: onPortfolioClick },
-    { icon: TestTube, label: 'Testing', onClick: onTestingClick }
+    { icon: Briefcase, label: 'Portfolio', onClick: onPortfolioClick }
   ];
 
   // Handle mouse enter/leave for auto-show/hide
