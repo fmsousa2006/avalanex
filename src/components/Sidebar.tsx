@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, HelpCircle, Users, FileText, BarChart3, LogOut, Briefcase, TestTube, Shield } from 'lucide-react';
+import { BarChart3, Briefcase, TestTube, Shield } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -7,7 +7,6 @@ interface SidebarProps {
   onPortfolioClick: () => void;
   onTestingClick: () => void;
   onAdminClick: () => void;
-  onLogout: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -15,18 +14,13 @@ const Sidebar: React.FC<SidebarProps> = ({
   onToggle,
   onPortfolioClick,
   onTestingClick,
-  onAdminClick,
-  onLogout
+  onAdminClick
 }) => {
   const menuItems = [
     { icon: Shield, label: 'Admin', onClick: onAdminClick },
     { icon: BarChart3, label: 'Dashboard', active: true },
     { icon: Briefcase, label: 'Portfolio', onClick: onPortfolioClick },
-    { icon: TestTube, label: 'Testing', onClick: onTestingClick },
-    { icon: User, label: 'Profile' },
-    { icon: HelpCircle, label: 'Contact Support' },
-    { icon: Users, label: 'Invite Friends' },
-    { icon: FileText, label: 'Terms & Conditions' }
+    { icon: TestTube, label: 'Testing', onClick: onTestingClick }
   ];
 
   // Handle mouse enter/leave for auto-show/hide
@@ -71,8 +65,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                 key={index}
                 onClick={item.onClick}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                  item.active 
-                    ? 'bg-emerald-600 text-white' 
+                  item.active
+                    ? 'bg-emerald-600 text-white'
                     : 'text-gray-300 hover:bg-gray-700 hover:text-white'
                 }`}
               >
@@ -82,17 +76,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             ))}
           </div>
         </nav>
-
-        {/* Logout Button - Fixed at bottom */}
-        <div className="p-4 border-t border-gray-700">
-          <button
-            onClick={onLogout}
-            className="flex items-center px-4 py-2 text-gray-300 hover:bg-red-600 hover:text-white rounded-md transition-colors w-full text-left"
-          >
-            <LogOut className="w-5 h-5 mr-3" />
-            <span className="font-medium">Logout</span>
-          </button>
-        </div>
       </div>
     </>
   );

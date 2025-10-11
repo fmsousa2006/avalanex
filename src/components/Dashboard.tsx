@@ -371,7 +371,6 @@ export const Dashboard = () => {
         onPortfolioClick={() => setIsPortfolioModalOpen(true)}
         onTestingClick={() => setIsTestingModalOpen(true)}
         onAdminClick={() => setIsAdminOpen(true)}
-        onLogout={handleLogout}
       />
 
       {/* Testing Modal */}
