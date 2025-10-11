@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import StockDetailModal from './StockDetailModal';
+import { getStockColor } from '../utils/stockColors';
 
 interface PortfolioData {
   symbol: string;
@@ -28,12 +29,8 @@ const PortfolioChart: React.FC<PortfolioChartProps> = ({ data, onHover, hoveredS
   const centerX = 220;
   const centerY = 220;
   const radius = 140;
-  
+
   let currentAngle = 0;
-  const colors = [
-    '#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', 
-    '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6366f1'
-  ];
 
   const handleMouseMove = (event: React.MouseEvent, stockData: PortfolioData, sliceAngle: number, sliceStartAngle: number) => {
     if (!svgRef.current || !containerRef.current) return;
@@ -147,7 +144,7 @@ const PortfolioChart: React.FC<PortfolioChartProps> = ({ data, onHover, hoveredS
             <g key={stock.symbol}>
               <path
                 d={finalPathData}
-                fill={colors[index % colors.length]}
+                fill={getStockColor(stock.symbol)}
                 stroke="#1f2937"
                 strokeWidth="2"
                 className="transition-all duration-200 cursor-pointer"
@@ -218,7 +215,7 @@ const PortfolioChart: React.FC<PortfolioChartProps> = ({ data, onHover, hoveredS
       
       {/* Legend */}
       <div className="mt-6 grid grid-cols-2 gap-2">
-        {data.map((stock, index) => (
+        {data.map((stock) => (
           <div
             key={stock.symbol}
             className={`flex items-center space-x-2 p-2 rounded cursor-pointer transition-colors ${
@@ -230,7 +227,7 @@ const PortfolioChart: React.FC<PortfolioChartProps> = ({ data, onHover, hoveredS
           >
             <div
               className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: colors[index % colors.length] }}
+              style={{ backgroundColor: getStockColor(stock.symbol) }}
             />
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium truncate">{stock.symbol} - {stock.name}</div>
