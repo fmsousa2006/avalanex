@@ -353,10 +353,8 @@ export const Dashboard = () => {
   console.log('📊 [Dashboard] Current portfolio data:', currentPortfolioData);
   console.log('📊 [Dashboard] Holdings count:', holdings.length);
   console.log('📊 [Dashboard] Current portfolio:', currentPortfolio?.id);
-  
+
   const totalValue = currentPortfolioData.totalValue;
-  const totalChange = currentPortfolioData.totalGainLoss;
-  const totalChangePercent = currentPortfolioData.totalGainLossPercent;
 
   if (isAdminOpen) {
     return <Admin onClose={() => setIsAdminOpen(false)} />;
@@ -461,11 +459,11 @@ export const Dashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm">Today's Change</p>
-                  <p className={`text-2xl font-bold ${totalChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    ${totalChange.toFixed(2)} ({totalChange >= 0 ? '+' : ''}{totalChangePercent.toFixed(2)}%)
+                  <p className={`text-2xl font-bold ${todaysChange.value >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    ${todaysChange.value.toFixed(2)} ({todaysChange.value >= 0 ? '+' : ''}{todaysChange.percentage.toFixed(2)}%)
                   </p>
                 </div>
-                {totalChange >= 0 ? (
+                {todaysChange.value >= 0 ? (
                   <TrendingUp className="w-8 h-8 text-emerald-400" />
                 ) : (
                   <TrendingDown className="w-8 h-8 text-red-400" />

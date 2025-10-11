@@ -663,21 +663,65 @@ export const usePortfolio = () => {
   };
 
   // Calculate today's change
-  const calculateTodaysChange = () => {
-    // This would typically use real-time price data
-    // For now, using mock calculation
-    const totalValue = holdings.reduce((sum, holding) => 
-      sum + (holding.shares * holding.current_price), 0
-    );
-    
-    // Mock 1.2% gain for demo
-    const changePercent = 1.2;
-    const changeValue = totalValue * (changePercent / 100);
-    
-    setTodaysChange({
-      value: changeValue,
-      percentage: changePercent
-    });
+  const calculateTodaysChange = async () => {
+    if (isUsingMockData || holdings.length === 0) {
+      setTodaysChange({ value: 0, percentage: 0 });
+      return;
+    }
+
+    try {
+      const currentTotalValue = holdings.reduce((sum, holding) =>
+        sum + (holding.shares * holding.current_price), 0
+      );
+
+      const stockIds = holdings.map(h => h.stock_id);
+
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+
+      const { data: yesterdayPrices, error } = await supabase
+        .from('stock_prices')
+        .select('stock_id, close_price, timestamp')
+        .in('stock_id', stockIds)
+        .eq('resolution', '1d')
+        .lte('timestamp', yesterday.toISOString())
+        .order('timestamp', { ascending: false });
+
+      if (error || !yesterdayPrices || yesterdayPrices.length === 0) {
+        console.log('No previous day prices found, setting today\'s change to 0');
+        setTodaysChange({ value: 0, percentage: 0 });
+        return;
+      }
+
+      const yesterdayPriceMap = new Map();
+      yesterdayPrices.forEach(price => {
+        if (!yesterdayPriceMap.has(price.stock_id)) {
+          yesterdayPriceMap.set(price.stock_id, Number(price.close_price));
+        }
+      });
+
+      const yesterdayTotalValue = holdings.reduce((sum, holding) => {
+        const yesterdayPrice = yesterdayPriceMap.get(holding.stock_id);
+        if (yesterdayPrice) {
+          return sum + (holding.shares * yesterdayPrice);
+        }
+        return sum + (holding.shares * holding.current_price);
+      }, 0);
+
+      const changeValue = currentTotalValue - yesterdayTotalValue;
+      const changePercent = yesterdayTotalValue > 0
+        ? (changeValue / yesterdayTotalValue) * 100
+        : 0;
+
+      setTodaysChange({
+        value: changeValue,
+        percentage: changePercent
+      });
+    } catch (error) {
+      console.error('Error calculating today\'s change:', error);
+      setTodaysChange({ value: 0, percentage: 0 });
+    }
   };
 
   // Initialize data
