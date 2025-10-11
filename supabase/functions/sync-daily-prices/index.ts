@@ -59,6 +59,42 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function getMarketCloseTimeUTC(): string {
+  // Get current time in New York
+  const now = new Date();
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  };
+
+  const formatter = new Intl.DateTimeFormat('en-US', options);
+  const parts = formatter.formatToParts(now);
+
+  const year = parts.find(p => p.type === 'year')!.value;
+  const month = parts.find(p => p.type === 'month')!.value;
+  const day = parts.find(p => p.type === 'day')!.value;
+
+  // Create a Date object for 4 PM in New York by testing what UTC time corresponds to it
+  // We'll use 8 PM UTC as a test point and adjust
+  const testUTC = new Date(`${year}-${month}-${day}T20:00:00.000Z`);
+  const testParts = new Intl.DateTimeFormat('en-US', {
+    ...options
+  }).formatToParts(testUTC);
+  const testHour = parseInt(testParts.find(p => p.type === 'hour')!.value);
+
+  // Calculate the offset: if test shows 16 (4 PM), we're at the right UTC time (20:00)
+  // if it shows 15, we need 21:00 UTC. If it shows 17, we need 19:00 UTC
+  const utcHour = 20 + (16 - testHour);
+
+  return `${year}-${month}-${day}T${String(utcHour).padStart(2, '0')}:00:00.000Z`;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -104,11 +140,7 @@ Deno.serve(async (req: Request) => {
 
     let successCount = 0;
     let errorCount = 0;
-    
-    const now = new Date();
-    const nyTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
-    nyTime.setHours(16, 0, 0, 0);
-    const timestamp = nyTime.toISOString();
+    const timestamp = getMarketCloseTimeUTC();
 
     for (let i = 0; i < stocks.length; i++) {
       const stock = stocks[i] as Stock;
