@@ -676,42 +676,42 @@ export const usePortfolio = () => {
 
       const stockIds = holdings.map(h => h.stock_id);
 
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      yesterday.setHours(0, 0, 0, 0);
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
 
-      const { data: yesterdayPrices, error } = await supabase
+      const { data: lastTradingDayPrices, error } = await supabase
         .from('stock_prices')
         .select('stock_id, close_price, timestamp')
         .in('stock_id', stockIds)
         .eq('resolution', '1d')
-        .lte('timestamp', yesterday.toISOString())
-        .order('timestamp', { ascending: false });
+        .lt('timestamp', now.toISOString())
+        .order('timestamp', { ascending: false })
+        .limit(stockIds.length);
 
-      if (error || !yesterdayPrices || yesterdayPrices.length === 0) {
-        console.log('No previous day prices found, setting today\'s change to 0');
+      if (error || !lastTradingDayPrices || lastTradingDayPrices.length === 0) {
+        console.log('No previous trading day prices found, setting today\'s change to 0');
         setTodaysChange({ value: 0, percentage: 0 });
         return;
       }
 
-      const yesterdayPriceMap = new Map();
-      yesterdayPrices.forEach(price => {
-        if (!yesterdayPriceMap.has(price.stock_id)) {
-          yesterdayPriceMap.set(price.stock_id, Number(price.close_price));
+      const lastTradingDayPriceMap = new Map();
+      lastTradingDayPrices.forEach(price => {
+        if (!lastTradingDayPriceMap.has(price.stock_id)) {
+          lastTradingDayPriceMap.set(price.stock_id, Number(price.close_price));
         }
       });
 
-      const yesterdayTotalValue = holdings.reduce((sum, holding) => {
-        const yesterdayPrice = yesterdayPriceMap.get(holding.stock_id);
-        if (yesterdayPrice) {
-          return sum + (holding.shares * yesterdayPrice);
+      const lastTradingDayTotalValue = holdings.reduce((sum, holding) => {
+        const lastPrice = lastTradingDayPriceMap.get(holding.stock_id);
+        if (lastPrice) {
+          return sum + (holding.shares * lastPrice);
         }
         return sum + (holding.shares * holding.current_price);
       }, 0);
 
-      const changeValue = currentTotalValue - yesterdayTotalValue;
-      const changePercent = yesterdayTotalValue > 0
-        ? (changeValue / yesterdayTotalValue) * 100
+      const changeValue = currentTotalValue - lastTradingDayTotalValue;
+      const changePercent = lastTradingDayTotalValue > 0
+        ? (changeValue / lastTradingDayTotalValue) * 100
         : 0;
 
       setTodaysChange({
