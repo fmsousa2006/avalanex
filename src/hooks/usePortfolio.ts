@@ -398,7 +398,6 @@ export const usePortfolio = () => {
           .update({
             shares: Math.max(0, newShares),
             average_cost: newAverageCost,
-            current_price: transaction.price || existingHolding.current_price,
             last_updated: new Date().toISOString()
           })
           .eq('id', existingHolding.id);
@@ -406,6 +405,13 @@ export const usePortfolio = () => {
         if (updateError) throw updateError;
       } else if (transaction.type === 'buy') {
         // Create new holding for buy transactions
+        // Get current market price for the stock
+        const { data: stockData } = await supabase
+          .from('stocks')
+          .select('current_price')
+          .eq('id', transaction.stock_id)
+          .maybeSingle();
+
         const { error: insertError } = await supabase
           .from('portfolio_holdings')
           .insert([{
@@ -413,7 +419,7 @@ export const usePortfolio = () => {
             stock_id: transaction.stock_id,
             shares: transaction.shares || 0,
             average_cost: transaction.price || 0,
-            current_price: transaction.price || 0,
+            current_price: stockData?.current_price || transaction.price || 0,
             last_updated: new Date().toISOString()
           }]);
 
@@ -445,6 +451,18 @@ export const usePortfolio = () => {
 
       if (clearError) throw clearError;
 
+      // Get current market prices for all stocks
+      const uniqueStockIds = [...new Set(allTransactions?.map(tx => tx.stock_id) || [])];
+      const { data: stockPrices } = await supabase
+        .from('stocks')
+        .select('id, current_price')
+        .in('id', uniqueStockIds);
+
+      const stockPriceMap = new Map();
+      stockPrices?.forEach(stock => {
+        stockPriceMap.set(stock.id, stock.current_price);
+      });
+
       // Recalculate holdings from transactions
       const holdingsMap = new Map();
 
@@ -456,7 +474,7 @@ export const usePortfolio = () => {
             stock_id: tx.stock_id,
             shares: 0,
             total_cost: 0,
-            current_price: tx.price || 0
+            current_price: stockPriceMap.get(tx.stock_id) || tx.price || 0
           });
         }
 
@@ -470,7 +488,6 @@ export const usePortfolio = () => {
           const sellRatio = (tx.shares || 0) / (holding.shares + (tx.shares || 0));
           holding.total_cost *= (1 - sellRatio);
         }
-        holding.current_price = tx.price || holding.current_price;
       });
 
       // Insert recalculated holdings
