@@ -15,6 +15,7 @@ interface MonthlyDividend {
     symbol: string;
     amount: number;
     date: string;
+    isPaid: boolean;
   }>;
 }
 
@@ -57,11 +58,11 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
         amount: parseFloat(amount.toFixed(2)),
         paidAmount: parseFloat(paidAmount.toFixed(2)),
         payments: [
-          { symbol: 'KO', amount: amount * 0.07, date: `2025-${String(index + 10).padStart(2, '0')}-01` },
-          { symbol: 'NVDA', amount: amount * 0.03, date: `2025-${String(index + 10).padStart(2, '0')}-05` },
-          { symbol: 'O', amount: amount * 0.4, date: `2025-${String(index + 10).padStart(2, '0')}-15` },
-          { symbol: 'MO', amount: amount * 0.4, date: `2025-${String(index + 10).padStart(2, '0')}-20` },
-          { symbol: 'VICI', amount: amount * 0.15, date: `2025-${String(index + 10).padStart(2, '0')}-25` }
+          { symbol: 'KO', amount: amount * 0.07, date: `2025-${String(index + 10).padStart(2, '0')}-01`, isPaid: index === 0 },
+          { symbol: 'NVDA', amount: amount * 0.03, date: `2025-${String(index + 10).padStart(2, '0')}-05`, isPaid: index === 0 },
+          { symbol: 'O', amount: amount * 0.4, date: `2025-${String(index + 10).padStart(2, '0')}-15`, isPaid: false },
+          { symbol: 'MO', amount: amount * 0.4, date: `2025-${String(index + 10).padStart(2, '0')}-20`, isPaid: false },
+          { symbol: 'VICI', amount: amount * 0.15, date: `2025-${String(index + 10).padStart(2, '0')}-25`, isPaid: false }
         ]
       });
     });
@@ -153,9 +154,10 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
       const monthlyData: { [key: string]: MonthlyDividend } = {};
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const today = new Date();
+      today.setHours(23, 59, 59, 999);
 
       dividends.forEach(dividend => {
-        const date = new Date(dividend.payment_date);
+        const date = new Date(dividend.payment_date + 'T00:00:00');
         const monthKey = months[date.getMonth()];
         const holding = holdings.find(h => h.stock?.id === dividend.stock_id);
         const totalAmount = holding ? holding.shares * dividend.amount : dividend.amount;
@@ -177,7 +179,8 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
         monthlyData[monthKey].payments.push({
           symbol: dividend.stock?.symbol || 'Unknown',
           amount: totalAmount,
-          date: dividend.payment_date
+          date: dividend.payment_date,
+          isPaid: isPaid
         });
       });
 
@@ -354,7 +357,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                             <div className="space-y-1">
                               {month.payments.map((payment, idx) => (
                                 <div key={idx} className="flex items-center gap-2 text-sm">
-                                  <div className={`w-2 h-2 rounded-full ${payment.amount <= (isCurrentMonth ? month.paidAmount : 0) ? 'bg-purple-500' : 'bg-blue-400'}`}></div>
+                                  <div className={`w-2 h-2 rounded-full ${payment.isPaid ? 'bg-purple-500' : 'bg-blue-400'}`}></div>
                                   <span className="text-gray-400">{payment.symbol}: ${payment.amount.toFixed(2)}</span>
                                 </div>
                               ))}
