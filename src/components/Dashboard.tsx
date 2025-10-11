@@ -71,6 +71,7 @@ export const Dashboard = () => {
     currency: string;
     fee: string;
   } | null>(null);
+  const [stockDailyChanges, setStockDailyChanges] = useState<Map<string, { change: number; changePercent: number }>>(new Map());
 
   // Check if Finnhub is configured
   const isFinnhubConfigured = import.meta.env.VITE_FINNHUB_API_KEY;
@@ -148,6 +149,71 @@ export const Dashboard = () => {
     }
   };
 
+  // Calculate daily changes for each stock
+  const calculateStockDailyChanges = async () => {
+    if (isUsingMockData || holdings.length === 0) {
+      setStockDailyChanges(new Map());
+      return;
+    }
+
+    try {
+      const stockIds = holdings.map(h => h.stock_id);
+
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+
+      let daysToSubtract = 1;
+      if (dayOfWeek === 0) {
+        daysToSubtract = 3;
+      } else if (dayOfWeek === 6) {
+        daysToSubtract = 2;
+      } else if (dayOfWeek === 1) {
+        daysToSubtract = 3;
+      }
+
+      const compareDate = new Date(now);
+      compareDate.setDate(compareDate.getDate() - daysToSubtract);
+      compareDate.setHours(0, 0, 0, 0);
+
+      const { data: lastTradingDayPrices, error } = await supabase
+        .from('stock_prices')
+        .select('stock_id, close_price, timestamp')
+        .in('stock_id', stockIds)
+        .eq('resolution', '1d')
+        .gte('timestamp', compareDate.toISOString())
+        .lt('timestamp', new Date(compareDate.getTime() + 24 * 60 * 60 * 1000).toISOString())
+        .order('timestamp', { ascending: false });
+
+      if (error || !lastTradingDayPrices || lastTradingDayPrices.length === 0) {
+        console.log('No previous trading day prices found for stock daily changes');
+        setStockDailyChanges(new Map());
+        return;
+      }
+
+      const lastTradingDayPriceMap = new Map();
+      lastTradingDayPrices.forEach(price => {
+        if (!lastTradingDayPriceMap.has(price.stock_id)) {
+          lastTradingDayPriceMap.set(price.stock_id, Number(price.close_price));
+        }
+      });
+
+      const dailyChanges = new Map();
+      holdings.forEach(holding => {
+        const lastPrice = lastTradingDayPriceMap.get(holding.stock_id);
+        if (lastPrice) {
+          const change = (holding.current_price - lastPrice) * holding.shares;
+          const changePercent = ((holding.current_price - lastPrice) / lastPrice) * 100;
+          dailyChanges.set(holding.stock?.symbol || '', { change, changePercent });
+        }
+      });
+
+      setStockDailyChanges(dailyChanges);
+    } catch (error) {
+      console.error('Error calculating stock daily changes:', error);
+      setStockDailyChanges(new Map());
+    }
+  };
+
   // Add this function to fetch transactions
   const fetchRecentTransactions = async () => {
     // Skip Supabase calls if using mock data
@@ -218,6 +284,11 @@ export const Dashboard = () => {
   useEffect(() => {
     fetchRecentTransactions();
   }, [isUsingMockData]);
+
+  // Calculate daily changes when holdings change
+  useEffect(() => {
+    calculateStockDailyChanges();
+  }, [holdings, isUsingMockData]);
 
   // Handle editing a transaction
   const handleEditTransaction = (id: string) => {
@@ -576,25 +647,31 @@ export const Dashboard = () => {
             {/* Top Gainers */}
             <TopGainersLosers
               type="gainers"
-              data={currentPortfolioData.holdings.map(holding => ({
-                symbol: holding.symbol,
-                name: holding.name,
-                value: holding.totalValue,
-                change: holding.gainLoss,
-                changePercent: holding.gainLossPercent
-              }))}
+              data={currentPortfolioData.holdings.map(holding => {
+                const dailyChange = stockDailyChanges.get(holding.symbol);
+                return {
+                  symbol: holding.symbol,
+                  name: holding.name,
+                  value: holding.currentPrice,
+                  change: dailyChange?.change || 0,
+                  changePercent: dailyChange?.changePercent || 0
+                };
+              })}
             />
 
             {/* Top Losers */}
             <TopGainersLosers
               type="losers"
-              data={currentPortfolioData.holdings.map(holding => ({
-                symbol: holding.symbol,
-                name: holding.name,
-                value: holding.totalValue,
-                change: holding.gainLoss,
-                changePercent: holding.gainLossPercent
-              }))}
+              data={currentPortfolioData.holdings.map(holding => {
+                const dailyChange = stockDailyChanges.get(holding.symbol);
+                return {
+                  symbol: holding.symbol,
+                  name: holding.name,
+                  value: holding.currentPrice,
+                  change: dailyChange?.change || 0,
+                  changePercent: dailyChange?.changePercent || 0
+                };
+              })}
             />
           </div>
 
