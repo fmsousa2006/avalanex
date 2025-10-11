@@ -40,7 +40,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
 
   // Generate mock data for demonstration
   const generateMockData = (): MonthlyDividend[] => {
-    const months = ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'];
+    const months = ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'];
     const mockData: MonthlyDividend[] = [];
 
     months.forEach((month, index) => {
@@ -49,13 +49,19 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
       const variation = (Math.random() - 0.5) * 10; // ±5 variation
       const amount = Math.max(5, baseAmount + variation);
 
+      // For the first month (current month), mark some dividends as paid
+      const paidAmount = index === 0 ? amount * 0.15 : 0;
+
       mockData.push({
         month,
         amount: parseFloat(amount.toFixed(2)),
+        paidAmount: parseFloat(paidAmount.toFixed(2)),
         payments: [
-          { symbol: 'AAPL', amount: amount * 0.4, date: `2024-${String(index + 9).padStart(2, '0')}-15` },
-          { symbol: 'MSFT', amount: amount * 0.3, date: `2024-${String(index + 9).padStart(2, '0')}-20` },
-          { symbol: 'O', amount: amount * 0.3, date: `2024-${String(index + 9).padStart(2, '0')}-25` }
+          { symbol: 'KO', amount: amount * 0.07, date: `2025-${String(index + 10).padStart(2, '0')}-01` },
+          { symbol: 'NVDA', amount: amount * 0.03, date: `2025-${String(index + 10).padStart(2, '0')}-05` },
+          { symbol: 'O', amount: amount * 0.4, date: `2025-${String(index + 10).padStart(2, '0')}-15` },
+          { symbol: 'MO', amount: amount * 0.4, date: `2025-${String(index + 10).padStart(2, '0')}-20` },
+          { symbol: 'VICI', amount: amount * 0.15, date: `2025-${String(index + 10).padStart(2, '0')}-25` }
         ]
       });
     });
