@@ -125,10 +125,10 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
         return;
       }
 
-      // Get future dividends for the next 12 months
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setFullYear(endDate.getFullYear() + 1);
+      // Get future dividends for the next 12 months (starting from beginning of current month)
+      const now = new Date();
+      const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endDate = new Date(now.getFullYear() + 1, now.getMonth(), 0);
 
       const { data: dividends, error: dividendsError } = await supabase
         .from('dividends')
