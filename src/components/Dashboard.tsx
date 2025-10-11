@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal, RefreshCw, Wallet } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal, RefreshCw, Wallet, Github, Twitter, Mail } from 'lucide-react';
 import { usePortfolio } from '../hooks/usePortfolio';
 import { useStockPrices } from '../hooks/useStockPrices';
 import PortfolioChart from './PortfolioChart';
@@ -729,6 +729,80 @@ export const Dashboard = () => {
               )}
             </div>
           </div>
+
+          {/* Footer */}
+          <footer className="mt-12 pt-8 pb-6 border-t border-gray-700">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+              {/* Left side - Copyright and social */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <p className="text-gray-400 text-sm">
+                  2025 © Avalanex
+                </p>
+                <div className="flex items-center gap-3">
+                  <a
+                    href="https://github.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gray-400 hover:text-white transition-colors"
+                    title="GitHub"
+                  >
+                    <Github className="w-5 h-5" />
+                  </a>
+                  <a
+                    href="https://twitter.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gray-400 hover:text-white transition-colors"
+                    title="Twitter"
+                  >
+                    <Twitter className="w-5 h-5" />
+                  </a>
+                  <a
+                    href="mailto:support@avalanex.com"
+                    className="text-gray-400 hover:text-white transition-colors"
+                    title="Email Support"
+                  >
+                    <Mail className="w-5 h-5" />
+                  </a>
+                </div>
+              </div>
+
+              {/* Right side - Links */}
+              <div className="flex flex-wrap items-center gap-4 md:gap-6">
+                <a
+                  href="#"
+                  className="text-gray-400 hover:text-white transition-colors text-sm"
+                >
+                  Support
+                </a>
+                <a
+                  href="#"
+                  className="text-gray-400 hover:text-white transition-colors text-sm"
+                >
+                  Terms and Conditions
+                </a>
+                <a
+                  href="#"
+                  className="text-gray-400 hover:text-white transition-colors text-sm"
+                >
+                  Privacy Policy
+                </a>
+                <a
+                  href="#"
+                  className="text-gray-400 hover:text-white transition-colors text-sm"
+                >
+                  Security
+                </a>
+              </div>
+            </div>
+
+            {/* Disclaimer */}
+            <div className="mt-6 pt-6 border-t border-gray-700">
+              <p className="text-gray-500 text-xs leading-relaxed">
+                Avalanex would like to remind you that the data contained in this website is not necessarily real-time nor accurate. The site and content are provided "as is" and without warranties of any kind. You bear all risks associated with the use of the site and content, including without limitation, any reliance on the accuracy, completeness or usefulness of any content available on the site. This website does not constitute an offer to sell, a solicitation to buy, or a recommendation for any security, nor does it constitute an offer to provide investment advisory or other services. Active Brokers is not affiliated with Avalanex and does not endorse or recommend any information or advice provided by Avalanex.
+              </p>
+            </div>
+          </footer>
         </main>
       </div>
 
