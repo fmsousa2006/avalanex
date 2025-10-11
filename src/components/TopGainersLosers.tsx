@@ -20,8 +20,7 @@ export const TopGainersLosers: React.FC<TopGainersLosersProps> = ({ data, type }
 
   const sortedData = [...data]
     .sort((a, b) => isGainers ? b.changePercent - a.changePercent : a.changePercent - b.changePercent)
-    .filter(stock => isGainers ? stock.changePercent > 0 : stock.changePercent < 0)
-    .slice(0, 5);
+    .filter(stock => isGainers ? stock.changePercent > 0 : stock.changePercent < 0);
 
   const getStockIcon = (symbol: string) => {
     return (
@@ -51,7 +50,7 @@ export const TopGainersLosers: React.FC<TopGainersLosersProps> = ({ data, type }
       </div>
 
       {sortedData.length > 0 ? (
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
           {sortedData.map((stock) => (
             <div key={stock.symbol} className="flex items-center justify-between py-3 border-b border-gray-700 last:border-0">
               <div className="flex items-center space-x-3 flex-1">
