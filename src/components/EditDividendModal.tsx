@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, DollarSign } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { logActivity } from '../utils/activityLogger';
 
 interface Transaction {
   id: string;
@@ -49,6 +50,17 @@ const EditDividendModal: React.FC<EditDividendModalProps> = ({ transaction, onCl
 
       if (updateError) throw updateError;
 
+      await logActivity('dividend_recorded', {
+        action: 'dividend_updated',
+        transaction_id: transaction.id,
+        stock_id: transaction.stock_id,
+        stock_symbol: transaction.stock?.symbol,
+        previous_amount: transaction.amount,
+        new_amount: parseFloat(amount),
+        previous_date: transaction.transaction_date,
+        new_date: date
+      });
+
       onSuccess();
       onClose();
     } catch (err) {
@@ -73,6 +85,15 @@ const EditDividendModal: React.FC<EditDividendModalProps> = ({ transaction, onCl
         .eq('id', transaction.id);
 
       if (deleteError) throw deleteError;
+
+      await logActivity('dividend_recorded', {
+        action: 'dividend_deleted',
+        transaction_id: transaction.id,
+        stock_id: transaction.stock_id,
+        stock_symbol: transaction.stock?.symbol,
+        amount: transaction.amount,
+        date: transaction.transaction_date
+      });
 
       onSuccess();
       onClose();
