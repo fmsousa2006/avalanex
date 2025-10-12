@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Eye, EyeOff, TrendingUp, DollarSign, BarChart3 } from 'lucide-react';
+import { Eye, EyeOff, DollarSign, BarChart3, TrendingUp } from 'lucide-react';
+import AvalanexLogo from './AvalanexLogo';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -96,7 +97,7 @@ const Login = () => {
           {/* Logo */}
           <div className="flex items-center space-x-4 mb-12">
             <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/50">
-              <TrendingUp className="w-10 h-10 text-white" />
+              <AvalanexLogo className="w-10 h-10" />
             </div>
             <span className="text-4xl font-bold text-white">Avalanex</span>
           </div>
@@ -155,7 +156,7 @@ const Login = () => {
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center justify-center space-x-3 mb-8">
             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/50">
-              <TrendingUp className="w-7 h-7 text-white" />
+              <AvalanexLogo className="w-7 h-7" />
             </div>
             <span className="text-3xl font-bold text-white">Avalanex</span>
           </div>
