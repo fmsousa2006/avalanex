@@ -161,6 +161,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
 
   const getTierBadgeColor = (tier: string) => {
     switch (tier) {
+      case 'admin':
+        return 'bg-gradient-to-r from-red-500 to-red-600 text-white';
       case 'premium':
         return 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white';
       default:
