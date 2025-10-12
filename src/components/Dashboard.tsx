@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal, RefreshCw, Wallet, Instagram, Mail, Facebook } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal, RefreshCw, Wallet, Instagram, Mail, Facebook, Youtube } from 'lucide-react';
 import { usePortfolio } from '../hooks/usePortfolio';
 import { useStockPrices } from '../hooks/useStockPrices';
 import PortfolioChart from './PortfolioChart';
@@ -850,6 +850,15 @@ export const Dashboard = () => {
                     title="Facebook"
                   >
                     <Facebook className="w-5 h-5" />
+                  </a>
+                  <a
+                    href="https://youtube.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gray-400 hover:text-white transition-colors"
+                    title="YouTube"
+                  >
+                    <Youtube className="w-5 h-5" />
                   </a>
                   <a
                     href="mailto:support@avalanex.com"
