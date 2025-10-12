@@ -11,7 +11,6 @@ import DividendCalendar from './DividendCalendar';
 import DividendsReceived from './DividendsReceived';
 import DividendList from './DividendList';
 import FutureDividends from './FuturePayments';
-import Sidebar from './Sidebar';
 import PortfolioModal from './PortfolioModal';
 import TestingModal from './TestingModal';
 import Admin from './Admin';
@@ -51,7 +50,6 @@ export const Dashboard = () => {
     loading: stockPricesLoading
   } = useStockPrices();
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [isTestingModalOpen, setIsTestingModalOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
@@ -433,15 +431,6 @@ export const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex">
-      {/* Sidebar */}
-      <Sidebar
-        isOpen={isSidebarOpen}
-        onToggle={setIsSidebarOpen}
-        onPortfolioClick={() => setIsPortfolioModalOpen(true)}
-        onTestingClick={() => setIsTestingModalOpen(true)}
-        onAdminClick={() => setIsAdminOpen(true)}
-      />
-
       {/* Testing Modal */}
       <TestingModal
         isOpen={isTestingModalOpen}
