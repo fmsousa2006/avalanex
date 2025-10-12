@@ -31,6 +31,7 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
   const [hoveredBar, setHoveredBar] = useState<{ month: number; x: number; y: number } | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [hiddenYears, setHiddenYears] = useState<Set<number>>(new Set());
+  const [hoveredYear, setHoveredYear] = useState<number | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -308,7 +309,7 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
                               backgroundColor: color.bg,
                               borderRadius: '2px 2px 0 0',
                               minHeight: value > 0 ? '2px' : '0',
-                              opacity: hoveredBar?.month === monthIndex ? 0.7 : 1
+                              opacity: hoveredBar?.month === monthIndex ? 0.7 : (hoveredYear !== null && hoveredYear !== year ? 0.5 : 1)
                             }}
                           />
                         ) : null;
@@ -372,6 +373,8 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
               <button
                 key={year}
                 onClick={() => toggleYear(year)}
+                onMouseEnter={() => setHoveredYear(year)}
+                onMouseLeave={() => setHoveredYear(null)}
                 className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
               >
                 <div
