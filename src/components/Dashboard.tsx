@@ -70,9 +70,32 @@ export const Dashboard = () => {
     fee: string;
   } | null>(null);
   const [stockDailyChanges, setStockDailyChanges] = useState<Map<string, { change: number; changePercent: number }>>(new Map());
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Check if Finnhub is configured
   const isFinnhubConfigured = import.meta.env.VITE_FINNHUB_API_KEY;
+
+  // Check if user is admin
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: subscription } = await supabase
+          .from('user_subscriptions')
+          .select('subscription_tier')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        setIsAdmin(subscription?.subscription_tier === 'admin');
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+    };
+
+    checkAdminStatus();
+  }, []);
 
   // Sync portfolio stock prices
   const handleSyncPortfolioPrices = async () => {
@@ -425,7 +448,7 @@ export const Dashboard = () => {
 
   const totalValue = currentPortfolioData.totalValue;
 
-  if (isAdminOpen) {
+  if (isAdminOpen && isAdmin) {
     return <Admin onClose={() => setIsAdminOpen(false)} />;
   }
 
@@ -470,13 +493,15 @@ export const Dashboard = () => {
             </div>
 
             <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setIsAdminOpen(true)}
-                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 transition-colors font-medium"
-                title="Admin Panel"
-              >
-                Admin
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => setIsAdminOpen(true)}
+                  className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 transition-colors font-medium"
+                  title="Admin Panel"
+                >
+                  Admin
+                </button>
+              )}
 
               <button
                 onClick={handleSyncPortfolioPrices}
