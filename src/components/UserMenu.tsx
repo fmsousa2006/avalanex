@@ -9,6 +9,7 @@ interface UserMenuProps {
 const UserMenu: React.FC<UserMenuProps> = ({ onLogout }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
+  const [subscriptionTier, setSubscriptionTier] = useState<string>('free');
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -16,6 +17,16 @@ const UserMenu: React.FC<UserMenuProps> = ({ onLogout }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user?.email) {
         setUserEmail(user.email);
+
+        const { data: subscription } = await supabase
+          .from('user_subscriptions')
+          .select('subscription_tier')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (subscription?.subscription_tier) {
+          setSubscriptionTier(subscription.subscription_tier);
+        }
       }
     };
     fetchUser();
@@ -60,8 +71,10 @@ const UserMenu: React.FC<UserMenuProps> = ({ onLogout }) => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white truncate">{userEmail || 'User'}</p>
-                <span className="inline-block px-2 py-0.5 text-xs font-medium bg-emerald-600 text-white rounded mt-1">
-                  Free
+                <span className={`inline-block px-2 py-0.5 text-xs font-medium text-white rounded mt-1 capitalize ${
+                  subscriptionTier === 'admin' ? 'bg-red-600' : 'bg-emerald-600'
+                }`}>
+                  {subscriptionTier}
                 </span>
               </div>
             </div>
