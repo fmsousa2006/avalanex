@@ -66,45 +66,18 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.rpc('get_user_management_data');
+
+      const { data, error } = await supabase.rpc('get_all_users_with_details');
 
       if (error) {
         console.error('Error fetching users:', error);
-
-        const { data: authUsers } = await supabase.auth.admin.listUsers();
-
-        if (authUsers?.users) {
-          const usersWithDetails = await Promise.all(
-            authUsers.users.map(async (user) => {
-              const { data: subscription } = await supabase
-                .from('user_subscriptions')
-                .select('subscription_tier, subscription_status')
-                .eq('user_id', user.id)
-                .single();
-
-              const { count } = await supabase
-                .from('portfolios')
-                .select('*', { count: 'exact', head: true })
-                .eq('user_id', user.id);
-
-              return {
-                id: user.id,
-                email: user.email || 'N/A',
-                created_at: user.created_at,
-                last_sign_in_at: user.last_sign_in_at,
-                tier: subscription?.subscription_tier || 'free',
-                status: subscription?.subscription_status || 'active',
-                portfolio_count: count || 0
-              };
-            })
-          );
-          setUsers(usersWithDetails);
-        }
+        setUsers([]);
       } else {
         setUsers(data || []);
       }
     } catch (error) {
       console.error('Error in fetchUsers:', error);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
