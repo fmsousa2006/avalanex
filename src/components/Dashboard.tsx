@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal, RefreshCw, Wallet, Instagram, Mail, Facebook, Youtube } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal, RefreshCw, Wallet, Instagram, Mail, Facebook, Youtube, Shield } from 'lucide-react';
 import { usePortfolio } from '../hooks/usePortfolio';
 import { useStockPrices } from '../hooks/useStockPrices';
 import PortfolioChart from './PortfolioChart';
@@ -481,6 +481,14 @@ export const Dashboard = () => {
             </div>
 
             <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setIsAdminOpen(true)}
+                className="p-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 transition-colors"
+                title="Admin Panel"
+              >
+                <Shield className="w-5 h-5" />
+              </button>
+
               <button
                 onClick={handleSyncPortfolioPrices}
                 disabled={isSyncing || !isFinnhubConfigured || !currentPortfolio || isUsingMockData}
