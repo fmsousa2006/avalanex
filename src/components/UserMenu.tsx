@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Settings, HelpCircle, Sparkles, LogOut } from 'lucide-react';
+import { User, Settings, HelpCircle, Sparkles, LogOut, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface UserMenuProps {
   onLogout: () => void;
+  onAdminClick?: () => void;
 }
 
-const UserMenu: React.FC<UserMenuProps> = ({ onLogout }) => {
+const UserMenu: React.FC<UserMenuProps> = ({ onLogout, onAdminClick }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
   const [subscriptionTier, setSubscriptionTier] = useState<string>('free');
+  const [isAdmin, setIsAdmin] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -26,6 +28,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ onLogout }) => {
 
         if (subscription?.subscription_tier) {
           setSubscriptionTier(subscription.subscription_tier);
+          setIsAdmin(subscription.subscription_tier === 'admin');
         }
       }
     };
@@ -109,6 +112,21 @@ const UserMenu: React.FC<UserMenuProps> = ({ onLogout }) => {
               <span>What's New</span>
             </button>
           </div>
+
+          {isAdmin && (
+            <div className="border-t border-gray-700 py-2">
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  onAdminClick?.();
+                }}
+                className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
+              >
+                <Shield className="w-4 h-4" />
+                <span>Administration</span>
+              </button>
+            </div>
+          )}
 
           <div className="border-t border-gray-700">
             <button

@@ -524,7 +524,7 @@ export const Dashboard = () => {
                 <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
               </button>
 
-              <UserMenu onLogout={handleLogout} />
+              <UserMenu onLogout={handleLogout} onAdminClick={() => setIsAdminOpen(true)} />
             </div>
           </div>
         </header>
