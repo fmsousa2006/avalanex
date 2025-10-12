@@ -472,10 +472,10 @@ export const Dashboard = () => {
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => setIsAdminOpen(true)}
-                className="p-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 transition-colors"
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 transition-colors font-medium"
                 title="Admin Panel"
               >
-                <Shield className="w-5 h-5" />
+                Admin
               </button>
 
               <button
