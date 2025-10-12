@@ -14,7 +14,28 @@ interface StockPriceData {
 class StockUpdateService {
   private finnhub = finnhubService;
 
+  private isMarketHours(): boolean {
+    const now = new Date();
+    const nyTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+    const day = nyTime.getDay();
+    const hours = nyTime.getHours();
+    const minutes = nyTime.getMinutes();
+
+    if (day === 0 || day === 6) return false;
+
+    const currentMinutes = hours * 60 + minutes;
+    const marketOpen = 9 * 60 + 30;
+    const marketClose = 16 * 60;
+
+    return currentMinutes >= marketOpen && currentMinutes < marketClose;
+  }
+
   async updateStock(symbol: string): Promise<boolean> {
+    if (!this.isMarketHours()) {
+      console.log(`⏸️ [Finnhub] Market is closed. Skipping API call for ${symbol}`);
+      return false;
+    }
+
     try {
       console.log(`📊 [Finnhub] Fetching live quote for ${symbol}...`);
 
@@ -102,6 +123,11 @@ class StockUpdateService {
 
   async updateMultipleStocks(symbols: string[]): Promise<{ success: string[], failed: string[] }> {
     const results = { success: [] as string[], failed: [] as string[] };
+
+    if (!this.isMarketHours()) {
+      console.log(`⏸️ [Finnhub] Market is closed. Skipping sync for ${symbols.length} stocks`);
+      return { success: [], failed: symbols };
+    }
 
     console.log(`📊 [Finnhub] Syncing ${symbols.length} stocks...`);
 
