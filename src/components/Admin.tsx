@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import StockManagement from './StockManagement';
 import DividendCalendarAdmin from './DividendCalendarAdmin';
+import UserManagement from './UserManagement';
 import { supabase } from '../lib/supabase';
 
 interface AdminProps {
@@ -65,6 +66,10 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
 
   if (activeView === 'dividend-calendar') {
     return <DividendCalendarAdmin onBack={() => setActiveView(null)} />;
+  }
+
+  if (activeView === 'user-management') {
+    return <UserManagement onBack={() => setActiveView(null)} />;
   }
 
   const adminPanels = [
@@ -211,6 +216,8 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
                   setActiveView('stock-management');
                 } else if (panel.title === 'Dividend Calendar Admin') {
                   setActiveView('dividend-calendar');
+                } else if (panel.title === 'User Management') {
+                  setActiveView('user-management');
                 }
               }}
               className="group bg-gray-800 rounded-xl border border-gray-700 hover:border-gray-600 transition-all duration-300 overflow-hidden hover:shadow-2xl hover:shadow-gray-900/50 cursor-pointer"
