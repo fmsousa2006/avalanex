@@ -145,6 +145,20 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
     return date.toLocaleDateString();
   };
 
+  const formatFullTimestamp = (dateString: string | null) => {
+    if (!dateString) return 'Never';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+  };
+
   const getTierBadgeColor = (tier: string) => {
     switch (tier) {
       case 'premium':
@@ -380,7 +394,12 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
                       <span className="text-white font-medium">{user.portfolio_count}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-400">{formatDate(user.last_sign_in_at)}</span>
+                      <span
+                        className="text-sm text-gray-400 cursor-help"
+                        title={formatFullTimestamp(user.last_sign_in_at)}
+                      >
+                        {formatDate(user.last_sign_in_at)}
+                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm text-gray-400">{formatDate(user.created_at)}</span>
