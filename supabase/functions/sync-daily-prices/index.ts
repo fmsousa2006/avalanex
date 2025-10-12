@@ -60,7 +60,6 @@ function sleep(ms: number): Promise<void> {
 }
 
 function getMarketCloseTimeUTC(): string {
-  // Get current time in New York
   const now = new Date();
   const options: Intl.DateTimeFormatOptions = {
     timeZone: 'America/New_York',
@@ -80,16 +79,12 @@ function getMarketCloseTimeUTC(): string {
   const month = parts.find(p => p.type === 'month')!.value;
   const day = parts.find(p => p.type === 'day')!.value;
 
-  // Create a Date object for 4 PM in New York by testing what UTC time corresponds to it
-  // We'll use 8 PM UTC as a test point and adjust
   const testUTC = new Date(`${year}-${month}-${day}T20:00:00.000Z`);
   const testParts = new Intl.DateTimeFormat('en-US', {
     ...options
   }).formatToParts(testUTC);
   const testHour = parseInt(testParts.find(p => p.type === 'hour')!.value);
 
-  // Calculate the offset: if test shows 16 (4 PM), we're at the right UTC time (20:00)
-  // if it shows 15, we need 21:00 UTC. If it shows 17, we need 19:00 UTC
   const utcHour = 20 + (16 - testHour);
 
   return `${year}-${month}-${day}T${String(utcHour).padStart(2, '0')}:00:00.000Z`;
@@ -176,6 +171,7 @@ Deno.serve(async (req: Request) => {
             endpoint: "quote",
             symbol: stock.symbol,
             status: insertError ? "error" : "success",
+            origin: "edge_function",
           });
       } else {
         await supabase
@@ -185,6 +181,7 @@ Deno.serve(async (req: Request) => {
             endpoint: "quote",
             symbol: stock.symbol,
             status: "error",
+            origin: "edge_function",
           });
 
         errorCount++;

@@ -158,6 +158,7 @@ Deno.serve(async (req: Request) => {
             endpoint: "quote",
             symbol: stock.symbol,
             status: "success",
+            origin: "edge_function",
           });
 
         successCount++;
@@ -170,6 +171,7 @@ Deno.serve(async (req: Request) => {
             endpoint: "quote",
             symbol: stock.symbol,
             status: "error",
+            origin: "edge_function",
           });
 
         errorCount++;

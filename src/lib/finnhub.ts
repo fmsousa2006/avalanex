@@ -51,7 +51,8 @@ export class FinnhubService {
         symbol,
         status,
         response_time_ms: responseTime,
-        user_id: user?.id || null
+        user_id: user?.id || null,
+        origin: 'frontend'
       });
     } catch (error) {
       // Silent fail - don't break the API call if logging fails
