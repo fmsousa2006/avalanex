@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Users,
   Search,
@@ -21,7 +21,11 @@ import {
   Unlock,
   Trash2,
   Eye,
-  Clock
+  Clock,
+  Bell,
+  FileText,
+  LogOut,
+  ListFilter
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -36,6 +40,7 @@ interface User {
   last_sign_in_at: string | null;
   tier: string;
   status: string;
+  account_status: string;
   portfolio_count: number;
   total_portfolio_value?: number;
   total_dividend_income?: number;
@@ -49,6 +54,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeUsers: 0,
@@ -62,6 +69,22 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
     fetchUsers();
     fetchStats();
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null);
+      }
+    };
+
+    if (openDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openDropdown]);
 
   const fetchUsers = async () => {
     try {
@@ -183,6 +206,46 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
       default:
         return 'text-gray-400';
     }
+  };
+
+  const handleChangeSubscription = (user: User) => {
+    setOpenDropdown(null);
+    console.log('Change subscription for:', user.email);
+  };
+
+  const handleSuspendAccount = async (user: User) => {
+    setOpenDropdown(null);
+    console.log('Suspend account:', user.email);
+  };
+
+  const handleActivateAccount = async (user: User) => {
+    setOpenDropdown(null);
+    console.log('Activate account:', user.email);
+  };
+
+  const handleDeleteAccount = (user: User) => {
+    setOpenDropdown(null);
+    console.log('Delete account:', user.email);
+  };
+
+  const handleSendNotification = (user: User) => {
+    setOpenDropdown(null);
+    console.log('Send notification to:', user.email);
+  };
+
+  const handleAddNote = (user: User) => {
+    setOpenDropdown(null);
+    console.log('Add note for:', user.email);
+  };
+
+  const handleForceLogout = async (user: User) => {
+    setOpenDropdown(null);
+    console.log('Force logout:', user.email);
+  };
+
+  const handleViewActivityLogs = (user: User) => {
+    setOpenDropdown(null);
+    console.log('View activity logs for:', user.email);
   };
 
   if (loading) {
@@ -415,9 +478,89 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
                         >
                           <Eye className="w-4 h-4 text-gray-400 hover:text-white" />
                         </button>
-                        <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors" title="More Actions">
-                          <MoreVertical className="w-4 h-4 text-gray-400 hover:text-white" />
-                        </button>
+                        <div className="relative" ref={openDropdown === user.id ? dropdownRef : null}>
+                          <button
+                            onClick={() => setOpenDropdown(openDropdown === user.id ? null : user.id)}
+                            className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+                            title="More Actions"
+                          >
+                            <MoreVertical className="w-4 h-4 text-gray-400 hover:text-white" />
+                          </button>
+
+                          {openDropdown === user.id && (
+                            <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50">
+                              <button
+                                onClick={() => handleChangeSubscription(user)}
+                                className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
+                              >
+                                <Crown className="w-4 h-4 text-yellow-400" />
+                                <span>Change Subscription</span>
+                              </button>
+
+                              {user.account_status === 'active' ? (
+                                <button
+                                  onClick={() => handleSuspendAccount(user)}
+                                  className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
+                                >
+                                  <Ban className="w-4 h-4 text-orange-400" />
+                                  <span>Suspend Account</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleActivateAccount(user)}
+                                  className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
+                                >
+                                  <Unlock className="w-4 h-4 text-green-400" />
+                                  <span>Activate Account</span>
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => handleDeleteAccount(user)}
+                                className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
+                              >
+                                <Trash2 className="w-4 h-4 text-red-400" />
+                                <span>Delete Account</span>
+                              </button>
+
+                              <div className="border-t border-gray-700 my-1"></div>
+
+                              <button
+                                onClick={() => handleSendNotification(user)}
+                                className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
+                              >
+                                <Bell className="w-4 h-4 text-blue-400" />
+                                <span>Send Notification</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleAddNote(user)}
+                                className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
+                              >
+                                <FileText className="w-4 h-4 text-purple-400" />
+                                <span>Add Note</span>
+                              </button>
+
+                              <div className="border-t border-gray-700 my-1"></div>
+
+                              <button
+                                onClick={() => handleForceLogout(user)}
+                                className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
+                              >
+                                <LogOut className="w-4 h-4 text-orange-400" />
+                                <span>Force Logout</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleViewActivityLogs(user)}
+                                className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
+                              >
+                                <ListFilter className="w-4 h-4 text-cyan-400" />
+                                <span>Activity Logs</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>
