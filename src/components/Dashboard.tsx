@@ -17,6 +17,7 @@ import Admin from './Admin';
 import Logo1 from './logos/Logo1';
 import UserMenu from './UserMenu';
 import { supabase } from '../lib/supabase';
+import { logActivity } from '../utils/activityLogger';
 
 console.log('🏠 Dashboard component rendering...');
 
@@ -158,9 +159,11 @@ export const Dashboard = () => {
   // Add this logout handler function to your Dashboard component
   const handleLogout = async () => {
     try {
+      await logActivity('logout', {});
+
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      
+
       // Force redirect to login page
       window.location.href = '/';
     } catch (error) {

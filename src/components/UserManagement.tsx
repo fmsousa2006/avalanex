@@ -28,6 +28,7 @@ import {
   ListFilter
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { logAdminAction } from '../utils/activityLogger';
 
 interface UserManagementProps {
   onBack: () => void;
@@ -208,32 +209,76 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
     }
   };
 
-  const handleChangeSubscription = (user: User) => {
+  const handleChangeSubscription = async (user: User) => {
     setOpenDropdown(null);
     console.log('Change subscription for:', user.email);
+    await logAdminAction(user.id, 'subscription_changed', {
+      action: 'change_subscription_initiated',
+      target_email: user.email
+    });
   };
 
   const handleSuspendAccount = async (user: User) => {
     setOpenDropdown(null);
-    console.log('Suspend account:', user.email);
+    try {
+      const { error } = await supabase
+        .from('user_subscriptions')
+        .update({ account_status: 'suspended' })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      await logAdminAction(user.id, 'account_suspended', {
+        target_email: user.email,
+        previous_status: user.account_status
+      });
+
+      fetchUsers();
+    } catch (error) {
+      console.error('Error suspending account:', error);
+    }
   };
 
   const handleActivateAccount = async (user: User) => {
     setOpenDropdown(null);
-    console.log('Activate account:', user.email);
+    try {
+      const { error } = await supabase
+        .from('user_subscriptions')
+        .update({ account_status: 'active' })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      await logAdminAction(user.id, 'account_activated', {
+        target_email: user.email,
+        previous_status: user.account_status
+      });
+
+      fetchUsers();
+    } catch (error) {
+      console.error('Error activating account:', error);
+    }
   };
 
-  const handleDeleteAccount = (user: User) => {
+  const handleDeleteAccount = async (user: User) => {
     setOpenDropdown(null);
+    if (!confirm(`Are you sure you want to delete ${user.email}? This action cannot be undone.`)) {
+      return;
+    }
+
     console.log('Delete account:', user.email);
+    await logAdminAction(user.id, 'account_suspended', {
+      action: 'account_deletion_initiated',
+      target_email: user.email
+    });
   };
 
-  const handleSendNotification = (user: User) => {
+  const handleSendNotification = async (user: User) => {
     setOpenDropdown(null);
     console.log('Send notification to:', user.email);
   };
 
-  const handleAddNote = (user: User) => {
+  const handleAddNote = async (user: User) => {
     setOpenDropdown(null);
     console.log('Add note for:', user.email);
   };
@@ -241,6 +286,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
   const handleForceLogout = async (user: User) => {
     setOpenDropdown(null);
     console.log('Force logout:', user.email);
+    await logAdminAction(user.id, 'forced_logout', {
+      target_email: user.email
+    });
   };
 
   const handleViewActivityLogs = (user: User) => {

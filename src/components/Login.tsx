@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Eye, EyeOff, DollarSign, BarChart3, TrendingUp } from 'lucide-react';
 import AvalanexLogo from './AvalanexLogo';
+import { logActivity } from '../utils/activityLogger';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -34,7 +35,12 @@ const Login = () => {
         password
       });
 
-      if (error) throw error;
+      if (error) {
+        await logActivity('failed_login', { email, reason: error.message });
+        throw error;
+      }
+
+      await logActivity('login', { email });
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to login');
     } finally {
@@ -75,6 +81,8 @@ const Login = () => {
       });
 
       if (error) throw error;
+
+      await logActivity('password_reset_requested', { email });
       setMessage('Check your email for the password reset link');
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to send recovery email');
