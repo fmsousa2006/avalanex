@@ -493,16 +493,6 @@ export const Dashboard = () => {
             </div>
 
             <div className="flex items-center space-x-3">
-              {isAdmin && (
-                <button
-                  onClick={() => setIsAdminOpen(true)}
-                  className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 transition-colors font-medium"
-                  title="Admin Panel"
-                >
-                  Admin
-                </button>
-              )}
-
               <button
                 onClick={handleSyncPortfolioPrices}
                 disabled={isSyncing || !isFinnhubConfigured || !currentPortfolio || isUsingMockData}
