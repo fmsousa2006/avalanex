@@ -309,7 +309,7 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
                               backgroundColor: color.bg,
                               borderRadius: '2px 2px 0 0',
                               minHeight: value > 0 ? '2px' : '0',
-                              opacity: hoveredBar?.month === monthIndex ? 0.7 : (hoveredYear !== null && hoveredYear !== year ? 0.5 : 1)
+                              opacity: hoveredBar?.month === monthIndex ? 0.7 : (hoveredYear !== null && hoveredYear !== year ? 0.2 : 1)
                             }}
                           />
                         ) : null;
