@@ -233,7 +233,8 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
     );
   }
 
-  const maxAmount = Math.max(...monthlyDividends.map(m => m.amount), 1);
+  const maxDataValue = Math.max(...monthlyDividends.map(m => m.amount), 1);
+  const maxAmount = Math.ceil(maxDataValue * 1.15);
   const chartHeight = 240;
 
   return (
