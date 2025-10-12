@@ -97,7 +97,7 @@ const Login = () => {
           {/* Logo */}
           <div className="flex items-center space-x-4 mb-12">
             <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/50">
-              <AvalanexLogo className="w-10 h-10" />
+              <AvalanexLogo className="w-12 h-12" />
             </div>
             <span className="text-4xl font-bold text-white">Avalanex</span>
           </div>
@@ -156,7 +156,7 @@ const Login = () => {
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center justify-center space-x-3 mb-8">
             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/50">
-              <AvalanexLogo className="w-7 h-7" />
+              <AvalanexLogo className="w-9 h-9" />
             </div>
             <span className="text-3xl font-bold text-white">Avalanex</span>
           </div>
