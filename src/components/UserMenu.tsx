@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Settings, HelpCircle, Sparkles, LogOut, Shield } from 'lucide-react';
+import { User, Settings, HelpCircle, Sparkles, LogOut, Shield, Crown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface UserMenuProps {
@@ -74,10 +74,16 @@ const UserMenu: React.FC<UserMenuProps> = ({ onLogout, onAdminClick }) => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white truncate">{userEmail || 'User'}</p>
-                <span className={`inline-block px-2 py-0.5 text-xs font-medium text-white rounded mt-1 capitalize ${
-                  subscriptionTier === 'admin' ? 'bg-red-600' : 'bg-emerald-600'
+                <span className={`inline-flex items-center space-x-1 px-2 py-0.5 text-xs font-semibold text-white rounded mt-1 capitalize ${
+                  subscriptionTier === 'admin'
+                    ? 'bg-gradient-to-r from-red-500 to-red-600'
+                    : subscriptionTier === 'premium'
+                    ? 'bg-gradient-to-r from-yellow-500 to-yellow-600'
+                    : 'bg-gray-700'
                 }`}>
-                  {subscriptionTier}
+                  {subscriptionTier === 'premium' && <Crown className="w-3 h-3" />}
+                  {subscriptionTier === 'admin' && <Shield className="w-3 h-3" />}
+                  <span>{subscriptionTier}</span>
                 </span>
               </div>
             </div>
