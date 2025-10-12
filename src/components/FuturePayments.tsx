@@ -274,11 +274,31 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
           </div>
 
           {/* Chart Container */}
-          <div className="relative pt-8" style={{ height: `${chartHeight + 60}px` }}>
-            {/* Horizontal grid lines */}
-            <div className="absolute inset-x-0" style={{ top: '8px', height: `${chartHeight}px` }}>
+          <div className="relative pt-8 pl-12" style={{ height: `${chartHeight + 60}px` }}>
+            {/* Y-axis labels */}
+            <div className="absolute left-0" style={{ top: '8px', height: `${chartHeight}px` }}>
               {[0, 0.33, 0.66, 1].map((ratio) => {
                 const value = maxAmount * (1 - ratio);
+                return (
+                  <div
+                    key={ratio}
+                    className="absolute text-xs text-gray-500"
+                    style={{
+                      top: `${chartHeight * ratio - 8}px`,
+                      left: '0',
+                      width: '40px',
+                      textAlign: 'right'
+                    }}
+                  >
+                    ${value.toFixed(0)}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Horizontal grid lines */}
+            <div className="absolute" style={{ top: '8px', height: `${chartHeight}px`, left: '48px', right: '0' }}>
+              {[0, 0.33, 0.66, 1].map((ratio) => {
                 return (
                   <div
                     key={ratio}
@@ -298,14 +318,14 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                   }}
                 >
                   <span className="absolute right-0 -top-3 text-xs text-blue-400">
-                    avg
+                    avg ${monthlyAverage.toFixed(2)}
                   </span>
                 </div>
               )}
             </div>
 
             {/* Bars */}
-            <div className="relative flex items-end justify-between px-2" style={{ height: `${chartHeight}px` }}>
+            <div className="relative flex items-end justify-between" style={{ height: `${chartHeight}px`, marginLeft: '48px', paddingLeft: '8px', paddingRight: '8px' }}>
               {monthlyDividends.map((month, index) => {
                 const barHeight = maxAmount > 0 ? (month.amount / maxAmount) * (chartHeight - 20) : 0;
                 const paidHeight = maxAmount > 0 ? (month.paidAmount / maxAmount) * (chartHeight - 20) : 0;
