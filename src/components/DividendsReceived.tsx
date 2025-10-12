@@ -228,33 +228,36 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
 
       <div className="relative bg-gray-850 rounded-lg p-6" ref={chartRef}>
         <div className="relative" style={{ height: `${chartHeight}px` }}>
-          <svg className="absolute inset-0 w-full h-full">
-            <defs>
-              <pattern id="grid" width="100%" height={usableHeight / yAxisSteps} patternUnits="userSpaceOnUse">
-                <line x1="0" y1="0" x2="100%" y2="0" stroke="#374151" strokeWidth="1" opacity="0.3" strokeDasharray="4,4" />
-              </pattern>
-            </defs>
+          {/* Y-axis labels */}
+          <div className="absolute left-0" style={{ top: `${chartTop}px`, height: `${usableHeight}px` }}>
+            {Array.from({ length: yAxisSteps + 1 }).map((_, i) => {
+              const value = (yAxisMax / yAxisSteps) * (yAxisSteps - i);
+              const y = (usableHeight / yAxisSteps) * i;
+              return (
+                <div
+                  key={i}
+                  className="absolute text-xs text-gray-500"
+                  style={{ top: `${y}px`, transform: 'translateY(-50%)' }}
+                >
+                  {value}
+                </div>
+              );
+            })}
+          </div>
 
-            <g transform={`translate(0, ${chartTop})`}>
-              <rect width="100%" height={usableHeight} fill="url(#grid)" />
-
-              {Array.from({ length: yAxisSteps + 1 }).map((_, i) => {
-                const value = (yAxisMax / yAxisSteps) * (yAxisSteps - i);
-                const y = (usableHeight / yAxisSteps) * i;
-                return (
-                  <text
-                    key={i}
-                    x="0"
-                    y={y}
-                    className="fill-gray-500 text-xs"
-                    dominantBaseline="middle"
-                  >
-                    {value}
-                  </text>
-                );
-              })}
-            </g>
-          </svg>
+          {/* Horizontal dashed grid lines */}
+          <div className="absolute" style={{ top: `${chartTop}px`, height: `${usableHeight}px`, left: '40px', right: '0' }}>
+            {Array.from({ length: yAxisSteps + 1 }).map((_, i) => {
+              const y = (usableHeight / yAxisSteps) * i;
+              return (
+                <div
+                  key={i}
+                  className="absolute w-full border-t border-dashed border-gray-700"
+                  style={{ top: `${y}px` }}
+                />
+              );
+            })}
+          </div>
 
           <div className="absolute inset-0 flex" style={{ paddingTop: `${chartTop}px`, paddingBottom: `${chartBottom}px`, paddingLeft: '40px' }}>
             {monthNames.map((monthName, monthIndex) => {
