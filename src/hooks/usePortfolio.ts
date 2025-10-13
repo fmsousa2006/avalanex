@@ -731,7 +731,7 @@ export const usePortfolio = () => {
       const stockIds = holdings.map(h => h.stock_id);
 
       const now = new Date();
-      const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      const dayOfWeek = now.getDay();
 
       let daysToSubtract = 1;
       if (dayOfWeek === 0) {
@@ -747,17 +747,34 @@ export const usePortfolio = () => {
       compareDate.setHours(0, 0, 0, 0);
 
       const { data: lastTradingDayPrices, error } = await supabase
-        .from('stock_prices')
+        .from('stock_prices_1d')
         .select('stock_id, close_price, timestamp')
         .in('stock_id', stockIds)
-        .eq('resolution', '1d')
         .gte('timestamp', compareDate.toISOString())
         .lt('timestamp', new Date(compareDate.getTime() + 24 * 60 * 60 * 1000).toISOString())
         .order('timestamp', { ascending: false });
 
       if (error || !lastTradingDayPrices || lastTradingDayPrices.length === 0) {
-        console.log('No previous trading day prices found, setting today\'s change to 0');
-        setTodaysChange({ value: 0, percentage: 0 });
+        console.log('No previous trading day prices found, using stocks.price_change_percent_24h as fallback');
+
+        let totalChangeValue = 0;
+        holdings.forEach(holding => {
+          if (holding.stock?.price_change_percent_24h) {
+            const changePercent = holding.stock.price_change_percent_24h;
+            const previousPrice = holding.current_price / (1 + changePercent / 100);
+            const changeValue = (holding.current_price - previousPrice) * holding.shares;
+            totalChangeValue += changeValue;
+          }
+        });
+
+        const changePercent = currentTotalValue > 0
+          ? (totalChangeValue / (currentTotalValue - totalChangeValue)) * 100
+          : 0;
+
+        setTodaysChange({
+          value: totalChangeValue,
+          percentage: changePercent
+        });
         return;
       }
 
@@ -773,6 +790,13 @@ export const usePortfolio = () => {
         if (lastPrice) {
           return sum + (holding.shares * lastPrice);
         }
+
+        if (holding.stock?.price_change_percent_24h) {
+          const changePercent = holding.stock.price_change_percent_24h;
+          const previousPrice = holding.current_price / (1 + changePercent / 100);
+          return sum + (holding.shares * previousPrice);
+        }
+
         return sum + (holding.shares * holding.current_price);
       }, 0);
 
@@ -788,7 +812,9 @@ export const usePortfolio = () => {
         currentTotalValue,
         lastTradingDayTotalValue,
         changeValue,
-        changePercent
+        changePercent,
+        stocksWithHistoricalData: lastTradingDayPriceMap.size,
+        totalStocks: holdings.length
       });
 
       setTodaysChange({
