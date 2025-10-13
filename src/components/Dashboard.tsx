@@ -200,17 +200,26 @@ export const Dashboard = () => {
       compareDate.setHours(0, 0, 0, 0);
 
       const { data: lastTradingDayPrices, error } = await supabase
-        .from('stock_prices')
+        .from('stock_prices_1d')
         .select('stock_id, close_price, timestamp')
         .in('stock_id', stockIds)
-        .eq('resolution', '1d')
         .gte('timestamp', compareDate.toISOString())
         .lt('timestamp', new Date(compareDate.getTime() + 24 * 60 * 60 * 1000).toISOString())
         .order('timestamp', { ascending: false });
 
       if (error || !lastTradingDayPrices || lastTradingDayPrices.length === 0) {
-        console.log('No previous trading day prices found for stock daily changes');
-        setStockDailyChanges(new Map());
+        console.log('No previous trading day prices found, using stocks.price_change_percent_24h');
+
+        const dailyChanges = new Map();
+        holdings.forEach(holding => {
+          if (holding.stock) {
+            const changePercent = holding.stock.price_change_percent_24h || 0;
+            const change = (holding.current_price * (changePercent / 100)) * holding.shares;
+            dailyChanges.set(holding.stock.symbol, { change, changePercent });
+          }
+        });
+
+        setStockDailyChanges(dailyChanges);
         return;
       }
 
@@ -228,6 +237,10 @@ export const Dashboard = () => {
           const change = (holding.current_price - lastPrice) * holding.shares;
           const changePercent = ((holding.current_price - lastPrice) / lastPrice) * 100;
           dailyChanges.set(holding.stock?.symbol || '', { change, changePercent });
+        } else if (holding.stock) {
+          const changePercent = holding.stock.price_change_percent_24h || 0;
+          const change = (holding.current_price * (changePercent / 100)) * holding.shares;
+          dailyChanges.set(holding.stock.symbol, { change, changePercent });
         }
       });
 
