@@ -260,37 +260,29 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-xl font-semibold text-white">Upcoming Dividends</h2>
-        <div className="flex items-center space-x-2">
+        <div className="relative" ref={isDropdownOpen ? dropdownRef : null}>
           <button
-            onClick={onCalendarClick}
-            className="text-gray-400 hover:text-white transition-colors"
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+            title="More Actions"
           >
-            <Calendar className="w-5 h-5" />
+            <MoreVertical className="w-4 h-4 text-gray-400 hover:text-white" />
           </button>
-          <div className="relative" ref={isDropdownOpen ? dropdownRef : null}>
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-              title="More Actions"
-            >
-              <MoreVertical className="w-4 h-4 text-gray-400 hover:text-white" />
-            </button>
 
-            {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50">
-                <button
-                  onClick={() => {
-                    setIsDropdownOpen(false);
-                    onCalendarClick?.();
-                  }}
-                  className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
-                >
-                  <Calendar className="w-4 h-4" />
-                  <span>View Calendar</span>
-                </button>
-              </div>
-            )}
-          </div>
+          {isDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50">
+              <button
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  onCalendarClick?.();
+                }}
+                className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
+              >
+                <Calendar className="w-4 h-4" />
+                <span>View Calendar</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
