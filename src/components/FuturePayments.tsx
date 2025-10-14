@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, HelpCircle, MoreHorizontal } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Calendar, HelpCircle, MoreHorizontal, MoreVertical } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface FutureDividendsProps {
@@ -25,6 +25,8 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
   const [next12MonthsTotal, setNext12MonthsTotal] = useState(0);
   const [monthlyAverage, setMonthlyAverage] = useState(0);
   const [hoveredMonth, setHoveredMonth] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Helper function to check if Supabase environment is properly configured
   const isSupabaseEnvConfigured = () => {
@@ -222,6 +224,22 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
     fetchFutureDividends();
   }, [portfolioId]);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
   if (loading) {
     return (
       <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
@@ -242,12 +260,37 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-xl font-semibold text-white">Upcoming Dividends</h2>
-        <button
-          onClick={onCalendarClick}
-          className="text-gray-400 hover:text-white transition-colors"
-        >
-          <Calendar className="w-5 h-5" />
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={onCalendarClick}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            <Calendar className="w-5 h-5" />
+          </button>
+          <div className="relative" ref={isDropdownOpen ? dropdownRef : null}>
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+              title="More Actions"
+            >
+              <MoreVertical className="w-4 h-4 text-gray-400 hover:text-white" />
+            </button>
+
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50">
+                <button
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                  }}
+                  className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
+                >
+                  <Calendar className="w-4 h-4" />
+                  <span>View Calendar</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {monthlyDividends.length > 0 && monthlyDividends.some(m => m.amount > 0) ? (
