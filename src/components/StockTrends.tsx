@@ -68,14 +68,37 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
         return null;
       }
 
-      const { data: priceData, error: priceError } = await supabase
+      let priceData = null;
+      let priceError = null;
+
+      const { data: data30d, error: error30d } = await supabase
         .from('stock_prices_30d')
         .select('timestamp, close_price')
         .eq('stock_id', stockData.id)
         .order('timestamp', { ascending: true });
 
+      if (!error30d && data30d && data30d.length > 0) {
+        priceData = data30d;
+        console.log(`✅ Using 30-day data for ${symbol}: ${data30d.length} points`);
+      } else {
+        console.log(`⚠️ No 30-day data, trying 1-day data for ${symbol}`);
+        const { data: data1d, error: error1d } = await supabase
+          .from('stock_prices_1d')
+          .select('timestamp, close_price')
+          .eq('stock_id', stockData.id)
+          .order('timestamp', { ascending: true });
+
+        if (!error1d && data1d && data1d.length > 0) {
+          priceData = data1d;
+          priceError = null;
+          console.log(`✅ Using 1-day data for ${symbol}: ${data1d.length} points`);
+        } else {
+          priceError = error1d;
+        }
+      }
+
       if (priceError || !priceData || priceData.length === 0) {
-        console.warn(`⚠️ No 30-day price data for ${symbol}`);
+        console.warn(`⚠️ No price data available for ${symbol}`);
         return null;
       }
 
