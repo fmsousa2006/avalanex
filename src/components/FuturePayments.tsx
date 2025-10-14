@@ -281,6 +281,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                 <button
                   onClick={() => {
                     setIsDropdownOpen(false);
+                    onCalendarClick?.();
                   }}
                   className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
                 >
