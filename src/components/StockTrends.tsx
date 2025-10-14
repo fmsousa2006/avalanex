@@ -21,7 +21,7 @@ interface PriceDataPoint {
 
 const formatAxisDate = (timestamp: string) => {
   const date = new Date(timestamp);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 };
 
 const formatAxisPrice = (price: number) => {
@@ -55,7 +55,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
 
   const fetchStockDataFromDatabase = async (symbol: string): Promise<StockData | null> => {
     try {
-      console.log(`📊 Fetching ${symbol} from database...`);
+      console.log(`📊 Fetching ${symbol} intraday data from database...`);
 
       const { data: stockData, error: stockError } = await supabase
         .from('stocks')
@@ -68,47 +68,24 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
         return null;
       }
 
-      let priceData = null;
-      let priceError = null;
-
-      const { data: data30d, error: error30d } = await supabase
-        .from('stock_prices_30d')
+      const { data: priceData, error: priceError } = await supabase
+        .from('stock_prices_1h')
         .select('timestamp, close_price')
         .eq('stock_id', stockData.id)
+        .gte('timestamp', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
         .order('timestamp', { ascending: true });
 
-      if (!error30d && data30d && data30d.length > 0) {
-        priceData = data30d;
-        console.log(`✅ Using 30-day data for ${symbol}: ${data30d.length} points`);
-      } else {
-        console.log(`⚠️ No 30-day data, trying 1-day data for ${symbol}`);
-        const { data: data1d, error: error1d } = await supabase
-          .from('stock_prices_1d')
-          .select('timestamp, close_price')
-          .eq('stock_id', stockData.id)
-          .order('timestamp', { ascending: true });
-
-        if (!error1d && data1d && data1d.length > 0) {
-          priceData = data1d;
-          priceError = null;
-          console.log(`✅ Using 1-day data for ${symbol}: ${data1d.length} points`);
-        } else {
-          priceError = error1d;
-        }
-      }
-
       if (priceError || !priceData || priceData.length === 0) {
-        console.warn(`⚠️ No price data available for ${symbol}`);
+        console.warn(`⚠️ No intraday price data available for ${symbol}`);
         return null;
       }
 
       const prices = priceData.map((p: PriceDataPoint) => p.close_price);
       const timestamps = priceData.map((p: PriceDataPoint) => p.timestamp);
       const firstPrice = prices[0];
-      const lastPrice = prices[prices.length - 1];
       const changePercent = ((stockData.current_price - firstPrice) / firstPrice) * 100;
 
-      console.log(`✅ Loaded ${prices.length} data points for ${symbol} from database. Current price: $${stockData.current_price}`);
+      console.log(`✅ Loaded ${prices.length} intraday data points for ${symbol}. Current price: $${stockData.current_price}, Change: ${changePercent.toFixed(2)}%`);
 
       return {
         symbol,
@@ -176,7 +153,10 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
   return (
     <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-white">Top 3 Positions</h2>
+        <div>
+          <h2 className="text-xl font-semibold text-white">Top 3 Positions</h2>
+          <p className="text-xs text-gray-400 mt-1">Intraday movements</p>
+        </div>
         {isLoading && (
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
@@ -358,16 +338,13 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                   const timestamps = stockData.timestamps;
                   const firstDate = timestamps[0];
                   const lastDate = timestamps[timestamps.length - 1];
-                  const midIndex1 = Math.floor(timestamps.length / 3);
-                  const midIndex2 = Math.floor((timestamps.length * 2) / 3);
-                  const midDate1 = timestamps[midIndex1];
-                  const midDate2 = timestamps[midIndex2];
+                  const midIndex = Math.floor(timestamps.length / 2);
+                  const midDate = timestamps[midIndex];
 
                   return (
                     <div className="flex justify-between items-center text-[10px] text-gray-500 mt-1 px-1">
                       <span>{formatAxisDate(firstDate)}</span>
-                      <span>{formatAxisDate(midDate1)}</span>
-                      <span>{formatAxisDate(midDate2)}</span>
+                      <span>{formatAxisDate(midDate)}</span>
                       <span>{formatAxisDate(lastDate)}</span>
                     </div>
                   );
