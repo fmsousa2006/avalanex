@@ -309,7 +309,11 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                           style={{
                             left: `${currentHover.x}%`,
                             top: `${currentHover.y}%`,
-                            transform: currentHover.x > 50 ? 'translate(-110%, -50%)' : 'translate(10%, -50%)'
+                            transform: (() => {
+                              const xTransform = currentHover.x > 50 ? '-110%' : '10%';
+                              const yTransform = currentHover.y > 70 ? '-110%' : currentHover.y < 30 ? '10%' : '-50%';
+                              return `translate(${xTransform}, ${yTransform})`;
+                            })()
                           }}
                         >
                           <div className="font-medium mb-1">{formatAxisDate(currentHover.date)}</div>
