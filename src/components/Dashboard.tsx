@@ -469,7 +469,7 @@ export const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex">
+    <div className="min-h-screen bg-gray-900 text-white flex overflow-x-hidden">
       {/* Testing Modal */}
       <TestingModal
         isOpen={isTestingModalOpen}
@@ -495,9 +495,9 @@ export const Dashboard = () => {
       />
       
       {/* Main Content */}
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         {/* Header */}
-        <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
+        <header className="bg-gray-800 border-b border-gray-700 px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div title="Avalanex">
@@ -536,74 +536,74 @@ export const Dashboard = () => {
         </header>
 
         {/* Main Content */}
-        <main className="p-6">
+        <main className="p-4 sm:p-6">
           {/* Portfolio Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
                   <p className="text-gray-400 text-sm">Total Portfolio Value</p>
-                  <p className="text-2xl font-bold text-white">
+                  <p className="text-2xl font-bold text-white break-words">
                     ${totalValue.toLocaleString()}
                     {isUsingMockData && (
                       <span className="text-xs text-yellow-400 ml-2">(Demo)</span>
                     )}
                   </p>
-                  <p className="text-sm text-gray-400 mt-1">
+                  <p className="text-sm text-gray-400 mt-1 break-words">
                     ${currentPortfolioData.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} invested
                   </p>
                 </div>
-                <Wallet className="w-8 h-8 text-blue-400" />
+                <Wallet className="w-8 h-8 text-blue-400 flex-shrink-0" />
               </div>
             </div>
 
             <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
                   <p className="text-gray-400 text-sm mb-1">Total Profit</p>
-                  <p className={`text-2xl font-bold ${currentPortfolioData.totalGainLoss >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <p className={`text-2xl font-bold break-words ${currentPortfolioData.totalGainLoss >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {currentPortfolioData.totalGainLoss >= 0 ? '+' : ''}${currentPortfolioData.totalGainLoss.toFixed(2)}
                     <span className={`text-lg ml-2 ${currentPortfolioData.totalGainLossPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                       {currentPortfolioData.totalGainLossPercent >= 0 ? '+' : ''}{currentPortfolioData.totalGainLossPercent.toFixed(2)}%
                     </span>
                   </p>
-                  <p className={`text-sm mt-2 ${todaysChange.value >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <p className={`text-sm mt-2 break-words ${todaysChange.value >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {todaysChange.value >= 0 ? '+' : ''}${todaysChange.value.toFixed(2)} {todaysChange.value >= 0 ? '+' : ''}{todaysChange.percentage.toFixed(2)}% daily
                   </p>
                 </div>
                 {currentPortfolioData.totalGainLoss >= 0 ? (
-                  <TrendingUp className="w-8 h-8 text-emerald-400" />
+                  <TrendingUp className="w-8 h-8 text-emerald-400 flex-shrink-0" />
                 ) : (
-                  <TrendingDown className="w-8 h-8 text-red-400" />
+                  <TrendingDown className="w-8 h-8 text-red-400 flex-shrink-0" />
                 )}
               </div>
             </div>
 
             <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
                   <p className="text-gray-400 text-sm">Next Dividend</p>
                   {nextDividend ? (
                     <>
-                      <p className="text-2xl font-bold text-blue-400">${nextDividend.totalAmount.toFixed(2)}</p>
-                      <p className="text-xs text-gray-400">{nextDividend.symbol} - {nextDividend.date}</p>
+                      <p className="text-2xl font-bold text-blue-400 break-words">${nextDividend.totalAmount.toFixed(2)}</p>
+                      <p className="text-xs text-gray-400 break-words">{nextDividend.symbol} - {nextDividend.date}</p>
                     </>
                   ) : (
                     <p className="text-lg text-gray-500">No upcoming dividends</p>
                   )}
                 </div>
-                <Calendar className="w-8 h-8 text-blue-400" />
+                <Calendar className="w-8 h-8 text-blue-400 flex-shrink-0" />
               </div>
             </div>
 
             <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
                   <p className="text-gray-400 text-sm">Holdings</p>
                   <p className="text-2xl font-bold text-white">{holdings.length}</p>
                   <p className="text-xs text-gray-400">Active positions</p>
                 </div>
-                <PieChart className="w-8 h-8 text-purple-400" />
+                <PieChart className="w-8 h-8 text-purple-400 flex-shrink-0" />
               </div>
             </div>
           </div>
