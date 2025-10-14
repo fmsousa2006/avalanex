@@ -230,7 +230,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                   <div className="text-sm text-gray-400">{stock.name}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-white">
+                  <div className="text-xl font-bold text-white">
                     {formatCurrency(displayPrice * stock.shares)}
                   </div>
                   <div className="text-xs text-gray-400 mt-0.5">

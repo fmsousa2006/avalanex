@@ -543,7 +543,7 @@ export const Dashboard = () => {
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-gray-400 text-sm">Total Portfolio Value</p>
-                  <p className="text-2xl font-bold text-white break-words">
+                  <p className="text-xl font-bold text-white break-words">
                     ${totalValue.toLocaleString()}
                     {isUsingMockData && (
                       <span className="text-xs text-yellow-400 ml-2">(Demo)</span>
@@ -561,9 +561,9 @@ export const Dashboard = () => {
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-gray-400 text-sm mb-1">Total Profit</p>
-                  <p className={`text-2xl font-bold break-words ${currentPortfolioData.totalGainLoss >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <p className={`text-xl font-bold break-words ${currentPortfolioData.totalGainLoss >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {currentPortfolioData.totalGainLoss >= 0 ? '+' : ''}${currentPortfolioData.totalGainLoss.toFixed(2)}
-                    <span className={`text-lg ml-2 ${currentPortfolioData.totalGainLossPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <span className={`text-base ml-2 ${currentPortfolioData.totalGainLossPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                       {currentPortfolioData.totalGainLossPercent >= 0 ? '+' : ''}{currentPortfolioData.totalGainLossPercent.toFixed(2)}%
                     </span>
                   </p>
@@ -585,7 +585,7 @@ export const Dashboard = () => {
                   <p className="text-gray-400 text-sm">Next Dividend</p>
                   {nextDividend ? (
                     <>
-                      <p className="text-2xl font-bold text-blue-400 break-words">${nextDividend.totalAmount.toFixed(2)}</p>
+                      <p className="text-xl font-bold text-blue-400 break-words">${nextDividend.totalAmount.toFixed(2)}</p>
                       <p className="text-xs text-gray-400 break-words">{nextDividend.symbol} - {nextDividend.date}</p>
                     </>
                   ) : (
@@ -600,7 +600,7 @@ export const Dashboard = () => {
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-gray-400 text-sm">Holdings</p>
-                  <p className="text-2xl font-bold text-white">{holdings.length}</p>
+                  <p className="text-xl font-bold text-white">{holdings.length}</p>
                   <p className="text-xs text-gray-400">Active positions</p>
                 </div>
                 <PieChart className="w-8 h-8 text-purple-400 flex-shrink-0" />

@@ -170,7 +170,7 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm mb-1">System Uptime</p>
-                <p className="text-2xl font-bold">99.9%</p>
+                <p className="text-xl font-bold">99.9%</p>
               </div>
               <CheckCircle2 className="w-8 h-8 text-green-400" />
             </div>
@@ -180,7 +180,7 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm mb-1">API Calls Today</p>
-                <p className="text-2xl font-bold">{apiCallsToday.toLocaleString()}</p>
+                <p className="text-xl font-bold">{apiCallsToday.toLocaleString()}</p>
               </div>
               <Activity className="w-8 h-8 text-blue-400" />
             </div>
@@ -190,7 +190,7 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm mb-1">Active Sessions</p>
-                <p className="text-2xl font-bold">43</p>
+                <p className="text-xl font-bold">43</p>
               </div>
               <Users className="w-8 h-8 text-purple-400" />
             </div>
@@ -200,7 +200,7 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm mb-1">Data Sync Status</p>
-                <p className="text-2xl font-bold">Live</p>
+                <p className="text-xl font-bold">Live</p>
               </div>
               <RefreshCw className="w-8 h-8 text-emerald-400" />
             </div>

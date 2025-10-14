@@ -259,7 +259,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                 <div className="w-1 h-6 bg-blue-400 rounded"></div>
                 <span className="text-gray-400 text-sm">Next 12m</span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-xl font-bold text-white">
                 ${next12MonthsTotal.toFixed(2)}
               </div>
             </div>
@@ -268,7 +268,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                 <div className="w-1 h-6 bg-blue-400 rounded"></div>
                 <span className="text-gray-400 text-sm">Monthly</span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-xl font-bold text-white">
                 ${monthlyAverage.toFixed(2)}
               </div>
             </div>

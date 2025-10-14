@@ -219,11 +219,11 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-gray-750 rounded-lg p-4">
           <p className="text-gray-400 text-sm mb-1">Total All Time</p>
-          <p className="text-2xl font-bold text-emerald-400">${totalAllTime.toFixed(2)}</p>
+          <p className="text-xl font-bold text-emerald-400">${totalAllTime.toFixed(2)}</p>
         </div>
         <div className="bg-gray-750 rounded-lg p-4">
           <p className="text-gray-400 text-sm mb-1">This Year ({currentYear})</p>
-          <p className="text-2xl font-bold">${currentYearTotal.toFixed(2)}</p>
+          <p className="text-xl font-bold">${currentYearTotal.toFixed(2)}</p>
         </div>
       </div>
 
