@@ -307,7 +307,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                           className="absolute bg-gray-950/50 text-white text-xs rounded-lg px-3 py-2 pointer-events-none z-10 shadow-xl border border-gray-700/50 backdrop-blur-sm"
                           style={{
                             left: `${currentHover.x}%`,
-                            top: '50%',
+                            top: `${currentHover.y}%`,
                             transform: currentHover.x > 50 ? 'translate(-110%, -50%)' : 'translate(10%, -50%)'
                           }}
                         >
@@ -320,10 +320,16 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                         </div>
                       )}
 
-                      <div className="absolute right-2 top-2 text-[10px] text-gray-500 pointer-events-none">
+                      <div
+                        className="absolute right-2 text-[10px] text-gray-500 pointer-events-none"
+                        style={{ top: `${priceRange > 0 ? 10 : 50}%`, transform: 'translateY(-50%)' }}
+                      >
                         max: {formatAxisPrice(maxPrice)}
                       </div>
-                      <div className="absolute right-2 bottom-2 text-[10px] text-gray-500 pointer-events-none">
+                      <div
+                        className="absolute right-2 text-[10px] text-gray-500 pointer-events-none"
+                        style={{ top: `${priceRange > 0 ? 90 : 50}%`, transform: 'translateY(-50%)' }}
+                      >
                         min: {formatAxisPrice(minPrice)}
                       </div>
                     </>
