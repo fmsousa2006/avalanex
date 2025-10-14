@@ -189,17 +189,18 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
 
           const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
             const rect = e.currentTarget.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const percentage = x / rect.width;
+            const mouseX = e.clientX - rect.left;
+            const percentage = mouseX / rect.width;
             const index = Math.round(percentage * (trendPrices.length - 1));
 
             if (index >= 0 && index < trendPrices.length) {
               const price = trendPrices[index];
+              const x = (index / (trendPrices.length - 1)) * 100;
               const y = priceRange > 0 ? ((maxPrice - price) / priceRange) * 80 + 10 : 50;
               const date = stockData?.timestamps?.[index] || '';
 
               setHoverData(prev => new Map(prev).set(stock.symbol, {
-                x: percentage * 100,
+                x,
                 y,
                 price,
                 date,
