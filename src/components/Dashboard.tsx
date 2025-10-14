@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal, RefreshCw, Wallet, Instagram, Mail, Facebook, Youtube, Shield } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal, RefreshCw, Wallet, Instagram, Mail, Facebook, Youtube, Shield, MoreVertical } from 'lucide-react';
 import { usePortfolio } from '../hooks/usePortfolio';
 import { useStockPrices } from '../hooks/useStockPrices';
 import PortfolioChart from './PortfolioChart';
@@ -58,6 +58,8 @@ export const Dashboard = () => {
   const [isDividendCalendarOpen, setIsDividendCalendarOpen] = useState(false);
   const [dividendListKey, setDividendListKey] = useState(0);
   const [futureDividendsKey, setFutureDividendsKey] = useState(0);
+  const [isPortfolioDropdownOpen, setIsPortfolioDropdownOpen] = useState(false);
+  const portfolioDropdownRef = useRef<HTMLDivElement>(null);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
   const [editTransaction, setEditTransaction] = useState<{
@@ -155,6 +157,22 @@ export const Dashboard = () => {
       return () => clearTimeout(timer);
     }
   }, [currentPortfolio, holdings.length, isUsingMockData]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (portfolioDropdownRef.current && !portfolioDropdownRef.current.contains(event.target as Node)) {
+        setIsPortfolioDropdownOpen(false);
+      }
+    };
+
+    if (isPortfolioDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isPortfolioDropdownOpen]);
 
   // Add this logout handler function to your Dashboard component
   const handleLogout = async () => {
@@ -614,13 +632,30 @@ export const Dashboard = () => {
             <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 flex flex-col">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold">Portfolio Allocation</h2>
-                <button
-                  onClick={() => setIsPortfolioModalOpen(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Transaction</span>
-                </button>
+                <div className="relative" ref={isPortfolioDropdownOpen ? portfolioDropdownRef : null}>
+                  <button
+                    onClick={() => setIsPortfolioDropdownOpen(!isPortfolioDropdownOpen)}
+                    className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+                    title="More Actions"
+                  >
+                    <MoreVertical className="w-4 h-4 text-gray-400 hover:text-white" />
+                  </button>
+
+                  {isPortfolioDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50">
+                      <button
+                        onClick={() => {
+                          setIsPortfolioDropdownOpen(false);
+                          setIsPortfolioModalOpen(true);
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>New trade/holding</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {currentPortfolioData.holdings.length > 0 ? (
