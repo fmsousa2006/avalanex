@@ -24,6 +24,17 @@ const formatAxisDate = (timestamp: string) => {
   return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 };
 
+const formatTooltipDate = (timestamp: string) => {
+  const date = new Date(timestamp);
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+};
+
 const formatAxisPrice = (price: number) => {
   if (price >= 1000) {
     return `$${(price / 1000).toFixed(1)}k`;
@@ -336,7 +347,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                             })()
                           }}
                         >
-                          <div className="font-medium mb-1">{formatAxisDate(currentHover.date)}</div>
+                          <div className="font-medium mb-1">{formatTooltipDate(currentHover.date)}</div>
                           <div className="flex items-center space-x-2">
                             <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                             <span className="font-semibold">{stock.symbol}:</span>
