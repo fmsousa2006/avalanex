@@ -68,11 +68,31 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
         return null;
       }
 
+      // Get the most recent day's worth of data (last 24 hours of available data)
+      const { data: latestPrice, error: latestError } = await supabase
+        .from('stock_prices_1h')
+        .select('timestamp')
+        .eq('stock_id', stockData.id)
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latestError || !latestPrice) {
+        console.warn(`⚠️ No price data available for ${symbol}`);
+        return null;
+      }
+
+      // Get data from the last available day
+      const latestTimestamp = new Date(latestPrice.timestamp);
+      const startOfDay = new Date(latestTimestamp);
+      startOfDay.setHours(0, 0, 0, 0);
+
       const { data: priceData, error: priceError } = await supabase
         .from('stock_prices_1h')
         .select('timestamp, close_price')
         .eq('stock_id', stockData.id)
-        .gte('timestamp', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
+        .gte('timestamp', startOfDay.toISOString())
+        .lte('timestamp', latestTimestamp.toISOString())
         .order('timestamp', { ascending: true });
 
       if (priceError || !priceData || priceData.length === 0) {
