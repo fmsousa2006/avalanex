@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { DollarSign, Plus } from 'lucide-react';
+import { DollarSign, MoreVertical } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AddDividendModal from './AddDividendModal';
 
@@ -32,7 +32,9 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
   const [showAddModal, setShowAddModal] = useState(false);
   const [hiddenYears, setHiddenYears] = useState<Set<number>>(new Set());
   const [hoveredYear, setHoveredYear] = useState<number | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const chartRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -99,6 +101,22 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
     fetchDividendData();
   }, [portfolioId]);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
   if (loading) {
     return (
       <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
@@ -107,13 +125,30 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
             <DollarSign className="w-5 h-5 text-emerald-400" />
             <h2 className="text-xl font-semibold">Dividend Growth</h2>
           </div>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="p-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
-            title="Add Dividend"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
+          <div className="relative" ref={isDropdownOpen ? dropdownRef : null}>
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+              title="More Actions"
+            >
+              <MoreVertical className="w-4 h-4 text-gray-400 hover:text-white" />
+            </button>
+
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50">
+                <button
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    setShowAddModal(true);
+                  }}
+                  className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
+                >
+                  <DollarSign className="w-4 h-4" />
+                  <span>New dividend income</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-400"></div>
@@ -131,20 +166,37 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
               <DollarSign className="w-5 h-5 text-emerald-400" />
               <h2 className="text-xl font-semibold">Dividend Growth</h2>
             </div>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="p-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
-              title="Add Dividend"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
+            <div className="relative" ref={isDropdownOpen ? dropdownRef : null}>
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+                title="More Actions"
+              >
+                <MoreVertical className="w-4 h-4 text-gray-400 hover:text-white" />
+              </button>
+
+              {isDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50">
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      setShowAddModal(true);
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
+                  >
+                    <DollarSign className="w-4 h-4" />
+                    <span>New dividend income</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <DollarSign className="w-16 h-16 text-gray-600 mx-auto mb-4" />
               <p className="text-gray-400 font-medium text-lg">No dividend payments yet</p>
               <p className="text-gray-500 text-sm mt-2">
-                Click the + button to record your first dividend payment
+                Use the menu to record your first dividend payment
               </p>
             </div>
           </div>
@@ -207,13 +259,30 @@ const DividendsReceived: React.FC<DividendsReceivedProps> = ({ portfolioId }) =>
             <DollarSign className="w-5 h-5 text-emerald-400" />
             <h2 className="text-xl font-semibold">Dividend Growth</h2>
           </div>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="p-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
-            title="Add Dividend"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
+          <div className="relative" ref={isDropdownOpen ? dropdownRef : null}>
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+              title="More Actions"
+            >
+              <MoreVertical className="w-4 h-4 text-gray-400 hover:text-white" />
+            </button>
+
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50">
+                <button
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    setShowAddModal(true);
+                  }}
+                  className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
+                >
+                  <DollarSign className="w-4 h-4" />
+                  <span>New dividend income</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
       <div className="grid grid-cols-2 gap-4 mb-6">
