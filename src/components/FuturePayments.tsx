@@ -412,12 +412,19 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                           <>
                             <div className="border-t border-gray-600 my-3"></div>
                             <div className="space-y-1">
-                              {month.payments.map((payment, idx) => (
-                                <div key={idx} className="flex items-center gap-2 text-sm">
-                                  <div className={`w-2 h-2 rounded-full ${payment.isPaid ? 'bg-purple-500' : 'bg-blue-400'}`}></div>
-                                  <span className="text-gray-400">{payment.symbol}: ${payment.amount.toFixed(2)}</span>
-                                </div>
-                              ))}
+                              {month.payments.map((payment, idx) => {
+                                const paymentDate = new Date(payment.date + 'T00:00:00');
+                                const formattedDate = paymentDate.toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric'
+                                });
+                                return (
+                                  <div key={idx} className="flex items-center gap-2 text-sm">
+                                    <div className={`w-2 h-2 rounded-full ${payment.isPaid ? 'bg-purple-500' : 'bg-blue-400'}`}></div>
+                                    <span className="text-gray-400">{payment.symbol}: ${payment.amount.toFixed(2)} @ {formattedDate}</span>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </>
                         )}
