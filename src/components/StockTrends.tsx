@@ -186,7 +186,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-semibold text-white">Top 3 Positions</h2>
-          <p className="text-xs text-gray-400 mt-1">Intraday movements</p>
+          <p className="text-xs text-gray-400 mt-1">Last 20 data points (US market hours: 9:30 AM - 4:00 PM ET)</p>
         </div>
         {isLoading && (
           <div className="flex items-center space-x-2">
@@ -306,6 +306,32 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                             return `${x},${y}`;
                           }).join(' ')}
                         />
+
+                        {/* Day separator lines */}
+                        {stockData?.timestamps && stockData.timestamps.map((timestamp, i) => {
+                          if (i === 0) return null;
+                          const currentDate = new Date(timestamp).toDateString();
+                          const previousDate = new Date(stockData.timestamps[i - 1]).toDateString();
+
+                          if (currentDate !== previousDate) {
+                            const x = (i / (trendPrices.length - 1)) * 100;
+                            return (
+                              <line
+                                key={`separator-${i}`}
+                                x1={x}
+                                y1="0"
+                                x2={x}
+                                y2="100"
+                                stroke="#6b7280"
+                                strokeWidth="0.5"
+                                strokeDasharray="3,3"
+                                vectorEffect="non-scaling-stroke"
+                                opacity="0.5"
+                              />
+                            );
+                          }
+                          return null;
+                        })}
 
                         {currentHover && (
                           <>
