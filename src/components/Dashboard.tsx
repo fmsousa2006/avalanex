@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal, Wallet, Instagram, Mail, Facebook, Youtube, Shield, MoreVertical, Eye } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal, Wallet, Instagram, Mail, Facebook, Youtube, Shield, MoreVertical, Star } from 'lucide-react';
 import { usePortfolio } from '../hooks/usePortfolio';
 import { useStockPrices } from '../hooks/useStockPrices';
 import PortfolioChart from './PortfolioChart';
@@ -23,6 +23,20 @@ import { logActivity } from '../utils/activityLogger';
 console.log('🏠 Dashboard component rendering...');
 
 export const Dashboard = () => {
+  const [showWatchlist, setShowWatchlist] = useState(false);
+
+  if (showWatchlist) {
+    return <Watchlist onBack={() => setShowWatchlist(false)} />;
+  }
+
+  return <DashboardContent onOpenWatchlist={() => setShowWatchlist(true)} />;
+};
+
+interface DashboardContentProps {
+  onOpenWatchlist: () => void;
+}
+
+const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) => {
   const {
     portfolios,
     currentPortfolio,
@@ -75,7 +89,6 @@ export const Dashboard = () => {
   } | null>(null);
   const [stockDailyChanges, setStockDailyChanges] = useState<Map<string, { change: number; changePercent: number }>>(new Map());
   const [isAdmin, setIsAdmin] = useState(false);
-  const [isWatchlistOpen, setIsWatchlistOpen] = useState(false);
 
   // Check if Finnhub is configured
   const isFinnhubConfigured = import.meta.env.VITE_FINNHUB_API_KEY;
@@ -530,11 +543,11 @@ export const Dashboard = () => {
 
             <div className="flex items-center space-x-3">
               <button
-                onClick={() => setIsWatchlistOpen(true)}
+                onClick={onOpenWatchlist}
                 className="relative p-2 hover:bg-gray-700 rounded-lg transition-colors group"
                 title="Watchlist"
               >
-                <Eye className="w-5 h-5 text-gray-400 group-hover:text-blue-400" />
+                <Star className="w-5 h-5 text-gray-400 group-hover:text-yellow-400" />
               </button>
 
               <UserMenu
@@ -984,12 +997,6 @@ export const Dashboard = () => {
         isOpen={isDividendCalendarOpen}
         onClose={() => setIsDividendCalendarOpen(false)}
         portfolioId={currentPortfolio?.id}
-      />
-
-      {/* Watchlist */}
-      <Watchlist
-        isOpen={isWatchlistOpen}
-        onClose={() => setIsWatchlistOpen(false)}
       />
     </div>
   );
