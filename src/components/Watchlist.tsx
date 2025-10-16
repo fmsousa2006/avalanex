@@ -8,6 +8,7 @@ interface WatchlistItem {
   stock_id: string;
   notes: string | null;
   target_price: number | null;
+  entry_price: number;
   created_at: string;
   stock: {
     id: string;
@@ -51,6 +52,7 @@ const Watchlist: React.FC<WatchlistProps> = ({ onBack }) => {
           stock_id,
           notes,
           target_price,
+          entry_price,
           created_at,
           stock:stocks (
             id,
@@ -107,13 +109,17 @@ const Watchlist: React.FC<WatchlistProps> = ({ onBack }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      const selectedStockData = availableStocks.find(s => s.id === selectedStock);
+      const entryPrice = selectedStockData?.current_price || 0;
+
       const { error } = await supabase
         .from('watchlist')
         .insert({
           user_id: user.id,
           stock_id: selectedStock,
           target_price: targetPrice ? parseFloat(targetPrice) : null,
-          notes: notes || null
+          notes: notes || null,
+          entry_price: entryPrice
         });
 
       if (error) throw error;
@@ -298,10 +304,10 @@ const Watchlist: React.FC<WatchlistProps> = ({ onBack }) => {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="flex items-baseline justify-between">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Current Price</p>
-                      <p className="text-3xl font-bold text-white">
+                      <p className="text-2xl font-bold text-white">
                         ${item.stock.current_price?.toFixed(2) || '0.00'}
                       </p>
                     </div>
@@ -321,6 +327,41 @@ const Watchlist: React.FC<WatchlistProps> = ({ onBack }) => {
                           {item.stock.price_change_percent_24h >= 0 ? '+' : ''}
                           {item.stock.price_change_percent_24h?.toFixed(2)}%
                         </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-gray-750 rounded-lg border border-gray-600">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Entry Price</p>
+                        <p className="text-sm font-semibold text-gray-300">
+                          ${item.entry_price?.toFixed(2) || '0.00'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(item.created_at).toLocaleDateString('pt-PT', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500 mb-1">Since Added</p>
+                        {(() => {
+                          const priceChange = item.stock.current_price - item.entry_price;
+                          const percentChange = ((priceChange / item.entry_price) * 100);
+                          return (
+                            <>
+                              <p className={`text-sm font-semibold ${percentChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                {percentChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}
+                              </p>
+                              <p className={`text-lg font-bold ${percentChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                {percentChange >= 0 ? '+' : ''}{percentChange.toFixed(2)}%
+                              </p>
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -398,12 +439,34 @@ const Watchlist: React.FC<WatchlistProps> = ({ onBack }) => {
               )}
 
               {editingItem && (
-                <div className="p-4 bg-gray-750 rounded-lg border border-gray-600">
-                  <div className="flex items-center space-x-2">
-                    <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-                    <div>
-                      <p className="font-bold text-white">{editingItem.stock.symbol}</p>
-                      <p className="text-sm text-gray-400">{editingItem.stock.name}</p>
+                <div className="space-y-3">
+                  <div className="p-4 bg-gray-750 rounded-lg border border-gray-600">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+                      <div>
+                        <p className="font-bold text-white">{editingItem.stock.symbol}</p>
+                        <p className="text-sm text-gray-400">{editingItem.stock.name}</p>
+                      </div>
+                    </div>
+                    <div className="pt-3 border-t border-gray-600">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Entry Price</p>
+                          <p className="text-sm font-semibold text-gray-300">
+                            ${editingItem.entry_price?.toFixed(2)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Added On</p>
+                          <p className="text-sm font-semibold text-gray-300">
+                            {new Date(editingItem.created_at).toLocaleDateString('pt-PT', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric'
+                            })}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
