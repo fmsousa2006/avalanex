@@ -34,6 +34,9 @@ const Watchlist: React.FC<WatchlistProps> = ({ onBack }) => {
   const [targetPrice, setTargetPrice] = useState('');
   const [notes, setNotes] = useState('');
   const [editingItem, setEditingItem] = useState<WatchlistItem | null>(null);
+  const [stockSearchQuery, setStockSearchQuery] = useState('');
+  const [showStockSuggestions, setShowStockSuggestions] = useState(false);
+  const [stockSuggestions, setStockSuggestions] = useState<any[]>([]);
 
   useEffect(() => {
     fetchWatchlist();
@@ -126,6 +129,9 @@ const Watchlist: React.FC<WatchlistProps> = ({ onBack }) => {
 
       setShowAddModal(false);
       setSelectedStock(null);
+      setStockSearchQuery('');
+      setShowStockSuggestions(false);
+      setStockSuggestions([]);
       setTargetPrice('');
       setNotes('');
       fetchWatchlist();
@@ -175,6 +181,58 @@ const Watchlist: React.FC<WatchlistProps> = ({ onBack }) => {
     setEditingItem(item);
     setTargetPrice(item.target_price?.toString() || '');
     setNotes(item.notes || '');
+    setShowAddModal(true);
+  };
+
+  const openAddModal = () => {
+    setEditingItem(null);
+    setSelectedStock(null);
+    setStockSearchQuery('');
+    setShowStockSuggestions(false);
+    setStockSuggestions([]);
+    setTargetPrice('');
+    setNotes('');
+    setShowAddModal(true);
+    fetchAvailableStocks();
+  };
+
+  const handleStockSearchChange = (value: string) => {
+    setStockSearchQuery(value);
+
+    if (value.length > 0) {
+      const searchValue = value.toLowerCase();
+      const filtered = availableStocks
+        .filter(stock =>
+          stock.symbol.toLowerCase().includes(searchValue) ||
+          stock.name.toLowerCase().includes(searchValue)
+        )
+        .sort((a, b) => {
+          const aSymbolMatch = a.symbol.toLowerCase() === searchValue;
+          const bSymbolMatch = b.symbol.toLowerCase() === searchValue;
+          if (aSymbolMatch && !bSymbolMatch) return -1;
+          if (!aSymbolMatch && bSymbolMatch) return 1;
+
+          const aStartsWithSymbol = a.symbol.toLowerCase().startsWith(searchValue);
+          const bStartsWithSymbol = b.symbol.toLowerCase().startsWith(searchValue);
+          if (aStartsWithSymbol && !bStartsWithSymbol) return -1;
+          if (!aStartsWithSymbol && bStartsWithSymbol) return 1;
+
+          return a.symbol.localeCompare(b.symbol);
+        })
+        .slice(0, 20);
+      setStockSuggestions(filtered);
+      setShowStockSuggestions(filtered.length > 0);
+    } else {
+      setStockSuggestions([]);
+      setShowStockSuggestions(false);
+    }
+  };
+
+  const selectStock = (stockId: string, symbol: string) => {
+    setSelectedStock(stockId);
+    setStockSearchQuery(symbol);
+    setShowStockSuggestions(false);
+    setStockSuggestions([]);
   };
 
   const filteredItems = watchlistItems.filter(item =>
@@ -219,10 +277,7 @@ const Watchlist: React.FC<WatchlistProps> = ({ onBack }) => {
               />
             </div>
             <button
-              onClick={() => {
-                setShowAddModal(true);
-                fetchAvailableStocks();
-              }}
+              onClick={openAddModal}
               className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-gray-900 font-semibold rounded-lg transition-all flex items-center justify-center space-x-2 shadow-lg"
             >
               <Plus className="w-5 h-5" />
@@ -432,22 +487,40 @@ const Watchlist: React.FC<WatchlistProps> = ({ onBack }) => {
 
             <div className="space-y-4">
               {!editingItem && (
-                <div>
+                <div className="relative">
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Select Stock <span className="text-red-500">*</span>
+                    Search Stock <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={selectedStock || ''}
-                    onChange={(e) => setSelectedStock(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                  >
-                    <option value="">Choose a stock...</option>
-                    {availableStocks.map((stock) => (
-                      <option key={stock.id} value={stock.id}>
-                        {stock.symbol} - {stock.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={stockSearchQuery}
+                      onChange={(e) => handleStockSearchChange(e.target.value)}
+                      onFocus={() => {
+                        if (stockSearchQuery && stockSuggestions.length > 0) {
+                          setShowStockSuggestions(true);
+                        }
+                      }}
+                      placeholder="e.g., AAPL, MSFT, GOOGL"
+                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    />
+                    <Search className="absolute right-3 top-3 w-5 h-5 text-gray-400" />
+                  </div>
+
+                  {showStockSuggestions && (
+                    <div className="absolute z-10 w-full mt-1 bg-gray-700 border border-gray-600 rounded-lg shadow-lg max-h-80 overflow-y-auto">
+                      {stockSuggestions.map((stock) => (
+                        <button
+                          key={stock.id}
+                          onClick={() => selectStock(stock.id, stock.symbol)}
+                          className="w-full px-4 py-2 text-left hover:bg-gray-600 transition-colors flex flex-col"
+                        >
+                          <span className="font-medium text-white">{stock.symbol}</span>
+                          <span className="text-sm text-gray-400">{stock.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
