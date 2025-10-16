@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Settings, HelpCircle, Sparkles, LogOut, Shield, Crown, Bell } from 'lucide-react';
+import { User, Settings, HelpCircle, Sparkles, LogOut, Shield, Crown, Bell, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface UserMenuProps {
   onLogout: () => void;
   onAdminClick?: () => void;
+  onSyncClick?: () => void;
+  isSyncing?: boolean;
+  canSync?: boolean;
 }
 
-const UserMenu: React.FC<UserMenuProps> = ({ onLogout, onAdminClick }) => {
+const UserMenu: React.FC<UserMenuProps> = ({ onLogout, onAdminClick, onSyncClick, isSyncing = false, canSync = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
   const [subscriptionTier, setSubscriptionTier] = useState<string>('free');
@@ -139,6 +142,24 @@ const UserMenu: React.FC<UserMenuProps> = ({ onLogout, onAdminClick }) => {
               >
                 <Shield className="w-4 h-4" />
                 <span>Administration</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (!isSyncing && canSync) {
+                    setIsOpen(false);
+                    onSyncClick?.();
+                  }
+                }}
+                disabled={isSyncing || !canSync}
+                className={`w-full px-4 py-2.5 text-left text-sm transition-colors flex items-center space-x-3 ${
+                  isSyncing || !canSync
+                    ? 'text-gray-500 cursor-not-allowed'
+                    : 'text-gray-300 hover:bg-gray-700'
+                }`}
+                title={!canSync ? 'Market closed or no portfolio selected' : 'Sync stock prices'}
+              >
+                <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span>Sync Prices</span>
               </button>
             </div>
           )}
