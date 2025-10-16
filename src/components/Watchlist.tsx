@@ -186,29 +186,27 @@ const Watchlist: React.FC<WatchlistProps> = ({ onBack }) => {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       <header className="bg-gray-800 border-b border-gray-700 sticky top-0 z-10">
         <div className="px-6 py-4">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start space-x-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-4">
               <button
                 onClick={onBack}
-                className="p-2 hover:bg-gray-700 rounded-lg transition-colors mt-1"
+                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
                 title="Back to Dashboard"
               >
                 <ArrowLeft className="w-5 h-5 text-gray-400" />
               </button>
-              <div className="flex flex-col items-center">
-                <Logo1 size={40} />
-              </div>
-              <div className="pt-2">
-                <div className="flex items-center space-x-2">
-                  <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
-                  <h1 className="text-2xl font-bold text-white">Watchlist</h1>
-                </div>
-                <p className="text-sm text-gray-400 mt-1">Track stocks you're interested in</p>
-              </div>
+              <Logo1 size={40} />
             </div>
-            <div className="text-sm text-gray-400 pt-3">
+            <div className="text-sm text-gray-400">
               {watchlistItems.length} {watchlistItems.length === 1 ? 'stock' : 'stocks'} tracked
             </div>
+          </div>
+          <div className="pl-16">
+            <div className="flex items-center space-x-2">
+              <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
+              <h1 className="text-2xl font-bold text-white">Watchlist</h1>
+            </div>
+            <p className="text-sm text-gray-400 mt-1">Track stocks you're interested in</p>
           </div>
         </div>
       </header>
