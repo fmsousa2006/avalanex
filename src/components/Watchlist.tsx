@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, ArrowLeft, Search, Plus, TrendingUp, TrendingDown, Target, StickyNote, Trash2, AlertCircle, X, Edit2 } from 'lucide-react';
+import { Star, Search, Plus, TrendingUp, TrendingDown, Target, StickyNote, Trash2, AlertCircle, X, Edit2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import Logo1 from './logos/Logo1';
 
@@ -187,26 +187,20 @@ const Watchlist: React.FC<WatchlistProps> = ({ onBack }) => {
       <header className="bg-gray-800 border-b border-gray-700 sticky top-0 z-10">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={onBack}
-                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-                title="Back to Dashboard"
-              >
-                <ArrowLeft className="w-5 h-5 text-gray-400" />
-              </button>
-              <Logo1 size={40} />
-            </div>
-            <div className="text-sm text-gray-400">
-              {watchlistItems.length} {watchlistItems.length === 1 ? 'stock' : 'stocks'} tracked
-            </div>
+            <Logo1 size={40} />
+            <button
+              onClick={onBack}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm font-medium"
+            >
+              Back to Dashboard
+            </button>
           </div>
-          <div className="pl-16">
+          <div>
             <div className="flex items-center space-x-2">
               <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
               <h1 className="text-2xl font-bold text-white">Watchlist</h1>
             </div>
-            <p className="text-sm text-gray-400 mt-1">Track stocks you're interested in</p>
+            <p className="text-sm text-gray-400 mt-1">Track stocks you're interested in • {watchlistItems.length} {watchlistItems.length === 1 ? 'stock' : 'stocks'} tracked</p>
           </div>
         </div>
       </header>
