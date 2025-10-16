@@ -371,13 +371,13 @@ const Watchlist: React.FC<WatchlistProps> = ({ onBack }) => {
                       <div className="flex items-center space-x-2">
                         <Target className="w-4 h-4 text-yellow-500" />
                         <span className="text-sm text-gray-300">
-                          Target: <span className="font-semibold text-white">${item.target_price.toFixed(2)}</span>
+                          Buy Target: <span className="font-semibold text-white">${item.target_price.toFixed(2)}</span>
                         </span>
                       </div>
-                      {item.stock.current_price >= item.target_price && (
+                      {item.stock.current_price <= item.target_price && (
                         <div className="flex items-center space-x-1 px-2 py-1 bg-green-500 bg-opacity-20 rounded">
                           <AlertCircle className="w-4 h-4 text-green-500" />
-                          <span className="text-xs font-semibold text-green-500">Reached</span>
+                          <span className="text-xs font-semibold text-green-500">Buy Now!</span>
                         </div>
                       )}
                     </div>
@@ -474,8 +474,11 @@ const Watchlist: React.FC<WatchlistProps> = ({ onBack }) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Target Price (Optional)
+                  Buy Target Price (Optional)
                 </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  You'll be notified when the price drops to or below this target
+                </p>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">$</span>
                   <input
