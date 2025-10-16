@@ -186,25 +186,27 @@ const Watchlist: React.FC<WatchlistProps> = ({ onBack }) => {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       <header className="bg-gray-800 border-b border-gray-700 sticky top-0 z-10">
         <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start space-x-4">
               <button
                 onClick={onBack}
-                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-700 rounded-lg transition-colors mt-1"
                 title="Back to Dashboard"
               >
                 <ArrowLeft className="w-5 h-5 text-gray-400" />
               </button>
-              <Logo1 size={40} />
-              <div>
+              <div className="flex flex-col items-center">
+                <Logo1 size={40} />
+              </div>
+              <div className="pt-2">
                 <div className="flex items-center space-x-2">
                   <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
                   <h1 className="text-2xl font-bold text-white">Watchlist</h1>
                 </div>
-                <p className="text-sm text-gray-400">Track stocks you're interested in</p>
+                <p className="text-sm text-gray-400 mt-1">Track stocks you're interested in</p>
               </div>
             </div>
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-gray-400 pt-3">
               {watchlistItems.length} {watchlistItems.length === 1 ? 'stock' : 'stocks'} tracked
             </div>
           </div>
@@ -367,19 +369,38 @@ const Watchlist: React.FC<WatchlistProps> = ({ onBack }) => {
                   </div>
 
                   {item.target_price && (
-                    <div className="flex items-center justify-between p-3 bg-gray-750 rounded-lg border border-gray-600">
-                      <div className="flex items-center space-x-2">
-                        <Target className="w-4 h-4 text-yellow-500" />
-                        <span className="text-sm text-gray-300">
-                          Buy Target: <span className="font-semibold text-white">${item.target_price.toFixed(2)}</span>
-                        </span>
-                      </div>
-                      {item.stock.current_price <= item.target_price && (
-                        <div className="flex items-center space-x-1 px-2 py-1 bg-green-500 bg-opacity-20 rounded">
-                          <AlertCircle className="w-4 h-4 text-green-500" />
-                          <span className="text-xs font-semibold text-green-500">Buy Now!</span>
+                    <div className="p-3 bg-gray-750 rounded-lg border border-gray-600">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <Target className="w-4 h-4 text-yellow-500" />
+                          <span className="text-sm text-gray-300">
+                            Buy Target: <span className="font-semibold text-white">${item.target_price.toFixed(2)}</span>
+                          </span>
                         </div>
-                      )}
+                        {item.stock.current_price <= item.target_price && (
+                          <div className="flex items-center space-x-1 px-2 py-1 bg-green-500 bg-opacity-20 rounded">
+                            <AlertCircle className="w-4 h-4 text-green-500" />
+                            <span className="text-xs font-semibold text-green-500">Buy Now!</span>
+                          </div>
+                        )}
+                      </div>
+                      {(() => {
+                        const priceDiff = item.stock.current_price - item.target_price;
+                        const isAboveTarget = priceDiff > 0;
+                        return (
+                          <div className="text-xs">
+                            {isAboveTarget ? (
+                              <span className="text-gray-400">
+                                Need to drop <span className="font-semibold text-yellow-400">${priceDiff.toFixed(2)}</span> to reach target
+                              </span>
+                            ) : (
+                              <span className="text-green-400 font-semibold">
+                                Below target by ${Math.abs(priceDiff).toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
 
