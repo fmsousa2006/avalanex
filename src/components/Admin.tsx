@@ -87,17 +87,33 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
       const oneHourAgo = new Date();
       oneHourAgo.setHours(oneHourAgo.getHours() - 1);
 
-      const { data, error } = await supabase.auth.admin.listUsers();
+      const { data, error } = await supabase.rpc('get_active_sessions_count', {
+        time_threshold: oneHourAgo.toISOString()
+      });
 
-      if (error) throw error;
+      if (error) {
+        console.error('RPC error, falling back to direct query:', error);
+        const { data: usersData, error: queryError } = await supabase
+          .from('user_subscriptions')
+          .select('user_id');
 
-      const activeSessions = data.users.filter(user => {
-        if (!user.last_sign_in_at) return false;
-        const lastSignIn = new Date(user.last_sign_in_at);
-        return lastSignIn > oneHourAgo;
-      }).length;
+        if (queryError) throw queryError;
 
-      setActiveSessions(activeSessions);
+        let activeCount = 0;
+        for (const sub of (usersData || [])) {
+          const { data: userData, error: authError } = await supabase.auth.admin.getUserById(sub.user_id);
+          if (!authError && userData?.user?.last_sign_in_at) {
+            const lastSignIn = new Date(userData.user.last_sign_in_at);
+            if (lastSignIn > oneHourAgo) {
+              activeCount++;
+            }
+          }
+        }
+        setActiveSessions(activeCount);
+        return;
+      }
+
+      setActiveSessions(data || 0);
     } catch (error) {
       console.error('Error fetching active sessions:', error);
       setActiveSessions(0);
@@ -269,10 +285,10 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
           <div className="bg-gradient-to-br from-gray-800 to-gray-800/50 rounded-lg p-4 border border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm mb-1">System Uptime</p>
-                <p className="text-xl font-bold">99.9%</p>
+                <p className="text-gray-400 text-sm mb-1">Active Users</p>
+                <p className="text-xl font-bold">{activeUsers}</p>
               </div>
-              <CheckCircle2 className="w-8 h-8 text-green-400" />
+              <Users className="w-8 h-8 text-green-400" />
             </div>
           </div>
 
@@ -298,9 +314,12 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
 
           <div className="bg-gradient-to-br from-gray-800 to-gray-800/50 rounded-lg p-4 border border-gray-700">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="flex-1">
                 <p className="text-gray-400 text-sm mb-1">Data Sync Status</p>
                 <p className="text-xl font-bold">{dataSyncStatus}</p>
+                {lastSyncTime && (
+                  <p className="text-xs text-gray-500 mt-1">{lastSyncTime}</p>
+                )}
               </div>
               <RefreshCw className="w-8 h-8 text-emerald-400" />
             </div>
