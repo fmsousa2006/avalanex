@@ -24,10 +24,19 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
   const [activeView, setActiveView] = useState<string | null>(null);
   const [stockCount, setStockCount] = useState<number>(0);
   const [apiCallsToday, setApiCallsToday] = useState<number>(0);
+  const [activeUsers, setActiveUsers] = useState<number>(0);
+  const [activeSessions, setActiveSessions] = useState<number>(0);
+  const [dataSyncStatus, setDataSyncStatus] = useState<string>('Checking...');
+  const [lastSyncTime, setLastSyncTime] = useState<string>('');
+  const [upcomingDividends, setUpcomingDividends] = useState<number>(0);
 
   useEffect(() => {
     fetchStockCount();
     fetchApiCallsToday();
+    fetchActiveUsers();
+    fetchActiveSessions();
+    fetchDataSyncStatus();
+    fetchUpcomingDividends();
   }, []);
 
   const fetchStockCount = async () => {
@@ -60,6 +69,97 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
     }
   };
 
+  const fetchActiveUsers = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('user_subscriptions')
+        .select('*', { count: 'exact', head: true });
+
+      if (error) throw error;
+      setActiveUsers(count || 0);
+    } catch (error) {
+      console.error('Error fetching active users:', error);
+    }
+  };
+
+  const fetchActiveSessions = async () => {
+    try {
+      const oneHourAgo = new Date();
+      oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+
+      const { data, error } = await supabase.auth.admin.listUsers();
+
+      if (error) throw error;
+
+      const activeSessions = data.users.filter(user => {
+        if (!user.last_sign_in_at) return false;
+        const lastSignIn = new Date(user.last_sign_in_at);
+        return lastSignIn > oneHourAgo;
+      }).length;
+
+      setActiveSessions(activeSessions);
+    } catch (error) {
+      console.error('Error fetching active sessions:', error);
+      setActiveSessions(0);
+    }
+  };
+
+  const fetchDataSyncStatus = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('api_calls')
+        .select('created_at')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        const lastSync = new Date(data.created_at);
+        const now = new Date();
+        const diffMinutes = Math.floor((now.getTime() - lastSync.getTime()) / 60000);
+
+        if (diffMinutes < 5) {
+          setDataSyncStatus('Live');
+          setLastSyncTime(`${diffMinutes} min ago`);
+        } else if (diffMinutes < 60) {
+          setDataSyncStatus('Recent');
+          setLastSyncTime(`${diffMinutes} min ago`);
+        } else {
+          const diffHours = Math.floor(diffMinutes / 60);
+          setDataSyncStatus('Delayed');
+          setLastSyncTime(`${diffHours}h ago`);
+        }
+      } else {
+        setDataSyncStatus('Unknown');
+        setLastSyncTime('No data');
+      }
+    } catch (error) {
+      console.error('Error fetching data sync status:', error);
+      setDataSyncStatus('Error');
+    }
+  };
+
+  const fetchUpcomingDividends = async () => {
+    try {
+      const today = new Date();
+      const nextMonth = new Date();
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+      const { count, error } = await supabase
+        .from('dividends')
+        .select('*', { count: 'exact', head: true })
+        .gte('payment_date', today.toISOString())
+        .lte('payment_date', nextMonth.toISOString());
+
+      if (error) throw error;
+      setUpcomingDividends(count || 0);
+    } catch (error) {
+      console.error('Error fetching upcoming dividends:', error);
+    }
+  };
+
   if (activeView === 'stock-management') {
     return <StockManagement onBack={() => setActiveView(null)} />;
   }
@@ -77,7 +177,7 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
       icon: Users,
       title: 'User Management',
       description: 'Manage user accounts, permissions, and access control',
-      stats: '127 Active Users',
+      stats: `${activeUsers} Active User${activeUsers !== 1 ? 's' : ''}`,
       color: 'from-blue-500 to-blue-600',
       iconBg: 'bg-blue-500/20',
       iconColor: 'text-blue-400'
@@ -95,7 +195,7 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
       icon: RefreshCw,
       title: 'Price Sync Control',
       description: 'Monitor API usage, trigger manual updates, and view sync logs',
-      stats: 'Last sync: 2 min ago',
+      stats: lastSyncTime ? `Last sync: ${lastSyncTime}` : 'Last sync: checking...',
       color: 'from-purple-500 to-purple-600',
       iconBg: 'bg-purple-500/20',
       iconColor: 'text-purple-400'
@@ -122,7 +222,7 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
       icon: Calendar,
       title: 'Dividend Calendar Admin',
       description: 'Manage dividend payment dates and ex-dividend schedules',
-      stats: '48 Upcoming Payments',
+      stats: `${upcomingDividends} Upcoming Payment${upcomingDividends !== 1 ? 's' : ''}`,
       color: 'from-cyan-500 to-cyan-600',
       iconBg: 'bg-cyan-500/20',
       iconColor: 'text-cyan-400'
@@ -190,7 +290,7 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm mb-1">Active Sessions</p>
-                <p className="text-xl font-bold">43</p>
+                <p className="text-xl font-bold">{activeSessions}</p>
               </div>
               <Users className="w-8 h-8 text-purple-400" />
             </div>
@@ -200,7 +300,7 @@ const Admin: React.FC<AdminProps> = ({ onClose }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm mb-1">Data Sync Status</p>
-                <p className="text-xl font-bold">Live</p>
+                <p className="text-xl font-bold">{dataSyncStatus}</p>
               </div>
               <RefreshCw className="w-8 h-8 text-emerald-400" />
             </div>
