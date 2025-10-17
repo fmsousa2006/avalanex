@@ -149,16 +149,18 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
         return date.toISOString();
       };
 
-      // Fetch 1-day data (hourly intervals from last 24 hours)
+      // Fetch 1-day data (most recent 24 hourly data points available)
       const { data: priceData1d, error: error1d } = await supabase
         .from('stock_prices_1d')
         .select('timestamp, close_price')
         .eq('stock_id', stockInfo.id)
-        .gte('timestamp', calculateDaysAgo(1))
-        .order('timestamp', { ascending: true });
+        .order('timestamp', { ascending: false })
+        .limit(24);
 
       if (!error1d && priceData1d && priceData1d.length > 0) {
-        historicalData['1d'] = convertToChartFormat(priceData1d);
+        // Reverse the data to show chronologically (oldest to newest)
+        const reversedData = [...priceData1d].reverse();
+        historicalData['1d'] = convertToChartFormat(reversedData);
         console.log(`📊 [StockDetailModal] Fetched ${priceData1d.length} 1-day records`);
       }
 
