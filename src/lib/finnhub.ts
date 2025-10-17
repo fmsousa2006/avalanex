@@ -25,6 +25,20 @@ export interface CandleData {
   v: number[]; // Volumes
 }
 
+export interface BasicFinancials {
+  metric: {
+    '52WeekHigh': number;
+    '52WeekLow': number;
+    '52WeekHighDate': string;
+    '52WeekLowDate': string;
+    '10DayAverageTradingVolume': number;
+    '3MonthAverageTradingVolume': number;
+    '52WeekPriceReturnDaily': number;
+    marketCapitalization: number;
+    peBasicExclExtraTTM: number;
+  };
+}
+
 export class FinnhubService {
   private apiKey: string;
 
@@ -289,6 +303,45 @@ export class FinnhubService {
       console.error(`❌ [Finnhub] Error fetching historical data for ${symbol}:`, error);
       const responseTime = Date.now() - startTime;
       await this.logApiCall('historical', symbol, 'error', responseTime);
+      return null;
+    }
+  }
+
+  // Get basic financials including 52-week range
+  async getBasicFinancials(symbol: string): Promise<BasicFinancials | null> {
+    if (!this.isConfigured()) {
+      console.warn(`⚠️ [Finnhub] API not configured, cannot fetch basic financials for ${symbol}`);
+      return null;
+    }
+
+    const startTime = Date.now();
+    try {
+      const response = await fetch(
+        `${FINNHUB_BASE_URL}/stock/metric?symbol=${symbol}&metric=all&token=${this.apiKey}`
+      );
+
+      if (!response.ok) {
+        const responseTime = Date.now() - startTime;
+        await this.logApiCall('basic-financials', symbol, 'error', responseTime);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: BasicFinancials = await response.json();
+      const responseTime = Date.now() - startTime;
+
+      if (!data.metric) {
+        console.warn(`⚠️ [Finnhub] No basic financials data available for ${symbol}`);
+        await this.logApiCall('basic-financials', symbol, 'no_data', responseTime);
+        return null;
+      }
+
+      console.log(`✅ [Finnhub] Fetched basic financials for ${symbol}`);
+      await this.logApiCall('basic-financials', symbol, 'success', responseTime);
+      return data;
+    } catch (error) {
+      console.error(`❌ [Finnhub] Error fetching basic financials for ${symbol}:`, error);
+      const responseTime = Date.now() - startTime;
+      await this.logApiCall('basic-financials', symbol, 'error', responseTime);
       return null;
     }
   }

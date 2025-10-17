@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, TrendingUp, TrendingDown, Calendar, DollarSign, BarChart3, ExternalLink, Building2, Database } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { finnhubService } from '../lib/finnhub';
 
 interface StockDetailModalProps {
   isOpen: boolean;
@@ -21,6 +22,8 @@ interface StockData {
   dividendYield: number;
   week52Low: number;
   week52High: number;
+  week52LowDate?: string;
+  week52HighDate?: string;
   volume: string;
   avgVolume: string;
   priceData: {
@@ -177,11 +180,11 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
         mockData.name = `${stockName} (Unable to get real data from database)`;
         setStockData(mockData);
         setHasHistoricalData(false);
-        
+
         try {
           // Try to fetch real historical data from Supabase
           const result = await fetchHistoricalDataFromSupabase(stockSymbol);
-          
+
           if (!result) {
             console.warn('⚠️ [StockDetailModal] No stock data found in database, using mock data');
             setStockData(generateMockData());
@@ -190,6 +193,21 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
           }
 
           const { stockInfo, historicalData } = result;
+
+          // Fetch 52-week range from Finnhub Basic Financials API
+          const basicFinancials = await finnhubService.getBasicFinancials(stockSymbol);
+
+          let week52Low = stockSymbol === 'O' ? 52.10 : 168.2;
+          let week52High = stockSymbol === 'O' ? 62.40 : 178.4;
+          let week52LowDate = 'Jan 2024';
+          let week52HighDate = 'Dec 2024';
+
+          if (basicFinancials?.metric) {
+            week52Low = basicFinancials.metric['52WeekLow'] || week52Low;
+            week52High = basicFinancials.metric['52WeekHigh'] || week52High;
+            week52LowDate = basicFinancials.metric['52WeekLowDate'] || week52LowDate;
+            week52HighDate = basicFinancials.metric['52WeekHighDate'] || week52HighDate;
+          }
 
           // Build stock data object
           const realStockData: StockData = {
@@ -202,8 +220,10 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
             peRatio: stockSymbol === 'O' ? 15.8 : 28.5,
             dividend: stockSymbol === 'O' ? 3.00 : 0.96,
             dividendYield: stockSymbol === 'O' ? 5.15 : 0.55,
-            week52Low: stockSymbol === 'O' ? 52.10 : 168.2,
-            week52High: stockSymbol === 'O' ? 62.40 : 178.4,
+            week52Low,
+            week52High,
+            week52LowDate,
+            week52HighDate,
             volume: stockSymbol === 'O' ? '3.2M' : '45.2M',
             avgVolume: stockSymbol === 'O' ? '4.1M' : '52.8M',
             priceData: historicalData || {},
@@ -802,7 +822,7 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
                   textAnchor="middle"
                   className="fill-red-400 text-sm font-semibold"
                 >
-                  $168.20
+                  ${stockData.week52Low.toFixed(2)}
                 </text>
                 <text
                   x={40}
@@ -818,9 +838,9 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
                   textAnchor="middle"
                   className="fill-gray-500 text-xs"
                 >
-                  Jan 2024
+                  {stockData.week52LowDate && new Date(stockData.week52LowDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                 </text>
-                
+
                 {/* 52W High label */}
                 <text
                   x={760}
@@ -828,7 +848,7 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
                   textAnchor="middle"
                   className="fill-emerald-400 text-sm font-semibold"
                 >
-                  $178.40
+                  ${stockData.week52High.toFixed(2)}
                 </text>
                 <text
                   x={760}
@@ -844,9 +864,9 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
                   textAnchor="middle"
                   className="fill-gray-500 text-xs"
                 >
-                  Dec 2024
+                  {stockData.week52HighDate && new Date(stockData.week52HighDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                 </text>
-                
+
                 {/* Current price label */}
                 <text
                   x={40 + ((stockData.currentPrice - stockData.week52Low) / (stockData.week52High - stockData.week52Low)) * 720}
@@ -854,7 +874,7 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
                   textAnchor="middle"
                   className="fill-white text-sm font-semibold"
                 >
-                  $175.50
+                  ${stockData.currentPrice.toFixed(2)}
                 </text>
                 <text
                   x={40 + ((stockData.currentPrice - stockData.week52Low) / (stockData.week52High - stockData.week52Low)) * 720}
