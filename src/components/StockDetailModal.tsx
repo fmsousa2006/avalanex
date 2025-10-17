@@ -141,18 +141,6 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
         return { prices, dates, change, changePercent };
       };
 
-      // Fetch 1-day data (hourly intervals)
-      const { data: priceData1d, error: error1d } = await supabase
-        .from('stock_prices_1d')
-        .select('timestamp, close_price')
-        .eq('stock_id', stockInfo.id)
-        .order('timestamp', { ascending: true });
-
-      if (!error1d && priceData1d && priceData1d.length > 0) {
-        historicalData['1d'] = convertToChartFormat(priceData1d);
-        console.log(`📊 [StockDetailModal] Fetched ${priceData1d.length} 1-day records`);
-      }
-
       // Calculate date ranges for different periods
       const now = new Date();
       const calculateDaysAgo = (days: number) => {
@@ -160,6 +148,19 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
         date.setDate(date.getDate() - days);
         return date.toISOString();
       };
+
+      // Fetch 1-day data (hourly intervals from last 24 hours)
+      const { data: priceData1d, error: error1d } = await supabase
+        .from('stock_prices_1d')
+        .select('timestamp, close_price')
+        .eq('stock_id', stockInfo.id)
+        .gte('timestamp', calculateDaysAgo(1))
+        .order('timestamp', { ascending: true });
+
+      if (!error1d && priceData1d && priceData1d.length > 0) {
+        historicalData['1d'] = convertToChartFormat(priceData1d);
+        console.log(`📊 [StockDetailModal] Fetched ${priceData1d.length} 1-day records`);
+      }
 
       // Fetch 7-day data
       const { data: priceData7d, error: error7d } = await supabase
