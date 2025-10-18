@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { logAdminAction } from '../utils/activityLogger';
+import ConfirmationModal from './ConfirmationModal';
 
 interface UserManagementProps {
   onBack: () => void;
@@ -57,6 +58,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ isOpen: boolean; user: User | null }>({ isOpen: false, user: null });
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeUsers: 0,
@@ -262,15 +264,74 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
 
   const handleDeleteAccount = async (user: User) => {
     setOpenDropdown(null);
-    if (!confirm(`Are you sure you want to delete ${user.email}? This action cannot be undone.`)) {
-      return;
-    }
+    setDeleteConfirmation({ isOpen: true, user });
+  };
 
-    console.log('Delete account:', user.email);
-    await logAdminAction(user.id, 'account_suspended', {
-      action: 'account_deletion_initiated',
-      target_email: user.email
-    });
+  const confirmDeleteAccount = async () => {
+    if (!deleteConfirmation.user) return;
+
+    try {
+      const userToDelete = deleteConfirmation.user;
+
+      await logAdminAction(userToDelete.id, 'account_deleted', {
+        target_email: userToDelete.email
+      });
+
+      await supabase
+        .from('watchlist')
+        .delete()
+        .eq('user_id', userToDelete.id);
+
+      const { data: portfolios } = await supabase
+        .from('portfolios')
+        .select('id')
+        .eq('user_id', userToDelete.id);
+
+      if (portfolios && portfolios.length > 0) {
+        const portfolioIds = portfolios.map(p => p.id);
+
+        await supabase
+          .from('portfolio_holdings')
+          .delete()
+          .in('portfolio_id', portfolioIds);
+
+        await supabase
+          .from('transactions')
+          .delete()
+          .in('portfolio_id', portfolioIds);
+
+        await supabase
+          .from('portfolios')
+          .delete()
+          .eq('user_id', userToDelete.id);
+      }
+
+      await supabase
+        .from('admin_notes')
+        .delete()
+        .eq('user_id', userToDelete.id);
+
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .delete()
+        .eq('id', userToDelete.id);
+
+      if (profileError) throw profileError;
+
+      const { error: subscriptionError } = await supabase
+        .from('user_subscriptions')
+        .delete()
+        .eq('user_id', userToDelete.id);
+
+      if (subscriptionError) throw subscriptionError;
+
+      fetchUsers();
+      setDeleteConfirmation({ isOpen: false, user: null });
+    } catch (error: any) {
+      console.error('Error deleting account:', error);
+      const errorMessage = error?.message || 'An unexpected error occurred';
+      alert(`Failed to delete user account: ${errorMessage}`);
+    }
   };
 
   const handleSendNotification = async (user: User) => {
@@ -625,6 +686,17 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
             </div>
           )}
         </div>
+
+        <ConfirmationModal
+          isOpen={deleteConfirmation.isOpen}
+          onClose={() => setDeleteConfirmation({ isOpen: false, user: null })}
+          onConfirm={confirmDeleteAccount}
+          title="Delete User Account"
+          message={`Are you sure you want to permanently delete ${deleteConfirmation.user?.email}? This will remove all their data, including profiles, portfolios, and subscriptions. This action cannot be undone.`}
+          confirmText="Delete Account"
+          cancelText="Cancel"
+          variant="danger"
+        />
 
         {selectedUser && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
