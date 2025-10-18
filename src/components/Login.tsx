@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Eye, EyeOff, DollarSign, BarChart3, TrendingUp } from 'lucide-react';
+import { Eye, EyeOff, DollarSign, BarChart3, TrendingUp, CheckCircle } from 'lucide-react';
 import AvalanexLogo from './AvalanexLogo';
 import { logActivity } from '../utils/activityLogger';
 
-const Login = () => {
+interface LoginProps {
+  onShowSignUp: () => void;
+  confirmationMessage?: string;
+  onClearMessage?: () => void;
+}
+
+const Login = ({ onShowSignUp, confirmationMessage, onClearMessage }: LoginProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -12,17 +18,26 @@ const Login = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [isRecovery, setIsRecovery] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
 
   useEffect(() => {
     // Set the page title when the Login component mounts
     document.title = 'Avalanex - Login';
-    
+
+    // Show confirmation message if provided
+    if (confirmationMessage) {
+      setMessage(confirmationMessage);
+      if (onClearMessage) {
+        setTimeout(() => {
+          onClearMessage();
+        }, 5000);
+      }
+    }
+
     // Optional: Reset title when component unmounts
     return () => {
       document.title = 'Avalanex';
     };
-  }, []);
+  }, [confirmationMessage, onClearMessage]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,26 +63,6 @@ const Login = () => {
     }
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setMessage(null);
-
-    try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password
-      });
-
-      if (error) throw error;
-      setMessage('Account created! Please check your email to verify your account.');
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to create account');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handlePasswordRecovery = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,13 +169,11 @@ const Login = () => {
             {/* Header */}
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-white mb-2">
-                {isRecovery ? 'Reset Password' : isSignUp ? 'Create Account' : 'Welcome Back'}
+                {isRecovery ? 'Reset Password' : 'Welcome Back'}
               </h2>
               <p className="text-gray-400">
                 {isRecovery
                   ? 'Enter your email to receive a reset link'
-                  : isSignUp
-                  ? 'Sign up to start tracking your portfolio'
                   : 'Sign in to access your portfolio'
                 }
               </p>
@@ -197,16 +190,14 @@ const Login = () => {
             )}
 
             {message && (
-              <div className="mb-6 bg-green-500/10 border border-green-500/50 text-green-300 px-4 py-3 rounded-xl flex items-start">
-                <svg className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
+              <div className="mb-6 bg-emerald-500/10 border border-emerald-500/50 text-emerald-300 px-4 py-3 rounded-xl flex items-start">
+                <CheckCircle className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
                 <span className="text-sm">{message}</span>
               </div>
             )}
 
             {/* Form */}
-            <form className="space-y-5" onSubmit={isRecovery ? handlePasswordRecovery : isSignUp ? handleSignUp : handleLogin}>
+            <form className="space-y-5" onSubmit={isRecovery ? handlePasswordRecovery : handleLogin}>
               {/* Email Input */}
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
@@ -283,8 +274,8 @@ const Login = () => {
                 )}
                 <span>
                   {loading
-                    ? (isRecovery ? 'Sending...' : isSignUp ? 'Creating account...' : 'Signing in...')
-                    : (isRecovery ? 'Send Reset Link' : isSignUp ? 'Create Account' : 'Sign In')
+                    ? (isRecovery ? 'Sending...' : 'Signing in...')
+                    : (isRecovery ? 'Send Reset Link' : 'Sign In')
                   }
                 </span>
               </button>
@@ -305,37 +296,14 @@ const Login = () => {
                   </button>
                 ) : (
                   <div className="text-sm text-gray-400">
-                    {isSignUp ? (
-                      <>
-                        Already have an account?{' '}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsSignUp(false);
-                            setError(null);
-                            setMessage(null);
-                          }}
-                          className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
-                        >
-                          Sign in
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        Don't have an account?{' '}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsSignUp(true);
-                            setError(null);
-                            setMessage(null);
-                          }}
-                          className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
-                        >
-                          Sign up
-                        </button>
-                      </>
-                    )}
+                    Don't have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={onShowSignUp}
+                      className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                    >
+                      Create account
+                    </button>
                   </div>
                 )}
               </div>
