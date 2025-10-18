@@ -119,6 +119,47 @@ export class FinnhubService {
     }
   }
 
+  // Get forex exchange rate
+  async getForexRate(baseCurrency: string, targetCurrency: string): Promise<number | null> {
+    if (!this.isConfigured()) {
+      console.warn(`⚠️ [Finnhub] API not configured, cannot fetch forex rate for ${baseCurrency}/${targetCurrency}`);
+      return null;
+    }
+
+    const forexSymbol = `OANDA:${baseCurrency}_${targetCurrency}`;
+    const startTime = Date.now();
+
+    try {
+      const response = await fetch(
+        `${FINNHUB_BASE_URL}/quote?symbol=${forexSymbol}&token=${this.apiKey}`
+      );
+
+      if (!response.ok) {
+        const responseTime = Date.now() - startTime;
+        await this.logApiCall('forex', forexSymbol, 'error', responseTime);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: StockQuote = await response.json();
+      const responseTime = Date.now() - startTime;
+
+      if (data.c === 0) {
+        console.warn(`⚠️ [Finnhub] No forex rate available for ${baseCurrency}/${targetCurrency}`);
+        await this.logApiCall('forex', forexSymbol, 'no_data', responseTime);
+        return null;
+      }
+
+      console.log(`✅ [Finnhub] Fetched forex rate for ${baseCurrency}/${targetCurrency}: ${data.c}`);
+      await this.logApiCall('forex', forexSymbol, 'success', responseTime);
+      return data.c;
+    } catch (error) {
+      console.error(`❌ [Finnhub] Error fetching forex rate for ${baseCurrency}/${targetCurrency}:`, error);
+      const responseTime = Date.now() - startTime;
+      await this.logApiCall('forex', forexSymbol, 'error', responseTime);
+      return null;
+    }
+  }
+
   // Get historical candle data
   async getCandles(
     symbol: string,

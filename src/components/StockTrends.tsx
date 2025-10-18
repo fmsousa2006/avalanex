@@ -12,6 +12,7 @@ interface StockTrendsProps {
     change: number;
     changePercent: number;
   }>;
+  currencySymbol?: string;
 }
 
 interface PriceDataPoint {
@@ -35,11 +36,11 @@ const formatTooltipDate = (timestamp: string) => {
   });
 };
 
-const formatAxisPrice = (price: number) => {
+const formatAxisPrice = (price: number, symbol: string = '$') => {
   if (price >= 1000) {
-    return `$${(price / 1000).toFixed(1)}k`;
+    return `${symbol}${(price / 1000).toFixed(1)}k`;
   }
-  return `$${price.toFixed(0)}`;
+  return `${symbol}${price.toFixed(0)}`;
 };
 
 interface StockData {
@@ -59,7 +60,7 @@ interface HoverData {
   index: number;
 }
 
-export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
+export const StockTrends: React.FC<StockTrendsProps> = ({ data, currencySymbol = '$' }) => {
   const [stocksData, setStocksData] = useState<Map<string, StockData>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [hoverData, setHoverData] = useState<Map<string, HoverData | null>>(new Map());
@@ -386,13 +387,13 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
                         className="absolute right-2 text-[10px] text-gray-500 pointer-events-none"
                         style={{ top: `${priceRange > 0 ? 10 : 50}%`, transform: 'translateY(-50%)' }}
                       >
-                        max: {formatAxisPrice(maxPrice)}
+                        max: {formatAxisPrice(maxPrice, currencySymbol)}
                       </div>
                       <div
                         className="absolute right-2 text-[10px] text-gray-500 pointer-events-none"
                         style={{ top: `${priceRange > 0 ? 90 : 50}%`, transform: 'translateY(-50%)' }}
                       >
-                        min: {formatAxisPrice(minPrice)}
+                        min: {formatAxisPrice(minPrice, currencySymbol)}
                       </div>
                     </>
                   ) : (

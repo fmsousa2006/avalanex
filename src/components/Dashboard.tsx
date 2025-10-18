@@ -19,6 +19,7 @@ import UserMenu from './UserMenu';
 import Watchlist from './Watchlist';
 import { supabase } from '../lib/supabase';
 import { logActivity } from '../utils/activityLogger';
+import { exchangeRateService } from '../lib/exchangeRate';
 
 console.log('🏠 Dashboard component rendering...');
 
@@ -80,6 +81,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
   const [isCurrencyDropdownOpen, setIsCurrencyDropdownOpen] = useState(false);
   const currencyDropdownRef = useRef<HTMLDivElement>(null);
   const [selectedCurrency, setSelectedCurrency] = useState<'USD' | 'EUR'>('USD');
+  const [exchangeRate, setExchangeRate] = useState<number>(1.0);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
   const [editTransaction, setEditTransaction] = useState<{
@@ -119,6 +121,39 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
 
     checkAdminStatus();
   }, []);
+
+  useEffect(() => {
+    const fetchExchangeRate = async () => {
+      if (selectedCurrency === 'USD') {
+        setExchangeRate(1.0);
+        return;
+      }
+
+      console.log(`💱 Fetching exchange rate for USD/${selectedCurrency}...`);
+      const rate = await exchangeRateService.getExchangeRate('USD', selectedCurrency);
+      setExchangeRate(rate);
+      console.log(`✅ Exchange rate set to: ${rate}`);
+    };
+
+    fetchExchangeRate();
+  }, [selectedCurrency]);
+
+  const convertCurrency = (usdAmount: number): number => {
+    return usdAmount * exchangeRate;
+  };
+
+  const formatCurrency = (amount: number): string => {
+    const convertedAmount = convertCurrency(amount);
+    const symbol = selectedCurrency === 'EUR' ? '€' : '$';
+    return `${symbol}${convertedAmount.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
+  };
+
+  const getCurrencySymbol = (): string => {
+    return selectedCurrency === 'EUR' ? '€' : '$';
+  };
 
   // Sync portfolio stock prices
   const handleSyncPortfolioPrices = async () => {
@@ -684,13 +719,13 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
                 <div className="min-w-0 flex-1">
                   <p className="text-gray-400 text-sm">Total Portfolio Value</p>
                   <p className="text-xl font-bold text-white break-words">
-                    ${totalValue.toLocaleString()}
+                    {formatCurrency(totalValue)}
                     {isUsingMockData && (
                       <span className="text-xs text-yellow-400 ml-2">(Demo)</span>
                     )}
                   </p>
                   <p className="text-sm text-gray-400 mt-1 break-words">
-                    ${currentPortfolioData.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} invested
+                    {formatCurrency(currentPortfolioData.totalCost)} invested
                   </p>
                 </div>
                 <Wallet className="w-8 h-8 text-blue-400 flex-shrink-0" />
@@ -702,13 +737,13 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
                 <div className="min-w-0 flex-1">
                   <p className="text-gray-400 text-sm mb-1">Total Profit</p>
                   <p className={`text-xl font-bold break-words ${currentPortfolioData.totalGainLoss >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {currentPortfolioData.totalGainLoss >= 0 ? '+' : ''}${currentPortfolioData.totalGainLoss.toFixed(2)}
+                    {currentPortfolioData.totalGainLoss >= 0 ? '+' : ''}{formatCurrency(currentPortfolioData.totalGainLoss)}
                     <span className={`text-base ml-2 ${currentPortfolioData.totalGainLossPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                       {currentPortfolioData.totalGainLossPercent >= 0 ? '+' : ''}{currentPortfolioData.totalGainLossPercent.toFixed(2)}%
                     </span>
                   </p>
                   <p className={`text-sm mt-2 break-words ${todaysChange.value >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {todaysChange.value >= 0 ? '+' : ''}${todaysChange.value.toFixed(2)} {todaysChange.value >= 0 ? '+' : ''}{todaysChange.percentage.toFixed(2)}% daily
+                    {todaysChange.value >= 0 ? '+' : ''}{formatCurrency(todaysChange.value)} {todaysChange.value >= 0 ? '+' : ''}{todaysChange.percentage.toFixed(2)}% daily
                   </p>
                 </div>
                 {currentPortfolioData.totalGainLoss >= 0 ? (
@@ -725,7 +760,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
                   <p className="text-gray-400 text-sm">Next Dividend</p>
                   {nextDividend ? (
                     <>
-                      <p className="text-xl font-bold text-blue-400 break-words">${nextDividend.totalAmount.toFixed(2)}</p>
+                      <p className="text-xl font-bold text-blue-400 break-words">{formatCurrency(nextDividend.totalAmount)}</p>
                       <p className="text-xs text-gray-400 break-words">{nextDividend.symbol} - {nextDividend.date}</p>
                     </>
                   ) : (
@@ -787,14 +822,15 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
                       symbol: holding.symbol,
                       name: holding.name,
                       shares: holding.shares,
-                      price: holding.currentPrice,
-                      value: holding.totalValue,
-                      cost: holding.shares * holding.averageCost,
-                      change: holding.gainLoss,
+                      price: convertCurrency(holding.currentPrice),
+                      value: convertCurrency(holding.totalValue),
+                      cost: convertCurrency(holding.shares * holding.averageCost),
+                      change: convertCurrency(holding.gainLoss),
                       changePercent: holding.gainLossPercent
                     }))}
                     onHover={setHoveredStock}
                     hoveredStock={hoveredStock}
+                    currencySymbol={getCurrencySymbol()}
                   />
                 </div>
               ) : (
@@ -817,12 +853,13 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
                   symbol: holding.symbol,
                   name: holding.name,
                   shares: holding.shares,
-                  price: holding.currentPrice,
-                  value: holding.totalValue,
-                  cost: holding.shares * holding.averageCost,
-                  change: holding.gainLoss,
+                  price: convertCurrency(holding.currentPrice),
+                  value: convertCurrency(holding.totalValue),
+                  cost: convertCurrency(holding.shares * holding.averageCost),
+                  change: convertCurrency(holding.gainLoss),
                   changePercent: holding.gainLossPercent
                 }))}
+                currencySymbol={getCurrencySymbol()}
               />
             </div>
           </div>
@@ -837,11 +874,12 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
                 return {
                   symbol: holding.symbol,
                   name: holding.name,
-                  value: holding.currentPrice,
-                  change: dailyChange?.change || 0,
+                  value: convertCurrency(holding.currentPrice),
+                  change: convertCurrency(dailyChange?.change || 0),
                   changePercent: dailyChange?.changePercent || 0
                 };
               })}
+              currencySymbol={getCurrencySymbol()}
             />
 
             {/* Top Losers */}
@@ -852,11 +890,12 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
                 return {
                   symbol: holding.symbol,
                   name: holding.name,
-                  value: holding.currentPrice,
-                  change: dailyChange?.change || 0,
+                  value: convertCurrency(holding.currentPrice),
+                  change: convertCurrency(dailyChange?.change || 0),
                   changePercent: dailyChange?.changePercent || 0
                 };
               })}
+              currencySymbol={getCurrencySymbol()}
             />
           </div>
 
