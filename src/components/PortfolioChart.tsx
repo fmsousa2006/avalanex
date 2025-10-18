@@ -187,7 +187,7 @@ const PortfolioChart: React.FC<PortfolioChartProps> = ({ data, onHover, hoveredS
           textAnchor="middle"
           className="fill-emerald-400 text-xl font-bold"
         >
-          {currencySymbol}{totalValue.toLocaleString()}
+          {currencySymbol}{totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </text>
       </svg>
       
@@ -203,10 +203,10 @@ const PortfolioChart: React.FC<PortfolioChartProps> = ({ data, onHover, hoveredS
         >
           <div className="text-sm font-semibold">{tooltip.data.symbol}</div>
           <div className="text-xs text-gray-300">{tooltip.data.name}</div>
-          <div className="text-sm">Value: {currencySymbol}{tooltip.data.value.toLocaleString()}</div>
+          <div className="text-sm">Value: {currencySymbol}{tooltip.data.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
           <div className="text-sm">Shares: {tooltip.data.shares}</div>
           <div className={`text-sm ${tooltip.data.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-            {tooltip.data.change >= 0 ? '+' : ''}{currencySymbol}{tooltip.data.change.toFixed(2)} ({tooltip.data.changePercent >= 0 ? '+' : ''}{tooltip.data.changePercent.toFixed(2)}%)
+            {tooltip.data.change >= 0 ? '+' : ''}{currencySymbol}{tooltip.data.change.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({tooltip.data.changePercent >= 0 ? '+' : ''}{tooltip.data.changePercent.toFixed(2)}%)
           </div>
           <div className="text-xs text-gray-400">
             {((tooltip.data.value / totalValue) * 100).toFixed(1)}% of portfolio
@@ -232,7 +232,7 @@ const PortfolioChart: React.FC<PortfolioChartProps> = ({ data, onHover, hoveredS
             />
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium truncate">{stock.symbol} - {stock.name}</div>
-              <div className="text-xs text-gray-400">{currencySymbol}{stock.value.toLocaleString()}</div>
+              <div className="text-xs text-gray-400">{currencySymbol}{stock.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             </div>
           </div>
         ))}
