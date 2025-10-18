@@ -94,26 +94,23 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data, currencySymbol =
         return null;
       }
 
-      // Get data from the last available day
-      const latestTimestamp = new Date(latestPrice.timestamp);
-      const startOfDay = new Date(latestTimestamp);
-      startOfDay.setHours(0, 0, 0, 0);
-
+      // Get the last 20 data points for intraday view
       const { data: priceData, error: priceError } = await supabase
         .from('stock_prices_1h')
         .select('timestamp, close_price')
         .eq('stock_id', stockData.id)
-        .gte('timestamp', startOfDay.toISOString())
-        .lte('timestamp', latestTimestamp.toISOString())
-        .order('timestamp', { ascending: true });
+        .order('timestamp', { ascending: false })
+        .limit(20);
 
       if (priceError || !priceData || priceData.length === 0) {
         console.warn(`⚠️ No intraday price data available for ${symbol}`);
         return null;
       }
 
-      const prices = priceData.map((p: PriceDataPoint) => p.close_price);
-      const timestamps = priceData.map((p: PriceDataPoint) => p.timestamp);
+      // Reverse the data to get ascending order (oldest to newest)
+      const reversedData = [...priceData].reverse();
+      const prices = reversedData.map((p: PriceDataPoint) => p.close_price);
+      const timestamps = reversedData.map((p: PriceDataPoint) => p.timestamp);
       const firstPrice = prices[0];
       const changePercent = ((stockData.current_price - firstPrice) / firstPrice) * 100;
 
