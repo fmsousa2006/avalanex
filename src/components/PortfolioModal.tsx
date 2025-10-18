@@ -226,29 +226,10 @@ const PortfolioModal: React.FC<PortfolioModalProps> = ({ isOpen, onClose, onAddT
     }
   };
 
-  const selectTicker = async (symbol: string) => {
+  const selectTicker = (symbol: string) => {
     setFormData(prev => ({ ...prev, ticker: symbol }));
     setShowTickerSuggestions(false);
     setTickerSuggestions([]);
-
-    try {
-      const { data, error } = await supabase
-        .from('stocks')
-        .select('current_price')
-        .eq('symbol', symbol)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching stock price:', error);
-        return;
-      }
-
-      if (data && data.current_price) {
-        setFormData(prev => ({ ...prev, price: data.current_price.toFixed(2) }));
-      }
-    } catch (err) {
-      console.error('Error fetching stock price:', err);
-    }
   };
 
   const validateForm = (): boolean => {

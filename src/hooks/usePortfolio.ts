@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase, Portfolio, PortfolioHolding, Transaction, Dividend, Stock, PortfolioData } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { portfolioData, transactionData, dividendData } from '../data/mockData';
-import { logActivity } from '../utils/activityLogger';
 
 // Create admin client for bypassing RLS when creating default portfolio
 const getAdminClient = () => {
@@ -185,12 +184,6 @@ export const usePortfolio = () => {
         .single();
 
       if (error) throw error;
-
-      await logActivity('portfolio_created', {
-        portfolio_id: newPortfolio.id,
-        portfolio_name: newPortfolio.name
-      });
-
       return newPortfolio;
     } catch (error) {
       console.error('Error creating default portfolio:', error);
@@ -392,10 +385,10 @@ export const usePortfolio = () => {
 
       if (existingHolding) {
         // Update existing holding
-        const newShares = transaction.type === 'buy'
+        const newShares = transaction.type === 'buy' 
           ? existingHolding.shares + (transaction.shares || 0)
           : existingHolding.shares - (transaction.shares || 0);
-
+        
         const newAverageCost = transaction.type === 'buy'
           ? ((existingHolding.shares * existingHolding.average_cost) + (transaction.amount || 0)) / newShares
           : existingHolding.average_cost;
@@ -410,13 +403,6 @@ export const usePortfolio = () => {
           .eq('id', existingHolding.id);
 
         if (updateError) throw updateError;
-
-        await logActivity('stock_updated', {
-          stock_id: transaction.stock_id,
-          previous_shares: existingHolding.shares,
-          new_shares: Math.max(0, newShares),
-          transaction_type: transaction.type
-        });
       } else if (transaction.type === 'buy') {
         // Create new holding for buy transactions
         // Get current market price for the stock
@@ -438,12 +424,6 @@ export const usePortfolio = () => {
           }]);
 
         if (insertError) throw insertError;
-
-        await logActivity('stock_added', {
-          stock_id: transaction.stock_id,
-          shares: transaction.shares || 0,
-          purchase_price: transaction.price || 0
-        });
       }
     } catch (error) {
       console.error('Error updating portfolio holdings:', error);
@@ -544,24 +524,16 @@ export const usePortfolio = () => {
         .single();
 
       if (error) throw error;
-
-      await logActivity('transaction_added', {
-        type: transaction.type,
-        stock_id: transaction.stock_id,
-        shares: transaction.shares,
-        price: transaction.price,
-        amount: transaction.amount
-      });
-
+      
       // Refresh data
       if (currentPortfolio) {
         await fetchTransactions(currentPortfolio.id);
         await fetchHoldings(currentPortfolio.id);
-
+        
         // Update portfolio holdings based on the transaction
         await updatePortfolioHoldings(transaction);
       }
-
+      
       return data;
     } catch (error) {
       console.error('Error adding transaction:', error);
@@ -573,7 +545,7 @@ export const usePortfolio = () => {
   const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
     try {
       console.log('🔄 [usePortfolio] Updating transaction with ID:', id, 'Updates:', updates);
-
+      
       const { data, error } = await supabase
         .from('transactions')
         .update(updates)
@@ -582,27 +554,22 @@ export const usePortfolio = () => {
         .single();
 
       if (error) throw error;
-
-      await logActivity('transaction_updated', {
-        transaction_id: id,
-        updates: updates
-      });
-
+      
       console.log('✅ [usePortfolio] Transaction updated successfully, refreshing data...');
-
+      
       // Refresh data
       if (currentPortfolio) {
         // Recalculate portfolio holdings
         console.log('🔄 [usePortfolio] Recalculating portfolio holdings after update...');
         await recalculatePortfolioHoldings(currentPortfolio.id);
-
+        
         // Then refresh all data
         console.log('🔄 [usePortfolio] Refreshing all data after recalculation...');
         await fetchTransactions(currentPortfolio.id);
         await fetchHoldings(currentPortfolio.id);
         await fetchDividends(currentPortfolio.id);
       }
-
+      
       console.log('✅ [usePortfolio] Portfolio data refreshed after transaction update');
       return data;
     } catch (error) {
@@ -622,10 +589,6 @@ export const usePortfolio = () => {
         .eq('id', id);
 
       if (error) throw error;
-
-      await logActivity('transaction_deleted', {
-        transaction_id: id
-      });
 
       console.log('✅ [usePortfolio] Transaction deleted successfully, recalculating holdings...');
 
@@ -731,7 +694,7 @@ export const usePortfolio = () => {
       const stockIds = holdings.map(h => h.stock_id);
 
       const now = new Date();
-      const dayOfWeek = now.getDay();
+      const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 
       let daysToSubtract = 1;
       if (dayOfWeek === 0) {
@@ -747,34 +710,17 @@ export const usePortfolio = () => {
       compareDate.setHours(0, 0, 0, 0);
 
       const { data: lastTradingDayPrices, error } = await supabase
-        .from('stock_prices_1d')
+        .from('stock_prices')
         .select('stock_id, close_price, timestamp')
         .in('stock_id', stockIds)
+        .eq('resolution', '1d')
         .gte('timestamp', compareDate.toISOString())
         .lt('timestamp', new Date(compareDate.getTime() + 24 * 60 * 60 * 1000).toISOString())
         .order('timestamp', { ascending: false });
 
       if (error || !lastTradingDayPrices || lastTradingDayPrices.length === 0) {
-        console.log('No previous trading day prices found, using stocks.price_change_percent_24h as fallback');
-
-        let totalChangeValue = 0;
-        holdings.forEach(holding => {
-          if (holding.stock?.price_change_percent_24h) {
-            const changePercent = holding.stock.price_change_percent_24h;
-            const previousPrice = holding.current_price / (1 + changePercent / 100);
-            const changeValue = (holding.current_price - previousPrice) * holding.shares;
-            totalChangeValue += changeValue;
-          }
-        });
-
-        const changePercent = currentTotalValue > 0
-          ? (totalChangeValue / (currentTotalValue - totalChangeValue)) * 100
-          : 0;
-
-        setTodaysChange({
-          value: totalChangeValue,
-          percentage: changePercent
-        });
+        console.log('No previous trading day prices found, setting today\'s change to 0');
+        setTodaysChange({ value: 0, percentage: 0 });
         return;
       }
 
@@ -790,13 +736,6 @@ export const usePortfolio = () => {
         if (lastPrice) {
           return sum + (holding.shares * lastPrice);
         }
-
-        if (holding.stock?.price_change_percent_24h) {
-          const changePercent = holding.stock.price_change_percent_24h;
-          const previousPrice = holding.current_price / (1 + changePercent / 100);
-          return sum + (holding.shares * previousPrice);
-        }
-
         return sum + (holding.shares * holding.current_price);
       }, 0);
 
@@ -812,9 +751,7 @@ export const usePortfolio = () => {
         currentTotalValue,
         lastTradingDayTotalValue,
         changeValue,
-        changePercent,
-        stocksWithHistoricalData: lastTradingDayPriceMap.size,
-        totalStocks: holdings.length
+        changePercent
       });
 
       setTodaysChange({

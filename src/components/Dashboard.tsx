@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal, Wallet, Instagram, Mail, Facebook, Youtube, Shield, MoreVertical, Star, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal, RefreshCw, Wallet, Instagram, Mail, Facebook } from 'lucide-react';
 import { usePortfolio } from '../hooks/usePortfolio';
 import { useStockPrices } from '../hooks/useStockPrices';
 import PortfolioChart from './PortfolioChart';
@@ -11,33 +11,17 @@ import DividendCalendar from './DividendCalendar';
 import DividendsReceived from './DividendsReceived';
 import DividendList from './DividendList';
 import FutureDividends from './FuturePayments';
+import Sidebar from './Sidebar';
 import PortfolioModal from './PortfolioModal';
 import TestingModal from './TestingModal';
 import Admin from './Admin';
 import Logo1 from './logos/Logo1';
 import UserMenu from './UserMenu';
-import Watchlist from './Watchlist';
 import { supabase } from '../lib/supabase';
-import { logActivity } from '../utils/activityLogger';
-import { exchangeRateService } from '../lib/exchangeRate';
 
 console.log('🏠 Dashboard component rendering...');
 
 export const Dashboard = () => {
-  const [showWatchlist, setShowWatchlist] = useState(false);
-
-  if (showWatchlist) {
-    return <Watchlist onBack={() => setShowWatchlist(false)} />;
-  }
-
-  return <DashboardContent onOpenWatchlist={() => setShowWatchlist(true)} />;
-};
-
-interface DashboardContentProps {
-  onOpenWatchlist: () => void;
-}
-
-const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) => {
   const {
     portfolios,
     currentPortfolio,
@@ -67,6 +51,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
     loading: stockPricesLoading
   } = useStockPrices();
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [isTestingModalOpen, setIsTestingModalOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
@@ -74,14 +59,6 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
   const [isDividendCalendarOpen, setIsDividendCalendarOpen] = useState(false);
   const [dividendListKey, setDividendListKey] = useState(0);
   const [futureDividendsKey, setFutureDividendsKey] = useState(0);
-  const [isPortfolioDropdownOpen, setIsPortfolioDropdownOpen] = useState(false);
-  const portfolioDropdownRef = useRef<HTMLDivElement>(null);
-  const [isTransactionsDropdownOpen, setIsTransactionsDropdownOpen] = useState(false);
-  const transactionsDropdownRef = useRef<HTMLDivElement>(null);
-  const [isCurrencyDropdownOpen, setIsCurrencyDropdownOpen] = useState(false);
-  const currencyDropdownRef = useRef<HTMLDivElement>(null);
-  const [selectedCurrency, setSelectedCurrency] = useState<'USD' | 'EUR'>('USD');
-  const [exchangeRate, setExchangeRate] = useState<number>(1.0);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
   const [editTransaction, setEditTransaction] = useState<{
@@ -95,65 +72,9 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
     fee: string;
   } | null>(null);
   const [stockDailyChanges, setStockDailyChanges] = useState<Map<string, { change: number; changePercent: number }>>(new Map());
-  const [isAdmin, setIsAdmin] = useState(false);
 
   // Check if Finnhub is configured
   const isFinnhubConfigured = import.meta.env.VITE_FINNHUB_API_KEY;
-
-  // Check if user is admin
-  useEffect(() => {
-    const checkAdminStatus = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data: subscription } = await supabase
-          .from('user_subscriptions')
-          .select('subscription_tier')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        setIsAdmin(subscription?.subscription_tier === 'admin');
-      } catch (error) {
-        console.error('Error checking admin status:', error);
-      }
-    };
-
-    checkAdminStatus();
-  }, []);
-
-  useEffect(() => {
-    const fetchExchangeRate = async () => {
-      if (selectedCurrency === 'USD') {
-        setExchangeRate(1.0);
-        return;
-      }
-
-      console.log(`💱 Fetching exchange rate for USD/${selectedCurrency}...`);
-      const rate = await exchangeRateService.getExchangeRate('USD', selectedCurrency);
-      setExchangeRate(rate);
-      console.log(`✅ Exchange rate set to: ${rate}`);
-    };
-
-    fetchExchangeRate();
-  }, [selectedCurrency]);
-
-  const convertCurrency = (usdAmount: number): number => {
-    return usdAmount * exchangeRate;
-  };
-
-  const formatCurrency = (amount: number): string => {
-    const convertedAmount = convertCurrency(amount);
-    const symbol = selectedCurrency === 'EUR' ? '€' : '$';
-    return `${symbol}${convertedAmount.toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    })}`;
-  };
-
-  const getCurrencySymbol = (): string => {
-    return selectedCurrency === 'EUR' ? '€' : '$';
-  };
 
   // Sync portfolio stock prices
   const handleSyncPortfolioPrices = async () => {
@@ -213,36 +134,12 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
     }
   }, [currentPortfolio, holdings.length, isUsingMockData]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (portfolioDropdownRef.current && !portfolioDropdownRef.current.contains(event.target as Node)) {
-        setIsPortfolioDropdownOpen(false);
-      }
-      if (transactionsDropdownRef.current && !transactionsDropdownRef.current.contains(event.target as Node)) {
-        setIsTransactionsDropdownOpen(false);
-      }
-      if (currencyDropdownRef.current && !currencyDropdownRef.current.contains(event.target as Node)) {
-        setIsCurrencyDropdownOpen(false);
-      }
-    };
-
-    if (isPortfolioDropdownOpen || isTransactionsDropdownOpen || isCurrencyDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isPortfolioDropdownOpen, isTransactionsDropdownOpen, isCurrencyDropdownOpen]);
-
   // Add this logout handler function to your Dashboard component
   const handleLogout = async () => {
     try {
-      await logActivity('logout', {});
-
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-
+      
       // Force redirect to login page
       window.location.href = '/';
     } catch (error) {
@@ -279,26 +176,17 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
       compareDate.setHours(0, 0, 0, 0);
 
       const { data: lastTradingDayPrices, error } = await supabase
-        .from('stock_prices_1d')
+        .from('stock_prices')
         .select('stock_id, close_price, timestamp')
         .in('stock_id', stockIds)
+        .eq('resolution', '1d')
         .gte('timestamp', compareDate.toISOString())
         .lt('timestamp', new Date(compareDate.getTime() + 24 * 60 * 60 * 1000).toISOString())
         .order('timestamp', { ascending: false });
 
       if (error || !lastTradingDayPrices || lastTradingDayPrices.length === 0) {
-        console.log('No previous trading day prices found, using stocks.price_change_percent_24h');
-
-        const dailyChanges = new Map();
-        holdings.forEach(holding => {
-          if (holding.stock) {
-            const changePercent = holding.stock.price_change_percent_24h || 0;
-            const change = (holding.current_price * (changePercent / 100)) * holding.shares;
-            dailyChanges.set(holding.stock.symbol, { change, changePercent });
-          }
-        });
-
-        setStockDailyChanges(dailyChanges);
+        console.log('No previous trading day prices found for stock daily changes');
+        setStockDailyChanges(new Map());
         return;
       }
 
@@ -316,10 +204,6 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
           const change = (holding.current_price - lastPrice) * holding.shares;
           const changePercent = ((holding.current_price - lastPrice) / lastPrice) * 100;
           dailyChanges.set(holding.stock?.symbol || '', { change, changePercent });
-        } else if (holding.stock) {
-          const changePercent = holding.stock.price_change_percent_24h || 0;
-          const change = (holding.current_price * (changePercent / 100)) * holding.shares;
-          dailyChanges.set(holding.stock.symbol, { change, changePercent });
         }
       });
 
@@ -543,12 +427,21 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
 
   const totalValue = currentPortfolioData.totalValue;
 
-  if (isAdminOpen && isAdmin) {
+  if (isAdminOpen) {
     return <Admin onClose={() => setIsAdminOpen(false)} />;
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex overflow-x-hidden">
+    <div className="min-h-screen bg-gray-900 text-white flex">
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onToggle={setIsSidebarOpen}
+        onPortfolioClick={() => setIsPortfolioModalOpen(true)}
+        onTestingClick={() => setIsTestingModalOpen(true)}
+        onAdminClick={() => setIsAdminOpen(true)}
+      />
+
       {/* Testing Modal */}
       <TestingModal
         isOpen={isTestingModalOpen}
@@ -574,9 +467,9 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
       />
       
       {/* Main Content */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1">
         {/* Header */}
-        <header className="bg-gray-800 border-b border-gray-700 px-4 sm:px-6 py-4">
+        <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div title="Avalanex">
@@ -588,197 +481,101 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
             </div>
 
             <div className="flex items-center space-x-3">
-              {/* Currency Selector */}
-              <div className="relative" ref={isCurrencyDropdownOpen ? currencyDropdownRef : null}>
-                <button
-                  onClick={() => setIsCurrencyDropdownOpen(!isCurrencyDropdownOpen)}
-                  className="flex items-center space-x-2 px-3 py-2 hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  <span className="text-blue-400 font-semibold">{selectedCurrency}</span>
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
-                </button>
-
-                {isCurrencyDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50">
-                    <button
-                      onClick={() => {
-                        setSelectedCurrency('USD');
-                        setIsCurrencyDropdownOpen(false);
-                      }}
-                      className={`w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors flex items-center space-x-3 ${
-                        selectedCurrency === 'USD' ? 'bg-gray-700' : ''
-                      }`}
-                    >
-                      <div className="w-8 h-6 rounded overflow-hidden flex-shrink-0 border border-gray-600">
-                        <svg viewBox="0 0 60 30" className="w-full h-full">
-                          <rect width="60" height="30" fill="#B22234"/>
-                          <path d="M0,3.5 h60 M0,7 h60 M0,10.5 h60 M0,14 h60 M0,17.5 h60 M0,21 h60 M0,24.5 h60" stroke="#fff" strokeWidth="2.3"/>
-                          <rect width="24" height="15" fill="#3C3B6E"/>
-                          <g fill="#fff">
-                            <g id="star">
-                              <path d="M3,3 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M6,3 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M9,3 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M12,3 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M15,3 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M18,3 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M21,3 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                            </g>
-                            <g>
-                              <path d="M4.5,6 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M7.5,6 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M10.5,6 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M13.5,6 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M16.5,6 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M19.5,6 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                            </g>
-                            <g>
-                              <path d="M3,9 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M6,9 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M9,9 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M12,9 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M15,9 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M18,9 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M21,9 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                            </g>
-                            <g>
-                              <path d="M4.5,12 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M7.5,12 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M10.5,12 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M13.5,12 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M16.5,12 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                              <path d="M19.5,12 l0.3,0.9 h1 l-0.8,0.6 0.3,0.9 -0.8-0.6 -0.8,0.6 0.3-0.9 -0.8-0.6 h1z"/>
-                            </g>
-                          </g>
-                        </svg>
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-white font-medium">USD</div>
-                        <div className="text-sm text-gray-400">US Dollar</div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setSelectedCurrency('EUR');
-                        setIsCurrencyDropdownOpen(false);
-                      }}
-                      className={`w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors flex items-center space-x-3 ${
-                        selectedCurrency === 'EUR' ? 'bg-gray-700' : ''
-                      }`}
-                    >
-                      <div className="w-8 h-6 rounded bg-blue-600 flex-shrink-0 flex items-center justify-center relative">
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-5 h-5 flex items-center justify-center">
-                            {[...Array(12)].map((_, i) => (
-                              <div
-                                key={i}
-                                className="absolute w-0.5 h-0.5 bg-yellow-400 rounded-full"
-                                style={{
-                                  transform: `rotate(${i * 30}deg) translateY(-7px)`
-                                }}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-white font-medium">EUR</div>
-                        <div className="text-sm text-gray-400">Euro</div>
-                      </div>
-                    </button>
-                  </div>
-                )}
-              </div>
-
               <button
-                onClick={onOpenWatchlist}
-                className="relative p-2 hover:bg-gray-700 rounded-lg transition-colors group"
-                title="Watchlist"
+                onClick={handleSyncPortfolioPrices}
+                disabled={isSyncing || !isFinnhubConfigured || !currentPortfolio || isUsingMockData}
+                className={`p-2 rounded-lg transition-colors ${
+                  isSyncing || !isFinnhubConfigured || !currentPortfolio || isUsingMockData
+                    ? 'bg-gray-600 cursor-not-allowed opacity-50'
+                    : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
+                title={
+                  !isFinnhubConfigured
+                    ? 'Finnhub API key not configured'
+                    : !currentPortfolio
+                    ? 'No portfolio selected'
+                    : isUsingMockData
+                    ? 'Cannot sync mock data'
+                    : 'Sync portfolio share prices'
+                }
               >
-                <Star className="w-5 h-5 text-gray-400 group-hover:text-yellow-400" />
+                <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
               </button>
 
-              <UserMenu
-                onLogout={handleLogout}
-                onAdminClick={() => setIsAdminOpen(true)}
-                onSyncClick={handleSyncPortfolioPrices}
-                isSyncing={isSyncing}
-                canSync={isFinnhubConfigured && !!currentPortfolio && !isUsingMockData}
-              />
+              <UserMenu onLogout={handleLogout} />
             </div>
           </div>
         </header>
 
         {/* Main Content */}
-        <main className="p-4 sm:p-6">
+        <main className="p-6">
           {/* Portfolio Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between">
+                <div>
                   <p className="text-gray-400 text-sm">Total Portfolio Value</p>
-                  <p className="text-xl font-bold text-white break-words">
-                    {formatCurrency(totalValue)}
+                  <p className="text-2xl font-bold text-white">
+                    ${totalValue.toLocaleString()}
                     {isUsingMockData && (
                       <span className="text-xs text-yellow-400 ml-2">(Demo)</span>
                     )}
                   </p>
-                  <p className="text-sm text-gray-400 mt-1 break-words">
-                    {formatCurrency(currentPortfolioData.totalCost)} invested
+                  <p className="text-sm text-gray-400 mt-1">
+                    ${currentPortfolioData.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} invested
                   </p>
                 </div>
-                <Wallet className="w-8 h-8 text-blue-400 flex-shrink-0" />
+                <Wallet className="w-8 h-8 text-blue-400" />
               </div>
             </div>
 
             <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
                   <p className="text-gray-400 text-sm mb-1">Total Profit</p>
-                  <p className={`text-xl font-bold break-words ${currentPortfolioData.totalGainLoss >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {currentPortfolioData.totalGainLoss >= 0 ? '+' : ''}{formatCurrency(currentPortfolioData.totalGainLoss)}
-                    <span className={`text-base ml-2 ${currentPortfolioData.totalGainLossPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <p className={`text-2xl font-bold ${currentPortfolioData.totalGainLoss >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {currentPortfolioData.totalGainLoss >= 0 ? '+' : ''}${currentPortfolioData.totalGainLoss.toFixed(2)}
+                    <span className={`text-lg ml-2 ${currentPortfolioData.totalGainLossPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                       {currentPortfolioData.totalGainLossPercent >= 0 ? '+' : ''}{currentPortfolioData.totalGainLossPercent.toFixed(2)}%
                     </span>
                   </p>
-                  <p className={`text-sm mt-2 break-words ${todaysChange.value >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {todaysChange.value >= 0 ? '+' : ''}{formatCurrency(todaysChange.value)} {todaysChange.value >= 0 ? '+' : ''}{todaysChange.percentage.toFixed(2)}% daily
+                  <p className={`text-sm mt-2 ${todaysChange.value >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {todaysChange.value >= 0 ? '+' : ''}${todaysChange.value.toFixed(2)} {todaysChange.value >= 0 ? '+' : ''}{todaysChange.percentage.toFixed(2)}% daily
                   </p>
                 </div>
                 {currentPortfolioData.totalGainLoss >= 0 ? (
-                  <TrendingUp className="w-8 h-8 text-emerald-400 flex-shrink-0" />
+                  <TrendingUp className="w-8 h-8 text-emerald-400" />
                 ) : (
-                  <TrendingDown className="w-8 h-8 text-red-400 flex-shrink-0" />
+                  <TrendingDown className="w-8 h-8 text-red-400" />
                 )}
               </div>
             </div>
 
             <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between">
+                <div>
                   <p className="text-gray-400 text-sm">Next Dividend</p>
                   {nextDividend ? (
                     <>
-                      <p className="text-xl font-bold text-blue-400 break-words">{formatCurrency(nextDividend.totalAmount)}</p>
-                      <p className="text-xs text-gray-400 break-words">{nextDividend.symbol} - {nextDividend.date}</p>
+                      <p className="text-2xl font-bold text-blue-400">${nextDividend.totalAmount.toFixed(2)}</p>
+                      <p className="text-xs text-gray-400">{nextDividend.symbol} - {nextDividend.date}</p>
                     </>
                   ) : (
                     <p className="text-lg text-gray-500">No upcoming dividends</p>
                   )}
                 </div>
-                <Calendar className="w-8 h-8 text-blue-400 flex-shrink-0" />
+                <Calendar className="w-8 h-8 text-blue-400" />
               </div>
             </div>
 
             <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between">
+                <div>
                   <p className="text-gray-400 text-sm">Holdings</p>
-                  <p className="text-xl font-bold text-white">{holdings.length}</p>
+                  <p className="text-2xl font-bold text-white">{holdings.length}</p>
                   <p className="text-xs text-gray-400">Active positions</p>
                 </div>
-                <PieChart className="w-8 h-8 text-purple-400 flex-shrink-0" />
+                <PieChart className="w-8 h-8 text-purple-400" />
               </div>
             </div>
           </div>
@@ -789,30 +586,13 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
             <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 flex flex-col">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold">Portfolio Allocation</h2>
-                <div className="relative" ref={isPortfolioDropdownOpen ? portfolioDropdownRef : null}>
-                  <button
-                    onClick={() => setIsPortfolioDropdownOpen(!isPortfolioDropdownOpen)}
-                    className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-                    title="More Actions"
-                  >
-                    <MoreVertical className="w-4 h-4 text-gray-400 hover:text-white" />
-                  </button>
-
-                  {isPortfolioDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50">
-                      <button
-                        onClick={() => {
-                          setIsPortfolioDropdownOpen(false);
-                          setIsPortfolioModalOpen(true);
-                        }}
-                        className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>New trade/holding</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <button
+                  onClick={() => setIsPortfolioModalOpen(true)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Transaction</span>
+                </button>
               </div>
 
               {currentPortfolioData.holdings.length > 0 ? (
@@ -822,15 +602,14 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
                       symbol: holding.symbol,
                       name: holding.name,
                       shares: holding.shares,
-                      price: convertCurrency(holding.currentPrice),
-                      value: convertCurrency(holding.totalValue),
-                      cost: convertCurrency(holding.shares * holding.averageCost),
-                      change: convertCurrency(holding.gainLoss),
+                      price: holding.currentPrice,
+                      value: holding.totalValue,
+                      cost: holding.shares * holding.averageCost,
+                      change: holding.gainLoss,
                       changePercent: holding.gainLossPercent
                     }))}
                     onHover={setHoveredStock}
                     hoveredStock={hoveredStock}
-                    currencySymbol={getCurrencySymbol()}
                   />
                 </div>
               ) : (
@@ -853,13 +632,12 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
                   symbol: holding.symbol,
                   name: holding.name,
                   shares: holding.shares,
-                  price: convertCurrency(holding.currentPrice),
-                  value: convertCurrency(holding.totalValue),
-                  cost: convertCurrency(holding.shares * holding.averageCost),
-                  change: convertCurrency(holding.gainLoss),
+                  price: holding.currentPrice,
+                  value: holding.totalValue,
+                  cost: holding.shares * holding.averageCost,
+                  change: holding.gainLoss,
                   changePercent: holding.gainLossPercent
                 }))}
-                currencySymbol={getCurrencySymbol()}
               />
             </div>
           </div>
@@ -874,12 +652,11 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
                 return {
                   symbol: holding.symbol,
                   name: holding.name,
-                  value: convertCurrency(holding.currentPrice),
-                  change: convertCurrency(dailyChange?.change || 0),
+                  value: holding.currentPrice,
+                  change: dailyChange?.change || 0,
                   changePercent: dailyChange?.changePercent || 0
                 };
               })}
-              currencySymbol={getCurrencySymbol()}
             />
 
             {/* Top Losers */}
@@ -890,12 +667,11 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
                 return {
                   symbol: holding.symbol,
                   name: holding.name,
-                  value: convertCurrency(holding.currentPrice),
-                  change: convertCurrency(dailyChange?.change || 0),
+                  value: holding.currentPrice,
+                  change: dailyChange?.change || 0,
                   changePercent: dailyChange?.changePercent || 0
                 };
               })}
-              currencySymbol={getCurrencySymbol()}
             />
           </div>
 
@@ -932,30 +708,18 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
             <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold">Recent Transactions</h2>
-                <div className="relative" ref={isTransactionsDropdownOpen ? transactionsDropdownRef : null}>
-                  <button
-                    onClick={() => setIsTransactionsDropdownOpen(!isTransactionsDropdownOpen)}
-                    className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-                    title="More Actions"
-                  >
-                    <MoreVertical className="w-4 h-4 text-gray-400 hover:text-white" />
-                  </button>
-
-                  {isTransactionsDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50">
-                      <button
-                        onClick={() => {
-                          setIsTransactionsDropdownOpen(false);
-                          setIsPortfolioModalOpen(true);
-                        }}
-                        className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>New trade/holding</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Menu button clicked');
+                    setIsPortfolioModalOpen(true);
+                  }}
+                  className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
+                  title="Add Transaction"
+                >
+                  <MoreHorizontal className="w-5 h-5" />
+                </button>
               </div>
               
               {transactions.length > 0 ? (
@@ -1086,15 +850,6 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
                     title="Facebook"
                   >
                     <Facebook className="w-5 h-5" />
-                  </a>
-                  <a
-                    href="https://youtube.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-400 hover:text-white transition-colors"
-                    title="YouTube"
-                  >
-                    <Youtube className="w-5 h-5" />
                   </a>
                   <a
                     href="mailto:support@avalanex.com"

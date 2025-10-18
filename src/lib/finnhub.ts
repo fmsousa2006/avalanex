@@ -25,20 +25,6 @@ export interface CandleData {
   v: number[]; // Volumes
 }
 
-export interface BasicFinancials {
-  metric: {
-    '52WeekHigh': number;
-    '52WeekLow': number;
-    '52WeekHighDate': string;
-    '52WeekLowDate': string;
-    '10DayAverageTradingVolume': number;
-    '3MonthAverageTradingVolume': number;
-    '52WeekPriceReturnDaily': number;
-    marketCapitalization: number;
-    peBasicExclExtraTTM: number;
-  };
-}
-
 export class FinnhubService {
   private apiKey: string;
 
@@ -65,8 +51,7 @@ export class FinnhubService {
         symbol,
         status,
         response_time_ms: responseTime,
-        user_id: user?.id || null,
-        origin: 'frontend'
+        user_id: user?.id || null
       });
     } catch (error) {
       // Silent fail - don't break the API call if logging fails
@@ -115,47 +100,6 @@ export class FinnhubService {
       console.error(`❌ [Finnhub] Error fetching quote for ${symbol}:`, error);
       const responseTime = Date.now() - startTime;
       await this.logApiCall('quote', symbol, 'error', responseTime);
-      return null;
-    }
-  }
-
-  // Get forex exchange rate
-  async getForexRate(baseCurrency: string, targetCurrency: string): Promise<number | null> {
-    if (!this.isConfigured()) {
-      console.warn(`⚠️ [Finnhub] API not configured, cannot fetch forex rate for ${baseCurrency}/${targetCurrency}`);
-      return null;
-    }
-
-    const forexSymbol = `OANDA:${baseCurrency}_${targetCurrency}`;
-    const startTime = Date.now();
-
-    try {
-      const response = await fetch(
-        `${FINNHUB_BASE_URL}/quote?symbol=${forexSymbol}&token=${this.apiKey}`
-      );
-
-      if (!response.ok) {
-        const responseTime = Date.now() - startTime;
-        await this.logApiCall('forex', forexSymbol, 'error', responseTime);
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data: StockQuote = await response.json();
-      const responseTime = Date.now() - startTime;
-
-      if (data.c === 0) {
-        console.warn(`⚠️ [Finnhub] No forex rate available for ${baseCurrency}/${targetCurrency}`);
-        await this.logApiCall('forex', forexSymbol, 'no_data', responseTime);
-        return null;
-      }
-
-      console.log(`✅ [Finnhub] Fetched forex rate for ${baseCurrency}/${targetCurrency}: ${data.c}`);
-      await this.logApiCall('forex', forexSymbol, 'success', responseTime);
-      return data.c;
-    } catch (error) {
-      console.error(`❌ [Finnhub] Error fetching forex rate for ${baseCurrency}/${targetCurrency}:`, error);
-      const responseTime = Date.now() - startTime;
-      await this.logApiCall('forex', forexSymbol, 'error', responseTime);
       return null;
     }
   }
@@ -344,45 +288,6 @@ export class FinnhubService {
       console.error(`❌ [Finnhub] Error fetching historical data for ${symbol}:`, error);
       const responseTime = Date.now() - startTime;
       await this.logApiCall('historical', symbol, 'error', responseTime);
-      return null;
-    }
-  }
-
-  // Get basic financials including 52-week range
-  async getBasicFinancials(symbol: string): Promise<BasicFinancials | null> {
-    if (!this.isConfigured()) {
-      console.warn(`⚠️ [Finnhub] API not configured, cannot fetch basic financials for ${symbol}`);
-      return null;
-    }
-
-    const startTime = Date.now();
-    try {
-      const response = await fetch(
-        `${FINNHUB_BASE_URL}/stock/metric?symbol=${symbol}&metric=all&token=${this.apiKey}`
-      );
-
-      if (!response.ok) {
-        const responseTime = Date.now() - startTime;
-        await this.logApiCall('basic-financials', symbol, 'error', responseTime);
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data: BasicFinancials = await response.json();
-      const responseTime = Date.now() - startTime;
-
-      if (!data.metric) {
-        console.warn(`⚠️ [Finnhub] No basic financials data available for ${symbol}`);
-        await this.logApiCall('basic-financials', symbol, 'no_data', responseTime);
-        return null;
-      }
-
-      console.log(`✅ [Finnhub] Fetched basic financials for ${symbol}`);
-      await this.logApiCall('basic-financials', symbol, 'success', responseTime);
-      return data;
-    } catch (error) {
-      console.error(`❌ [Finnhub] Error fetching basic financials for ${symbol}:`, error);
-      const responseTime = Date.now() - startTime;
-      await this.logApiCall('basic-financials', symbol, 'error', responseTime);
       return null;
     }
   }

@@ -1,6 +1,5 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Trash2, Edit3 } from 'lucide-react';
-import ConfirmationModal from './ConfirmationModal';
 
 interface Transaction {
   id: string;
@@ -25,15 +24,6 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteT
   const [startX, setStartX] = React.useState<number>(0);
   const [currentX, setCurrentX] = React.useState<number>(0);
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
-  const [deleteConfirmation, setDeleteConfirmation] = React.useState<{
-    isOpen: boolean;
-    transactionId: string | null;
-    transactionSymbol: string;
-  }>({
-    isOpen: false,
-    transactionId: null,
-    transactionSymbol: '',
-  });
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
@@ -128,35 +118,17 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteT
   };
 
   const handleDeleteClick = (transactionId: string) => {
-    const transaction = data.find(t => t.id === transactionId);
-    setDeleteConfirmation({
-      isOpen: true,
-      transactionId,
-      transactionSymbol: transaction?.symbol || '',
-    });
-  };
-
-  const confirmDelete = () => {
-    if (deleteConfirmation.transactionId && onDeleteTransaction) {
-      onDeleteTransaction(deleteConfirmation.transactionId);
+    if (!confirm('Are you sure you want to delete this transaction?')) {
+      setSwipedTransaction(null);
+      setSwipeDirection(null);
+      return;
+    }
+    
+    if (onDeleteTransaction) {
+      onDeleteTransaction(transactionId);
     }
     setSwipedTransaction(null);
     setSwipeDirection(null);
-    setDeleteConfirmation({
-      isOpen: false,
-      transactionId: null,
-      transactionSymbol: '',
-    });
-  };
-
-  const cancelDelete = () => {
-    setSwipedTransaction(null);
-    setSwipeDirection(null);
-    setDeleteConfirmation({
-      isOpen: false,
-      transactionId: null,
-      transactionSymbol: '',
-    });
   };
 
   const handleEditClick = (transactionId: string) => {
@@ -189,20 +161,8 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteT
   };
 
   return (
-    <>
-      <ConfirmationModal
-        isOpen={deleteConfirmation.isOpen}
-        onClose={cancelDelete}
-        onConfirm={confirmDelete}
-        title="Delete Transaction"
-        message={`Are you sure you want to delete this ${deleteConfirmation.transactionSymbol} transaction? This action cannot be undone.`}
-        confirmText="Delete"
-        cancelText="Cancel"
-        variant="danger"
-      />
-
-      <div className="space-y-3 max-h-96 overflow-y-auto overflow-x-hidden">
-        {data.map((transaction) => (
+    <div className="space-y-3 max-h-96 overflow-y-auto overflow-x-hidden">
+      {data.map((transaction) => (
         <div 
           key={transaction.id}
           className="relative bg-gray-750 rounded-lg border border-gray-600 hover:border-gray-500 transition-colors overflow-hidden"
@@ -278,16 +238,15 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ data, onDeleteT
             </div>
           </div>
         </div>
-        ))}
-
-        {/* Instructions */}
-        {data.length > 0 && (
-          <div className="text-center text-xs text-gray-500 mt-4 p-2">
-            💡 Swipe left to delete • Swipe right to edit
-          </div>
-        )}
-      </div>
-    </>
+      ))}
+      
+      {/* Instructions */}
+      {data.length > 0 && (
+        <div className="text-center text-xs text-gray-500 mt-4 p-2">
+          💡 Swipe left to delete • Swipe right to edit
+        </div>
+      )}
+    </div>
   );
 };
 

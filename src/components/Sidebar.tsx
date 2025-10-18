@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield } from 'lucide-react';
+import { BarChart3, Briefcase, Shield } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -17,7 +17,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   onAdminClick
 }) => {
   const menuItems = [
-    { icon: Shield, label: 'Admin', onClick: onAdminClick }
+    { icon: Shield, label: 'Admin', onClick: onAdminClick },
+    { icon: BarChart3, label: 'Dashboard', active: true },
+    { icon: Briefcase, label: 'Portfolio', onClick: onPortfolioClick }
   ];
 
   // Handle mouse enter/leave for auto-show/hide
@@ -49,8 +51,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         {/* Header */}
         <div className="p-6 border-b border-gray-700">
           <div className="flex items-center space-x-3">
-            <Shield className="w-8 h-8 text-emerald-400" />
-            <h1 className="text-xl font-bold">Admin</h1>
+            <BarChart3 className="w-8 h-8 text-emerald-400" />
+            <h1 className="text-xl font-bold">Portfolio</h1>
           </div>
         </div>
 
@@ -61,7 +63,11 @@ const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={index}
                 onClick={item.onClick}
-                className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors text-gray-300 hover:bg-gray-700 hover:text-white"
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                  item.active
+                    ? 'bg-emerald-600 text-white'
+                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                }`}
               >
                 <item.icon className="w-5 h-5" />
                 <span className="font-medium">{item.label}</span>

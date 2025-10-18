@@ -12,7 +12,6 @@ interface StockTrendsProps {
     change: number;
     changePercent: number;
   }>;
-  currencySymbol?: string;
 }
 
 interface PriceDataPoint {
@@ -22,25 +21,14 @@ interface PriceDataPoint {
 
 const formatAxisDate = (timestamp: string) => {
   const date = new Date(timestamp);
-  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-const formatTooltipDate = (timestamp: string) => {
-  const date = new Date(timestamp);
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  });
-};
-
-const formatAxisPrice = (price: number, symbol: string = '$') => {
+const formatAxisPrice = (price: number) => {
   if (price >= 1000) {
-    return `${symbol}${(price / 1000).toFixed(1)}k`;
+    return `$${(price / 1000).toFixed(1)}k`;
   }
-  return `${symbol}${price.toFixed(0)}`;
+  return `$${price.toFixed(0)}`;
 };
 
 interface StockData {
@@ -60,14 +48,14 @@ interface HoverData {
   index: number;
 }
 
-export const StockTrends: React.FC<StockTrendsProps> = ({ data, currencySymbol = '$' }) => {
+export const StockTrends: React.FC<StockTrendsProps> = ({ data }) => {
   const [stocksData, setStocksData] = useState<Map<string, StockData>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [hoverData, setHoverData] = useState<Map<string, HoverData | null>>(new Map());
 
   const fetchStockDataFromDatabase = async (symbol: string): Promise<StockData | null> => {
     try {
-      console.log(`📊 Fetching ${symbol} intraday data from database...`);
+      console.log(`📊 Fetching ${symbol} from database...`);
 
       const { data: stockData, error: stockError } = await supabase
         .from('stocks')
@@ -80,28 +68,24 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data, currencySymbol =
         return null;
       }
 
-      // Get the last 20 data points for intraday view from the parent table
       const { data: priceData, error: priceError } = await supabase
-        .from('stock_prices')
+        .from('stock_prices_30d')
         .select('timestamp, close_price')
         .eq('stock_id', stockData.id)
-        .eq('resolution', '1h')
-        .order('timestamp', { ascending: false })
-        .limit(20);
+        .order('timestamp', { ascending: true });
 
       if (priceError || !priceData || priceData.length === 0) {
-        console.warn(`⚠️ No intraday price data available for ${symbol}`);
+        console.warn(`⚠️ No 30-day price data for ${symbol}`);
         return null;
       }
 
-      // Reverse the data to get ascending order (oldest to newest)
-      const reversedData = [...priceData].reverse();
-      const prices = reversedData.map((p: PriceDataPoint) => p.close_price);
-      const timestamps = reversedData.map((p: PriceDataPoint) => p.timestamp);
+      const prices = priceData.map((p: PriceDataPoint) => p.close_price);
+      const timestamps = priceData.map((p: PriceDataPoint) => p.timestamp);
       const firstPrice = prices[0];
+      const lastPrice = prices[prices.length - 1];
       const changePercent = ((stockData.current_price - firstPrice) / firstPrice) * 100;
 
-      console.log(`✅ Loaded ${prices.length} intraday data points for ${symbol}. Current price: $${stockData.current_price}, Change: ${changePercent.toFixed(2)}%`);
+      console.log(`✅ Loaded ${prices.length} data points for ${symbol} from database. Current price: $${stockData.current_price}`);
 
       return {
         symbol,
@@ -169,10 +153,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data, currencySymbol =
   return (
     <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-semibold text-white">Top 3 Positions</h2>
-          <p className="text-xs text-gray-400 mt-1">Last 20 data points (US market hours: 9:30 AM - 4:00 PM ET)</p>
-        </div>
+        <h2 className="text-xl font-semibold text-white">Top 3 Positions</h2>
         {isLoading && (
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
@@ -205,18 +186,17 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data, currencySymbol =
 
           const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
             const rect = e.currentTarget.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const percentage = mouseX / rect.width;
+            const x = e.clientX - rect.left;
+            const percentage = x / rect.width;
             const index = Math.round(percentage * (trendPrices.length - 1));
 
             if (index >= 0 && index < trendPrices.length) {
               const price = trendPrices[index];
-              const x = (index / (trendPrices.length - 1)) * 100;
               const y = priceRange > 0 ? ((maxPrice - price) / priceRange) * 80 + 10 : 50;
               const date = stockData?.timestamps?.[index] || '';
 
               setHoverData(prev => new Map(prev).set(stock.symbol, {
-                x,
+                x: percentage * 100,
                 y,
                 price,
                 date,
@@ -246,7 +226,7 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data, currencySymbol =
                   <div className="text-sm text-gray-400">{stock.name}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xl font-bold text-white">
+                  <div className="text-2xl font-bold text-white">
                     {formatCurrency(displayPrice * stock.shares)}
                   </div>
                   <div className="text-xs text-gray-400 mt-0.5">
@@ -292,32 +272,6 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data, currencySymbol =
                           }).join(' ')}
                         />
 
-                        {/* Day separator lines */}
-                        {stockData?.timestamps && stockData.timestamps.map((timestamp, i) => {
-                          if (i === 0) return null;
-                          const currentDate = new Date(timestamp).toDateString();
-                          const previousDate = new Date(stockData.timestamps[i - 1]).toDateString();
-
-                          if (currentDate !== previousDate) {
-                            const x = (i / (trendPrices.length - 1)) * 100;
-                            return (
-                              <line
-                                key={`separator-${i}`}
-                                x1={x}
-                                y1="0"
-                                x2={x}
-                                y2="100"
-                                stroke="#6b7280"
-                                strokeWidth="0.5"
-                                strokeDasharray="3,3"
-                                vectorEffect="non-scaling-stroke"
-                                opacity="0.5"
-                              />
-                            );
-                          }
-                          return null;
-                        })}
-
                         {currentHover && (
                           <>
                             <line
@@ -350,15 +304,11 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data, currencySymbol =
                           className="absolute bg-gray-950/50 text-white text-xs rounded-lg px-3 py-2 pointer-events-none z-10 shadow-xl border border-gray-700/50 backdrop-blur-sm"
                           style={{
                             left: `${currentHover.x}%`,
-                            top: `${currentHover.y}%`,
-                            transform: (() => {
-                              const xTransform = currentHover.x > 50 ? '-110%' : '10%';
-                              const yTransform = currentHover.y > 70 ? '-110%' : currentHover.y < 30 ? '10%' : '-50%';
-                              return `translate(${xTransform}, ${yTransform})`;
-                            })()
+                            top: '50%',
+                            transform: currentHover.x > 50 ? 'translate(-110%, -50%)' : 'translate(10%, -50%)'
                           }}
                         >
-                          <div className="font-medium mb-1">{formatTooltipDate(currentHover.date)}</div>
+                          <div className="font-medium mb-1">{formatAxisDate(currentHover.date)}</div>
                           <div className="flex items-center space-x-2">
                             <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                             <span className="font-semibold">{stock.symbol}:</span>
@@ -367,17 +317,11 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data, currencySymbol =
                         </div>
                       )}
 
-                      <div
-                        className="absolute right-2 text-[10px] text-gray-500 pointer-events-none"
-                        style={{ top: `${priceRange > 0 ? 10 : 50}%`, transform: 'translateY(-50%)' }}
-                      >
-                        max: {formatAxisPrice(maxPrice, currencySymbol)}
+                      <div className="absolute right-2 top-2 text-[10px] text-gray-500 pointer-events-none">
+                        max: {formatAxisPrice(maxPrice)}
                       </div>
-                      <div
-                        className="absolute right-2 text-[10px] text-gray-500 pointer-events-none"
-                        style={{ top: `${priceRange > 0 ? 90 : 50}%`, transform: 'translateY(-50%)' }}
-                      >
-                        min: {formatAxisPrice(minPrice, currencySymbol)}
+                      <div className="absolute right-2 bottom-2 text-[10px] text-gray-500 pointer-events-none">
+                        min: {formatAxisPrice(minPrice)}
                       </div>
                     </>
                   ) : (
@@ -391,13 +335,16 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data, currencySymbol =
                   const timestamps = stockData.timestamps;
                   const firstDate = timestamps[0];
                   const lastDate = timestamps[timestamps.length - 1];
-                  const midIndex = Math.floor(timestamps.length / 2);
-                  const midDate = timestamps[midIndex];
+                  const midIndex1 = Math.floor(timestamps.length / 3);
+                  const midIndex2 = Math.floor((timestamps.length * 2) / 3);
+                  const midDate1 = timestamps[midIndex1];
+                  const midDate2 = timestamps[midIndex2];
 
                   return (
                     <div className="flex justify-between items-center text-[10px] text-gray-500 mt-1 px-1">
                       <span>{formatAxisDate(firstDate)}</span>
-                      <span>{formatAxisDate(midDate)}</span>
+                      <span>{formatAxisDate(midDate1)}</span>
+                      <span>{formatAxisDate(midDate2)}</span>
                       <span>{formatAxisDate(lastDate)}</span>
                     </div>
                   );
