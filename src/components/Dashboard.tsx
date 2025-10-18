@@ -541,6 +541,12 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
   console.log('📊 [Dashboard] Holdings count:', holdings.length);
   console.log('📊 [Dashboard] Current portfolio:', currentPortfolio?.id);
 
+  // Recalculate percentage after currency conversion to ensure accuracy
+  const convertedTotalValue = convertCurrency(currentPortfolioData.totalValue);
+  const convertedTotalCost = convertCurrency(currentPortfolioData.totalCost);
+  const convertedTotalGainLoss = convertedTotalValue - convertedTotalCost;
+  const convertedTotalGainLossPercent = convertedTotalCost > 0 ? (convertedTotalGainLoss / convertedTotalCost) * 100 : 0;
+
   const totalValue = currentPortfolioData.totalValue;
 
   if (isAdminOpen && isAdmin) {
@@ -736,17 +742,17 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-gray-400 text-sm mb-1">Total Profit</p>
-                  <p className={`text-xl font-bold break-words ${currentPortfolioData.totalGainLoss >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {currentPortfolioData.totalGainLoss >= 0 ? '+' : ''}{formatCurrency(currentPortfolioData.totalGainLoss)}
-                    <span className={`text-base ml-2 ${currentPortfolioData.totalGainLossPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {currentPortfolioData.totalGainLossPercent >= 0 ? '+' : ''}{currentPortfolioData.totalGainLossPercent.toFixed(2)}%
+                  <p className={`text-xl font-bold break-words ${convertedTotalGainLoss >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {convertedTotalGainLoss >= 0 ? '+' : ''}{formatCurrency(currentPortfolioData.totalGainLoss)}
+                    <span className={`text-base ml-2 ${convertedTotalGainLossPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {convertedTotalGainLossPercent >= 0 ? '+' : ''}{convertedTotalGainLossPercent.toFixed(2)}%
                     </span>
                   </p>
                   <p className={`text-sm mt-2 break-words ${todaysChange.value >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {todaysChange.value >= 0 ? '+' : ''}{formatCurrency(todaysChange.value)} {todaysChange.value >= 0 ? '+' : ''}{todaysChange.percentage.toFixed(2)}% daily
                   </p>
                 </div>
-                {currentPortfolioData.totalGainLoss >= 0 ? (
+                {convertedTotalGainLoss >= 0 ? (
                   <TrendingUp className="w-8 h-8 text-emerald-400 flex-shrink-0" />
                 ) : (
                   <TrendingDown className="w-8 h-8 text-red-400 flex-shrink-0" />
@@ -818,16 +824,23 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
               {currentPortfolioData.holdings.length > 0 ? (
                 <div className="flex-1">
                   <PortfolioChart
-                    data={currentPortfolioData.holdings.map(holding => ({
-                      symbol: holding.symbol,
-                      name: holding.name,
-                      shares: holding.shares,
-                      price: convertCurrency(holding.currentPrice),
-                      value: convertCurrency(holding.totalValue),
-                      cost: convertCurrency(holding.shares * holding.averageCost),
-                      change: convertCurrency(holding.gainLoss),
-                      changePercent: holding.gainLossPercent
-                    }))}
+                    data={currentPortfolioData.holdings.map(holding => {
+                      const convertedValue = convertCurrency(holding.totalValue);
+                      const convertedCost = convertCurrency(holding.shares * holding.averageCost);
+                      const convertedChange = convertedValue - convertedCost;
+                      const convertedChangePercent = convertedCost > 0 ? (convertedChange / convertedCost) * 100 : 0;
+
+                      return {
+                        symbol: holding.symbol,
+                        name: holding.name,
+                        shares: holding.shares,
+                        price: convertCurrency(holding.currentPrice),
+                        value: convertedValue,
+                        cost: convertedCost,
+                        change: convertedChange,
+                        changePercent: convertedChangePercent
+                      };
+                    })}
                     onHover={setHoveredStock}
                     hoveredStock={hoveredStock}
                     currencySymbol={getCurrencySymbol()}
