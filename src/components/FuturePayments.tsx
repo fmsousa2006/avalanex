@@ -97,7 +97,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
     try {
       setLoading(true);
 
-      // Get portfolio holdings
+      // Get portfolio holdings with first purchase date
       const { data: holdings, error: holdingsError } = await supabase
         .from('portfolio_holdings')
         .select(`
@@ -106,6 +106,14 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
         `)
         .eq('portfolio_id', portfolioId)
         .gt('shares', 0);
+
+      // Get first purchase date for each stock
+      const { data: transactions, error: transactionsError } = await supabase
+        .from('transactions')
+        .select('stock_id, transaction_date, type')
+        .eq('portfolio_id', portfolioId)
+        .eq('type', 'buy')
+        .order('transaction_date', { ascending: true });
 
       if (holdingsError || !holdings || holdings.length === 0) {
         console.log('📊 [FutureDividends] No holdings found, using mock data');
@@ -116,8 +124,17 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
         return;
       }
 
-      // Get stock IDs
+      // Get stock IDs and create a map of first purchase dates
       const stockIds = holdings.map(h => h.stock?.id).filter(Boolean);
+      const firstPurchaseDates: { [stockId: string]: string } = {};
+
+      if (transactions) {
+        transactions.forEach(tx => {
+          if (!firstPurchaseDates[tx.stock_id]) {
+            firstPurchaseDates[tx.stock_id] = tx.transaction_date;
+          }
+        });
+      }
 
       if (stockIds.length === 0) {
         setMonthlyDividends([]);
@@ -159,11 +176,23 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
       today.setHours(23, 59, 59, 999);
 
       dividends.forEach(dividend => {
-        const date = new Date(dividend.payment_date + 'T00:00:00');
-        const monthKey = months[date.getMonth()];
         const holding = holdings.find(h => h.stock?.id === dividend.stock_id);
-        const totalAmount = holding ? holding.shares * dividend.amount : dividend.amount;
-        const isPaid = date <= today;
+
+        if (!holding) return;
+
+        const exDividendDate = new Date(dividend.ex_dividend_date + 'T00:00:00');
+        const firstPurchaseDate = firstPurchaseDates[dividend.stock_id]
+          ? new Date(firstPurchaseDates[dividend.stock_id] + 'T00:00:00')
+          : null;
+
+        if (firstPurchaseDate && exDividendDate < firstPurchaseDate) {
+          return;
+        }
+
+        const paymentDate = new Date(dividend.payment_date + 'T00:00:00');
+        const monthKey = months[paymentDate.getMonth()];
+        const totalAmount = holding.shares * dividend.amount;
+        const isPaid = paymentDate <= today;
 
         if (!monthlyData[monthKey]) {
           monthlyData[monthKey] = {

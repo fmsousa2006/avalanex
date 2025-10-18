@@ -84,6 +84,23 @@ const DividendCalendar: React.FC<DividendCalendarProps> = ({ isOpen, onClose, po
         return;
       }
 
+      // Get first purchase date for each stock
+      const { data: transactions, error: transactionsError } = await supabase
+        .from('transactions')
+        .select('stock_id, transaction_date, type')
+        .eq('portfolio_id', portfolioId)
+        .eq('type', 'buy')
+        .order('transaction_date', { ascending: true });
+
+      const firstPurchaseDates: { [stockId: string]: string } = {};
+      if (transactions) {
+        transactions.forEach(tx => {
+          if (!firstPurchaseDates[tx.stock_id]) {
+            firstPurchaseDates[tx.stock_id] = tx.transaction_date;
+          }
+        });
+      }
+
       // Get dividends for these stocks in the current month
       const { data: dividends, error: dividendsError } = await supabase
         .from('dividends')
@@ -110,8 +127,16 @@ const DividendCalendar: React.FC<DividendCalendarProps> = ({ isOpen, onClose, po
       const calendarData: CalendarDividend[] = [];
 
       dividends.forEach(dividend => {
-        const paymentDate = new Date(dividend.payment_date);
         const exDividendDate = new Date(dividend.ex_dividend_date);
+        const firstPurchaseDate = firstPurchaseDates[dividend.stock_id]
+          ? new Date(firstPurchaseDates[dividend.stock_id] + 'T00:00:00')
+          : null;
+
+        if (firstPurchaseDate && exDividendDate < firstPurchaseDate) {
+          return;
+        }
+
+        const paymentDate = new Date(dividend.payment_date);
 
         // Add payment date if it's in the current month
         if (paymentDate.getMonth() === month && paymentDate.getFullYear() === year) {
