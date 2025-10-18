@@ -947,6 +947,8 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
               key={futureDividendsKey}
               portfolioId={currentPortfolio?.id}
               onCalendarClick={() => setIsDividendCalendarOpen(true)}
+              selectedCurrency={selectedCurrency}
+              exchangeRate={exchangeRate}
             />
           </div>
 

@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase';
 interface FutureDividendsProps {
   portfolioId?: string;
   onCalendarClick?: () => void;
+  selectedCurrency?: 'USD' | 'EUR';
+  exchangeRate?: number;
 }
 
 interface MonthlyDividend {
@@ -19,7 +21,7 @@ interface MonthlyDividend {
   }>;
 }
 
-const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalendarClick }) => {
+const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalendarClick, selectedCurrency = 'USD', exchangeRate = 1 }) => {
   const [monthlyDividends, setMonthlyDividends] = useState<MonthlyDividend[]>([]);
   const [loading, setLoading] = useState(true);
   const [next12MonthsTotal, setNext12MonthsTotal] = useState(0);
@@ -73,6 +75,10 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
   };
 
   // Fetch future dividend payments from Supabase
+  const getCurrencySymbol = () => {
+    return selectedCurrency === 'EUR' ? '€' : '$';
+  };
+
   const fetchFutureDividends = async () => {
     const supabaseConfigured = isSupabaseEnvConfigured();
     
@@ -191,7 +197,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
 
         const paymentDate = new Date(dividend.payment_date + 'T00:00:00');
         const monthKey = months[paymentDate.getMonth()];
-        const totalAmount = holding.shares * dividend.amount;
+        const totalAmount = holding.shares * dividend.amount * exchangeRate;
         const isPaid = paymentDate <= today;
 
         if (!monthlyData[monthKey]) {
@@ -251,7 +257,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
 
   useEffect(() => {
     fetchFutureDividends();
-  }, [portfolioId]);
+  }, [portfolioId, selectedCurrency, exchangeRate]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -325,7 +331,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                 <span className="text-gray-400 text-sm">Next 12m</span>
               </div>
               <div className="text-xl font-bold text-white">
-                ${next12MonthsTotal.toFixed(2)}
+                {getCurrencySymbol()}{next12MonthsTotal.toFixed(2)}
               </div>
             </div>
             <div>
@@ -334,7 +340,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                 <span className="text-gray-400 text-sm">Monthly</span>
               </div>
               <div className="text-xl font-bold text-white">
-                ${monthlyAverage.toFixed(2)}
+                {getCurrencySymbol()}{monthlyAverage.toFixed(2)}
               </div>
             </div>
           </div>
@@ -356,7 +362,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                       textAlign: 'right'
                     }}
                   >
-                    ${value.toFixed(0)}
+                    {getCurrencySymbol()}{value.toFixed(0)}
                   </div>
                 );
               })}
@@ -384,7 +390,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                   }}
                 >
                   <span className="absolute right-0 -top-3 text-xs text-blue-400">
-                    avg ${monthlyAverage.toFixed(2)}
+                    avg {getCurrencySymbol()}{monthlyAverage.toFixed(2)}
                   </span>
                 </div>
               )}
@@ -419,20 +425,20 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                         }}
                       >
                         <div className="text-white font-medium mb-3">
-                          {month.month}: ${month.amount.toFixed(2)}
+                          {month.month}: {getCurrencySymbol()}{month.amount.toFixed(2)}
                         </div>
 
                         <div className="space-y-2">
                           {isCurrentMonth && hasPaidDividends && (
                             <div className="flex items-center gap-2 text-sm">
                               <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-                              <span className="text-gray-300">Paid: ${month.paidAmount.toFixed(2)}</span>
+                              <span className="text-gray-300">Paid: {getCurrencySymbol()}{month.paidAmount.toFixed(2)}</span>
                             </div>
                           )}
                           <div className="flex items-center gap-2 text-sm">
                             <div className="w-3 h-3 rounded-full bg-blue-400"></div>
                             <span className="text-gray-300">
-                              {isCurrentMonth && hasPaidDividends ? 'Declared' : 'Declared'}: ${(month.amount - (isCurrentMonth && hasPaidDividends ? month.paidAmount : 0)).toFixed(2)}
+                              {isCurrentMonth && hasPaidDividends ? 'Declared' : 'Declared'}: {getCurrencySymbol()}{(month.amount - (isCurrentMonth && hasPaidDividends ? month.paidAmount : 0)).toFixed(2)}
                             </span>
                           </div>
                         </div>
@@ -450,7 +456,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                                 return (
                                   <div key={idx} className="flex items-center gap-2 text-sm">
                                     <div className={`w-2 h-2 rounded-full ${payment.isPaid ? 'bg-purple-500' : 'bg-blue-400'}`}></div>
-                                    <span className="text-gray-400">{payment.symbol}: ${payment.amount.toFixed(2)} @ {formattedDate}</span>
+                                    <span className="text-gray-400">{payment.symbol}: {getCurrencySymbol()}{payment.amount.toFixed(2)} @ {formattedDate}</span>
                                   </div>
                                 );
                               })}
@@ -465,7 +471,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                       {/* Amount label on top of bar */}
                       {month.amount > 0 && (
                         <div className="text-xs font-medium text-gray-300 mb-1">
-                          ${month.amount.toFixed(0)}
+                          {getCurrencySymbol()}{month.amount.toFixed(0)}
                         </div>
                       )}
 
