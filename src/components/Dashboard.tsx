@@ -547,6 +547,13 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
   const convertedTotalGainLoss = convertedTotalValue - convertedTotalCost;
   const convertedTotalGainLossPercent = convertedTotalCost > 0 ? (convertedTotalGainLoss / convertedTotalCost) * 100 : 0;
 
+  // Recalculate daily change percentage after currency conversion
+  const convertedDailyChangeValue = convertCurrency(todaysChange.value);
+  const convertedTotalValueYesterday = convertedTotalValue - convertedDailyChangeValue;
+  const convertedDailyChangePercent = convertedTotalValueYesterday > 0
+    ? (convertedDailyChangeValue / convertedTotalValueYesterday) * 100
+    : 0;
+
   const totalValue = currentPortfolioData.totalValue;
 
   if (isAdminOpen && isAdmin) {
@@ -748,8 +755,8 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
                       {convertedTotalGainLossPercent >= 0 ? '+' : ''}{convertedTotalGainLossPercent.toFixed(2)}%
                     </span>
                   </p>
-                  <p className={`text-sm mt-2 break-words ${todaysChange.value >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {todaysChange.value >= 0 ? '+' : ''}{formatCurrency(todaysChange.value)} {todaysChange.value >= 0 ? '+' : ''}{todaysChange.percentage.toFixed(2)}% daily
+                  <p className={`text-sm mt-2 break-words ${convertedDailyChangeValue >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {convertedDailyChangeValue >= 0 ? '+' : ''}{formatCurrency(todaysChange.value)} {convertedDailyChangeValue >= 0 ? '+' : ''}{convertedDailyChangePercent.toFixed(2)}% daily
                   </p>
                 </div>
                 {convertedTotalGainLoss >= 0 ? (
@@ -884,12 +891,19 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
               type="gainers"
               data={currentPortfolioData.holdings.map(holding => {
                 const dailyChange = stockDailyChanges.get(holding.symbol);
+                const convertedCurrentPrice = convertCurrency(holding.currentPrice);
+                const convertedChangeValue = convertCurrency(dailyChange?.change || 0);
+                const convertedPreviousPrice = convertedCurrentPrice - (convertedChangeValue / holding.shares);
+                const convertedChangePercent = convertedPreviousPrice > 0
+                  ? (convertedChangeValue / (convertedPreviousPrice * holding.shares)) * 100
+                  : 0;
+
                 return {
                   symbol: holding.symbol,
                   name: holding.name,
-                  value: convertCurrency(holding.currentPrice),
-                  change: convertCurrency(dailyChange?.change || 0),
-                  changePercent: dailyChange?.changePercent || 0
+                  value: convertedCurrentPrice,
+                  change: convertedChangeValue,
+                  changePercent: convertedChangePercent
                 };
               })}
               currencySymbol={getCurrencySymbol()}
@@ -900,12 +914,19 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
               type="losers"
               data={currentPortfolioData.holdings.map(holding => {
                 const dailyChange = stockDailyChanges.get(holding.symbol);
+                const convertedCurrentPrice = convertCurrency(holding.currentPrice);
+                const convertedChangeValue = convertCurrency(dailyChange?.change || 0);
+                const convertedPreviousPrice = convertedCurrentPrice - (convertedChangeValue / holding.shares);
+                const convertedChangePercent = convertedPreviousPrice > 0
+                  ? (convertedChangeValue / (convertedPreviousPrice * holding.shares)) * 100
+                  : 0;
+
                 return {
                   symbol: holding.symbol,
                   name: holding.name,
-                  value: convertCurrency(holding.currentPrice),
-                  change: convertCurrency(dailyChange?.change || 0),
-                  changePercent: dailyChange?.changePercent || 0
+                  value: convertedCurrentPrice,
+                  change: convertedChangeValue,
+                  changePercent: convertedChangePercent
                 };
               })}
               currencySymbol={getCurrencySymbol()}
