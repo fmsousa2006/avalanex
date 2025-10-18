@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal, Wallet, Instagram, Mail, Facebook, Youtube, Shield, MoreVertical, Star } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Calendar, BarChart3, PieChart, Activity, Menu, Plus, MoreHorizontal, Wallet, Instagram, Mail, Facebook, Youtube, Shield, MoreVertical, Star, ChevronDown } from 'lucide-react';
 import { usePortfolio } from '../hooks/usePortfolio';
 import { useStockPrices } from '../hooks/useStockPrices';
 import PortfolioChart from './PortfolioChart';
@@ -77,6 +77,9 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
   const portfolioDropdownRef = useRef<HTMLDivElement>(null);
   const [isTransactionsDropdownOpen, setIsTransactionsDropdownOpen] = useState(false);
   const transactionsDropdownRef = useRef<HTMLDivElement>(null);
+  const [isCurrencyDropdownOpen, setIsCurrencyDropdownOpen] = useState(false);
+  const currencyDropdownRef = useRef<HTMLDivElement>(null);
+  const [selectedCurrency, setSelectedCurrency] = useState<'USD' | 'EUR'>('USD');
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
   const [editTransaction, setEditTransaction] = useState<{
@@ -183,16 +186,19 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
       if (transactionsDropdownRef.current && !transactionsDropdownRef.current.contains(event.target as Node)) {
         setIsTransactionsDropdownOpen(false);
       }
+      if (currencyDropdownRef.current && !currencyDropdownRef.current.contains(event.target as Node)) {
+        setIsCurrencyDropdownOpen(false);
+      }
     };
 
-    if (isPortfolioDropdownOpen || isTransactionsDropdownOpen) {
+    if (isPortfolioDropdownOpen || isTransactionsDropdownOpen || isCurrencyDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isPortfolioDropdownOpen, isTransactionsDropdownOpen]);
+  }, [isPortfolioDropdownOpen, isTransactionsDropdownOpen, isCurrencyDropdownOpen]);
 
   // Add this logout handler function to your Dashboard component
   const handleLogout = async () => {
@@ -547,6 +553,81 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
             </div>
 
             <div className="flex items-center space-x-3">
+              {/* Currency Selector */}
+              <div className="relative" ref={isCurrencyDropdownOpen ? currencyDropdownRef : null}>
+                <button
+                  onClick={() => setIsCurrencyDropdownOpen(!isCurrencyDropdownOpen)}
+                  className="flex items-center space-x-2 px-3 py-2 hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  <span className="text-blue-400 font-semibold">{selectedCurrency}</span>
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                </button>
+
+                {isCurrencyDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50">
+                    <button
+                      onClick={() => {
+                        setSelectedCurrency('USD');
+                        setIsCurrencyDropdownOpen(false);
+                      }}
+                      className={`w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors flex items-center space-x-3 ${
+                        selectedCurrency === 'USD' ? 'bg-gray-700' : ''
+                      }`}
+                    >
+                      <div className="w-8 h-6 rounded overflow-hidden flex-shrink-0">
+                        <svg viewBox="0 0 60 30" className="w-full h-full">
+                          <clipPath id="s">
+                            <path d="M0,0 v30 h60 v-30 z"/>
+                          </clipPath>
+                          <clipPath id="t">
+                            <path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/>
+                          </clipPath>
+                          <g clipPath="url(#s)">
+                            <path d="M0,0 v30 h60 v-30 z" fill="#b22234"/>
+                            <path d="M0,3.5 h60 M0,7 h60 M0,10.5 h60 M0,14 h60 M0,17.5 h60 M0,21 h60 M0,24.5 h60 M0,28 h60" stroke="#fff" strokeWidth="2.3"/>
+                            <path d="M0,0 v15 h30 v-15 z" fill="#3c3b6e"/>
+                          </g>
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-white font-medium">USD</div>
+                        <div className="text-sm text-gray-400">US Dollar</div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setSelectedCurrency('EUR');
+                        setIsCurrencyDropdownOpen(false);
+                      }}
+                      className={`w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors flex items-center space-x-3 ${
+                        selectedCurrency === 'EUR' ? 'bg-gray-700' : ''
+                      }`}
+                    >
+                      <div className="w-8 h-6 rounded bg-blue-600 flex-shrink-0 flex items-center justify-center relative">
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-5 h-5 flex items-center justify-center">
+                            {[...Array(12)].map((_, i) => (
+                              <div
+                                key={i}
+                                className="absolute w-0.5 h-0.5 bg-yellow-400 rounded-full"
+                                style={{
+                                  transform: `rotate(${i * 30}deg) translateY(-7px)`
+                                }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-white font-medium">EUR</div>
+                        <div className="text-sm text-gray-400">Euro</div>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <button
                 onClick={onOpenWatchlist}
                 className="relative p-2 hover:bg-gray-700 rounded-lg transition-colors group"
