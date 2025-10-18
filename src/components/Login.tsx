@@ -244,7 +244,7 @@ const Login = ({ onShowSignUp, confirmationMessage, onClearMessage }: LoginProps
               )}
 
               {/* Forgot Password Link */}
-              {!isRecovery && !isSignUp && (
+              {!isRecovery && (
                 <div className="flex justify-end">
                   <button
                     type="button"
