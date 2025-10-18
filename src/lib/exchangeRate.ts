@@ -54,6 +54,8 @@ export class ExchangeRateService {
         .select('*')
         .eq('base_currency', baseCurrency)
         .eq('target_currency', targetCurrency)
+        .order('fetched_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (error) {
@@ -83,39 +85,21 @@ export class ExchangeRateService {
         return null;
       }
 
-      const existingRate = await this.getCachedRate(baseCurrency, targetCurrency);
+      const now = new Date().toISOString();
 
-      if (existingRate) {
-        const { error } = await supabase
-          .from('exchange_rates')
-          .update({
-            rate,
-            fetched_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('base_currency', baseCurrency)
-          .eq('target_currency', targetCurrency);
+      const { error } = await supabase
+        .from('exchange_rates')
+        .insert({
+          base_currency: baseCurrency,
+          target_currency: targetCurrency,
+          rate,
+          fetched_at: now
+        });
 
-        if (error) {
-          console.error(`❌ [ExchangeRate] Error updating rate:`, error);
-        } else {
-          console.log(`✅ [ExchangeRate] Updated cached rate for ${baseCurrency}/${targetCurrency}: ${rate}`);
-        }
+      if (error) {
+        console.error(`❌ [ExchangeRate] Error inserting rate:`, error);
       } else {
-        const { error } = await supabase
-          .from('exchange_rates')
-          .insert({
-            base_currency: baseCurrency,
-            target_currency: targetCurrency,
-            rate,
-            fetched_at: new Date().toISOString()
-          });
-
-        if (error) {
-          console.error(`❌ [ExchangeRate] Error inserting rate:`, error);
-        } else {
-          console.log(`✅ [ExchangeRate] Cached new rate for ${baseCurrency}/${targetCurrency}: ${rate}`);
-        }
+        console.log(`✅ [ExchangeRate] Cached new rate for ${baseCurrency}/${targetCurrency}: ${rate}`);
       }
 
       return rate;
