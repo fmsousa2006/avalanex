@@ -272,59 +272,36 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
 
     try {
       const userToDelete = deleteConfirmation.user;
+      console.log('Starting deletion for user:', userToDelete.email);
 
       await logAdminAction(userToDelete.id, 'account_deleted', {
         target_email: userToDelete.email
       });
 
-      await supabase
-        .from('watchlist')
-        .delete()
-        .eq('user_id', userToDelete.id);
+      const { data: { session } } = await supabase.auth.getSession();
 
-      const { data: portfolios } = await supabase
-        .from('portfolios')
-        .select('id')
-        .eq('user_id', userToDelete.id);
-
-      if (portfolios && portfolios.length > 0) {
-        const portfolioIds = portfolios.map(p => p.id);
-
-        await supabase
-          .from('portfolio_holdings')
-          .delete()
-          .in('portfolio_id', portfolioIds);
-
-        await supabase
-          .from('transactions')
-          .delete()
-          .in('portfolio_id', portfolioIds);
-
-        await supabase
-          .from('portfolios')
-          .delete()
-          .eq('user_id', userToDelete.id);
+      if (!session) {
+        throw new Error('No active session');
       }
 
-      await supabase
-        .from('admin_notes')
-        .delete()
-        .eq('user_id', userToDelete.id);
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`;
 
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .delete()
-        .eq('id', userToDelete.id);
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: userToDelete.id }),
+      });
 
-      if (profileError) throw profileError;
+      const result = await response.json();
 
-      const { error: subscriptionError } = await supabase
-        .from('user_subscriptions')
-        .delete()
-        .eq('user_id', userToDelete.id);
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete user');
+      }
 
-      if (subscriptionError) throw subscriptionError;
-
+      console.log('User deletion completed successfully!');
       fetchUsers();
       setDeleteConfirmation({ isOpen: false, user: null });
     } catch (error: any) {
