@@ -80,25 +80,12 @@ export const StockTrends: React.FC<StockTrendsProps> = ({ data, currencySymbol =
         return null;
       }
 
-      // Get the most recent day's worth of data (last 24 hours of available data)
-      const { data: latestPrice, error: latestError } = await supabase
-        .from('stock_prices_1h')
-        .select('timestamp')
-        .eq('stock_id', stockData.id)
-        .order('timestamp', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (latestError || !latestPrice) {
-        console.warn(`⚠️ No price data available for ${symbol}`);
-        return null;
-      }
-
-      // Get the last 20 data points for intraday view
+      // Get the last 20 data points for intraday view from the parent table
       const { data: priceData, error: priceError } = await supabase
-        .from('stock_prices_1h')
+        .from('stock_prices')
         .select('timestamp, close_price')
         .eq('stock_id', stockData.id)
+        .eq('resolution', '1h')
         .order('timestamp', { ascending: false })
         .limit(20);
 
