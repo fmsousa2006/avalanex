@@ -244,7 +244,7 @@ const Watchlist: React.FC<WatchlistProps> = ({ onBack }) => {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       <header className="bg-gray-800 border-b border-gray-700 sticky top-0 z-10">
         <div className="px-6 py-4">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between">
             <Logo1 size={40} />
             <button
               onClick={onBack}
@@ -253,17 +253,17 @@ const Watchlist: React.FC<WatchlistProps> = ({ onBack }) => {
               Back to Dashboard
             </button>
           </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
-              <h1 className="text-2xl font-bold text-white">Watchlist</h1>
-            </div>
-            <p className="text-sm text-gray-400 mt-1">Track stocks you're interested in • {watchlistItems.length} {watchlistItems.length === 1 ? 'stock' : 'stocks'} tracked</p>
-          </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
+        <div className="mb-8">
+          <div className="flex items-center space-x-2 mb-2">
+            <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
+            <h1 className="text-2xl font-bold text-white">Watchlist</h1>
+          </div>
+          <p className="text-sm text-gray-400">Track stocks you're interested in • {watchlistItems.length} {watchlistItems.length === 1 ? 'stock' : 'stocks'} tracked</p>
+        </div>
         <div className="mb-8 space-y-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
