@@ -779,7 +779,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
             <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold">Recent Transactions</h2>
-                <button 
+                <button
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -789,7 +789,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
                   className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
                   title="Add Transaction"
                 >
-                  <MoreHorizontal className="w-5 h-5" />
+                  <MoreVertical className="w-5 h-5" />
                 </button>
               </div>
               
