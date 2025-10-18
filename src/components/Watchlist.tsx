@@ -242,17 +242,15 @@ const Watchlist: React.FC<WatchlistProps> = ({ onBack }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-      <header className="bg-gray-800 border-b border-gray-700 sticky top-0 z-10">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <Logo1 size={40} />
-            <button
-              onClick={onBack}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm font-medium"
-            >
-              Back to Dashboard
-            </button>
-          </div>
+      <header className="bg-gray-800 border-b border-gray-700 sticky top-0 z-10 px-4 sm:px-6 py-4">
+        <div className="flex items-center justify-between">
+          <Logo1 size={48} />
+          <button
+            onClick={onBack}
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm font-medium"
+          >
+            Back to Dashboard
+          </button>
         </div>
       </header>
 
