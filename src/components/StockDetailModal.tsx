@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, TrendingUp, TrendingDown, Calendar, DollarSign, BarChart3, ExternalLink, Building2, Database } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { finnhubService } from '../lib/finnhub';
 
 interface StockDetailModalProps {
   isOpen: boolean;
@@ -21,6 +22,8 @@ interface StockData {
   dividendYield: number;
   week52Low: number;
   week52High: number;
+  week52LowDate?: string;
+  week52HighDate?: string;
   volume: string;
   avgVolume: string;
   priceData: {
@@ -101,7 +104,7 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
   const fetchHistoricalDataFromSupabase = async (stockSymbol: string) => {
     try {
       console.log(`🔍 [StockDetailModal] Starting data fetch for ${stockSymbol}...`);
-      
+
       // First get the stock ID
       const { data: stockInfo, error: stockError } = await supabase
         .from('stocks')
@@ -116,51 +119,145 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
 
       console.log(`✅ [StockDetailModal] Found stock info for ${stockSymbol}:`, stockInfo);
 
-      // Fetch 1-day historical data
-      const { data: priceData, error: priceError } = await supabase
+      const historicalData: {
+        [key: string]: {
+          prices: number[];
+          dates: string[];
+          change: number;
+          changePercent: number;
+        };
+      } = {};
+
+      // Helper function to convert price data to chart format
+      const convertToChartFormat = (priceData: any[]) => {
+        const prices = priceData.map(d => parseFloat(d.close_price));
+        const dates = priceData.map(d => d.timestamp);
+
+        const firstPrice = prices[0];
+        const lastPrice = prices[prices.length - 1];
+        const change = lastPrice - firstPrice;
+        const changePercent = (change / firstPrice) * 100;
+
+        return { prices, dates, change, changePercent };
+      };
+
+      // Calculate date ranges for different periods
+      const now = new Date();
+      const calculateDaysAgo = (days: number) => {
+        const date = new Date(now);
+        date.setDate(date.getDate() - days);
+        return date.toISOString();
+      };
+
+      // Fetch 1-day data (most recent 24 hourly data points available)
+      const { data: priceData1d, error: error1d } = await supabase
         .from('stock_prices_1d')
-        .select('timestamp, open_price, high_price, low_price, close_price, volume')
+        .select('timestamp, close_price')
         .eq('stock_id', stockInfo.id)
+        .order('timestamp', { ascending: false })
+        .limit(24);
+
+      if (!error1d && priceData1d && priceData1d.length > 0) {
+        // Reverse the data to show chronologically (oldest to newest)
+        const reversedData = [...priceData1d].reverse();
+        historicalData['1d'] = convertToChartFormat(reversedData);
+        console.log(`📊 [StockDetailModal] Fetched ${priceData1d.length} 1-day records`);
+      }
+
+      // Fetch 7-day data
+      const { data: priceData7d, error: error7d } = await supabase
+        .from('stock_prices_30d')
+        .select('timestamp, close_price')
+        .eq('stock_id', stockInfo.id)
+        .gte('timestamp', calculateDaysAgo(7))
         .order('timestamp', { ascending: true });
 
-      if (priceError) {
-        console.error(`❌ [StockDetailModal] Error fetching price data:`, priceError);
-        return null;
+      if (!error7d && priceData7d && priceData7d.length > 0) {
+        historicalData['7d'] = convertToChartFormat(priceData7d);
+        console.log(`📊 [StockDetailModal] Fetched ${priceData7d.length} 7-day records`);
       }
 
-      console.log(`📊 [StockDetailModal] Fetched ${priceData?.length || 0} price records for ${stockSymbol}`);
-      if (priceData && priceData.length > 0) {
-        console.log(`📊 [StockDetailModal] Sample data:`, priceData.slice(0, 3));
+      // Fetch 30-day data
+      const { data: priceData30d, error: error30d } = await supabase
+        .from('stock_prices_30d')
+        .select('timestamp, close_price')
+        .eq('stock_id', stockInfo.id)
+        .gte('timestamp', calculateDaysAgo(30))
+        .order('timestamp', { ascending: true });
+
+      if (!error30d && priceData30d && priceData30d.length > 0) {
+        historicalData['30d'] = convertToChartFormat(priceData30d);
+        console.log(`📊 [StockDetailModal] Fetched ${priceData30d.length} 30-day records`);
       }
 
-      if (!priceData || priceData.length === 0) {
-        return {
-          stockInfo,
-          historicalData: null
-        };
+      // Fetch 3-month data (90 days)
+      const { data: priceData3m, error: error3m } = await supabase
+        .from('stock_prices_30d')
+        .select('timestamp, close_price')
+        .eq('stock_id', stockInfo.id)
+        .gte('timestamp', calculateDaysAgo(90))
+        .order('timestamp', { ascending: true });
+
+      if (!error3m && priceData3m && priceData3m.length > 0) {
+        historicalData['3m'] = convertToChartFormat(priceData3m);
+        console.log(`📊 [StockDetailModal] Fetched ${priceData3m.length} 3-month records`);
       }
 
-      // Convert to chart format
-      const prices = priceData.map(d => parseFloat(d.close_price));
-      const dates = priceData.map(d => d.timestamp);
-      
-      const firstPrice = prices[0];
-      const lastPrice = prices[prices.length - 1];
-      const change = lastPrice - firstPrice;
-      const changePercent = (change / firstPrice) * 100;
+      // Fetch 6-month data (180 days)
+      const { data: priceData6m, error: error6m } = await supabase
+        .from('stock_prices_30d')
+        .select('timestamp, close_price')
+        .eq('stock_id', stockInfo.id)
+        .gte('timestamp', calculateDaysAgo(180))
+        .order('timestamp', { ascending: true });
 
-      const historicalData = {
-        '1d': {
-          prices,
-          dates,
-          change,
-          changePercent
-        }
-      };
+      if (!error6m && priceData6m && priceData6m.length > 0) {
+        historicalData['6m'] = convertToChartFormat(priceData6m);
+        console.log(`📊 [StockDetailModal] Fetched ${priceData6m.length} 6-month records`);
+      }
+
+      // Fetch 1-year data (365 days)
+      const { data: priceData1y, error: error1y } = await supabase
+        .from('stock_prices_30d')
+        .select('timestamp, close_price')
+        .eq('stock_id', stockInfo.id)
+        .gte('timestamp', calculateDaysAgo(365))
+        .order('timestamp', { ascending: true });
+
+      if (!error1y && priceData1y && priceData1y.length > 0) {
+        historicalData['1y'] = convertToChartFormat(priceData1y);
+        console.log(`📊 [StockDetailModal] Fetched ${priceData1y.length} 1-year records`);
+      }
+
+      // Fetch 3-year data (1095 days)
+      const { data: priceData3y, error: error3y } = await supabase
+        .from('stock_prices_30d')
+        .select('timestamp, close_price')
+        .eq('stock_id', stockInfo.id)
+        .gte('timestamp', calculateDaysAgo(1095))
+        .order('timestamp', { ascending: true });
+
+      if (!error3y && priceData3y && priceData3y.length > 0) {
+        historicalData['3y'] = convertToChartFormat(priceData3y);
+        console.log(`📊 [StockDetailModal] Fetched ${priceData3y.length} 3-year records`);
+      }
+
+      // Fetch 5-year data (1825 days)
+      const { data: priceData5y, error: error5y } = await supabase
+        .from('stock_prices_30d')
+        .select('timestamp, close_price')
+        .eq('stock_id', stockInfo.id)
+        .gte('timestamp', calculateDaysAgo(1825))
+        .order('timestamp', { ascending: true });
+
+      if (!error5y && priceData5y && priceData5y.length > 0) {
+        historicalData['5y'] = convertToChartFormat(priceData5y);
+        console.log(`📊 [StockDetailModal] Fetched ${priceData5y.length} 5-year records`);
+      }
 
       return {
         stockInfo,
-        historicalData
+        historicalData: Object.keys(historicalData).length > 0 ? historicalData : null
       };
 
     } catch (error) {
@@ -177,11 +274,11 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
         mockData.name = `${stockName} (Unable to get real data from database)`;
         setStockData(mockData);
         setHasHistoricalData(false);
-        
+
         try {
           // Try to fetch real historical data from Supabase
           const result = await fetchHistoricalDataFromSupabase(stockSymbol);
-          
+
           if (!result) {
             console.warn('⚠️ [StockDetailModal] No stock data found in database, using mock data');
             setStockData(generateMockData());
@@ -190,6 +287,21 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
           }
 
           const { stockInfo, historicalData } = result;
+
+          // Fetch 52-week range from Finnhub Basic Financials API
+          const basicFinancials = await finnhubService.getBasicFinancials(stockSymbol);
+
+          let week52Low = stockSymbol === 'O' ? 52.10 : 168.2;
+          let week52High = stockSymbol === 'O' ? 62.40 : 178.4;
+          let week52LowDate = 'Jan 2024';
+          let week52HighDate = 'Dec 2024';
+
+          if (basicFinancials?.metric) {
+            week52Low = basicFinancials.metric['52WeekLow'] || week52Low;
+            week52High = basicFinancials.metric['52WeekHigh'] || week52High;
+            week52LowDate = basicFinancials.metric['52WeekLowDate'] || week52LowDate;
+            week52HighDate = basicFinancials.metric['52WeekHighDate'] || week52HighDate;
+          }
 
           // Build stock data object
           const realStockData: StockData = {
@@ -202,23 +314,37 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
             peRatio: stockSymbol === 'O' ? 15.8 : 28.5,
             dividend: stockSymbol === 'O' ? 3.00 : 0.96,
             dividendYield: stockSymbol === 'O' ? 5.15 : 0.55,
-            week52Low: stockSymbol === 'O' ? 52.10 : 168.2,
-            week52High: stockSymbol === 'O' ? 62.40 : 178.4,
+            week52Low,
+            week52High,
+            week52LowDate,
+            week52HighDate,
             volume: stockSymbol === 'O' ? '3.2M' : '45.2M',
             avgVolume: stockSymbol === 'O' ? '4.1M' : '52.8M',
             priceData: historicalData || {},
             news: generateMockNews()
           };
 
-          // If no historical data, generate mock data for other periods
-          if (!historicalData) {
+          // Check if we have any historical data
+          if (!historicalData || Object.keys(historicalData).length === 0) {
             realStockData.priceData = generateMockPriceData(realStockData.currentPrice);
             setHasHistoricalData(false);
           } else {
-            // Fill in missing periods with mock data
-            const allPeriods = generateMockPriceData(realStockData.currentPrice);
-            realStockData.priceData = { ...allPeriods, ...historicalData };
-            setHasHistoricalData(true);
+            // Use real data - only generate mock data for missing periods
+            const availablePeriods = Object.keys(historicalData);
+            const allPeriods = ['1d', '7d', '30d', '3m', '6m', '1y', '3y', '5y'];
+            const missingPeriods = allPeriods.filter(p => !availablePeriods.includes(p));
+
+            if (missingPeriods.length > 0) {
+              const mockData = generateMockPriceData(realStockData.currentPrice);
+              const mockForMissing: any = {};
+              missingPeriods.forEach(period => {
+                mockForMissing[period] = mockData[period];
+              });
+              realStockData.priceData = { ...mockForMissing, ...historicalData };
+            } else {
+              realStockData.priceData = historicalData;
+            }
+            setHasHistoricalData(availablePeriods.length > 0);
           }
 
           setStockData(realStockData);
@@ -802,7 +928,7 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
                   textAnchor="middle"
                   className="fill-red-400 text-sm font-semibold"
                 >
-                  $168.20
+                  ${stockData.week52Low.toFixed(2)}
                 </text>
                 <text
                   x={40}
@@ -818,9 +944,9 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
                   textAnchor="middle"
                   className="fill-gray-500 text-xs"
                 >
-                  Jan 2024
+                  {stockData.week52LowDate && new Date(stockData.week52LowDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                 </text>
-                
+
                 {/* 52W High label */}
                 <text
                   x={760}
@@ -828,7 +954,7 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
                   textAnchor="middle"
                   className="fill-emerald-400 text-sm font-semibold"
                 >
-                  $178.40
+                  ${stockData.week52High.toFixed(2)}
                 </text>
                 <text
                   x={760}
@@ -844,9 +970,9 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
                   textAnchor="middle"
                   className="fill-gray-500 text-xs"
                 >
-                  Dec 2024
+                  {stockData.week52HighDate && new Date(stockData.week52HighDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                 </text>
-                
+
                 {/* Current price label */}
                 <text
                   x={40 + ((stockData.currentPrice - stockData.week52Low) / (stockData.week52High - stockData.week52Low)) * 720}
@@ -854,7 +980,7 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ isOpen, onClose, st
                   textAnchor="middle"
                   className="fill-white text-sm font-semibold"
                 >
-                  $175.50
+                  ${stockData.currentPrice.toFixed(2)}
                 </text>
                 <text
                   x={40 + ((stockData.currentPrice - stockData.week52Low) / (stockData.week52High - stockData.week52Low)) * 720}

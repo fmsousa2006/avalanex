@@ -13,9 +13,10 @@ interface Stock {
 interface TopGainersLosersProps {
   data: Stock[];
   type: 'gainers' | 'losers';
+  currencySymbol?: string;
 }
 
-export const TopGainersLosers: React.FC<TopGainersLosersProps> = ({ data, type }) => {
+export const TopGainersLosers: React.FC<TopGainersLosersProps> = ({ data, type, currencySymbol = '$' }) => {
   const isGainers = type === 'gainers';
 
   const sortedData = [...data]
@@ -50,7 +51,7 @@ export const TopGainersLosers: React.FC<TopGainersLosersProps> = ({ data, type }
       </div>
 
       {sortedData.length > 0 ? (
-        <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+        <div className="space-y-4 max-h-[420px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
           {sortedData.map((stock) => (
             <div key={stock.symbol} className="flex items-center justify-between py-3 border-b border-gray-700 last:border-0">
               <div className="flex items-center space-x-3 flex-1">
@@ -63,7 +64,7 @@ export const TopGainersLosers: React.FC<TopGainersLosersProps> = ({ data, type }
 
               <div className="text-right">
                 <div className="font-semibold text-white mb-1">
-                  ${stock.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {currencySymbol}{stock.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <div className={`flex items-center justify-end space-x-1 text-sm ${
                   stock.changePercent >= 0 ? 'text-emerald-400' : 'text-red-400'
@@ -75,7 +76,7 @@ export const TopGainersLosers: React.FC<TopGainersLosersProps> = ({ data, type }
                   )}
                   <span>
                     {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
-                    ({stock.change >= 0 ? '+' : ''}${stock.change.toFixed(2)})
+                    ({stock.change >= 0 ? '+' : ''}{currencySymbol}{stock.change.toFixed(2)})
                   </span>
                 </div>
               </div>

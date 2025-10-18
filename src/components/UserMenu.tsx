@@ -1,14 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Settings, HelpCircle, Sparkles, LogOut } from 'lucide-react';
+import { User, Settings, HelpCircle, Sparkles, LogOut, Shield, Crown, Bell, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface UserMenuProps {
   onLogout: () => void;
+  onAdminClick?: () => void;
+  onSyncClick?: () => void;
+  isSyncing?: boolean;
+  canSync?: boolean;
 }
 
-const UserMenu: React.FC<UserMenuProps> = ({ onLogout }) => {
+const UserMenu: React.FC<UserMenuProps> = ({ onLogout, onAdminClick, onSyncClick, isSyncing = false, canSync = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
+  const [subscriptionTier, setSubscriptionTier] = useState<string>('free');
+  const [isAdmin, setIsAdmin] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -16,6 +22,17 @@ const UserMenu: React.FC<UserMenuProps> = ({ onLogout }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user?.email) {
         setUserEmail(user.email);
+
+        const { data: subscription } = await supabase
+          .from('user_subscriptions')
+          .select('subscription_tier')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (subscription?.subscription_tier) {
+          setSubscriptionTier(subscription.subscription_tier);
+          setIsAdmin(subscription.subscription_tier === 'admin');
+        }
       }
     };
     fetchUser();
@@ -60,8 +77,16 @@ const UserMenu: React.FC<UserMenuProps> = ({ onLogout }) => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white truncate">{userEmail || 'User'}</p>
-                <span className="inline-block px-2 py-0.5 text-xs font-medium bg-emerald-600 text-white rounded mt-1">
-                  Free
+                <span className={`inline-flex items-center space-x-1 px-2 py-0.5 text-xs font-semibold text-white rounded mt-1 capitalize ${
+                  subscriptionTier === 'admin'
+                    ? 'bg-gradient-to-r from-red-500 to-red-600'
+                    : subscriptionTier === 'premium'
+                    ? 'bg-gradient-to-r from-yellow-500 to-yellow-600'
+                    : 'bg-gray-700'
+                }`}>
+                  {subscriptionTier === 'premium' && <Crown className="w-3 h-3" />}
+                  {subscriptionTier === 'admin' && <Shield className="w-3 h-3" />}
+                  <span>{subscriptionTier}</span>
                 </span>
               </div>
             </div>
@@ -83,6 +108,15 @@ const UserMenu: React.FC<UserMenuProps> = ({ onLogout }) => {
               }}
               className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
             >
+              <Bell className="w-4 h-4" />
+              <span>Notifications</span>
+            </button>
+            <button
+              onClick={() => {
+                setIsOpen(false);
+              }}
+              className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
+            >
               <HelpCircle className="w-4 h-4" />
               <span>Help & Support</span>
             </button>
@@ -96,6 +130,39 @@ const UserMenu: React.FC<UserMenuProps> = ({ onLogout }) => {
               <span>What's New</span>
             </button>
           </div>
+
+          {isAdmin && (
+            <div className="border-t border-gray-700 py-2">
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  onAdminClick?.();
+                }}
+                className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
+              >
+                <Shield className="w-4 h-4" />
+                <span>Administration</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (!isSyncing && canSync) {
+                    setIsOpen(false);
+                    onSyncClick?.();
+                  }
+                }}
+                disabled={isSyncing || !canSync}
+                className={`w-full px-4 py-2.5 text-left text-sm transition-colors flex items-center space-x-3 ${
+                  isSyncing || !canSync
+                    ? 'text-gray-500 cursor-not-allowed'
+                    : 'text-gray-300 hover:bg-gray-700'
+                }`}
+                title={!canSync ? 'Market closed or no portfolio selected' : 'Sync stock prices'}
+              >
+                <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span>Sync Prices</span>
+              </button>
+            </div>
+          )}
 
           <div className="border-t border-gray-700">
             <button

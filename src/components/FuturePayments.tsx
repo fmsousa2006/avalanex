@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, HelpCircle, MoreHorizontal } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Calendar, HelpCircle, MoreHorizontal, MoreVertical } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface FutureDividendsProps {
@@ -25,6 +25,8 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
   const [next12MonthsTotal, setNext12MonthsTotal] = useState(0);
   const [monthlyAverage, setMonthlyAverage] = useState(0);
   const [hoveredMonth, setHoveredMonth] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Helper function to check if Supabase environment is properly configured
   const isSupabaseEnvConfigured = () => {
@@ -222,6 +224,22 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
     fetchFutureDividends();
   }, [portfolioId]);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
   if (loading) {
     return (
       <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
@@ -233,7 +251,8 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
     );
   }
 
-  const maxAmount = Math.max(...monthlyDividends.map(m => m.amount), 1);
+  const maxDataValue = Math.max(...monthlyDividends.map(m => m.amount), 1);
+  const maxAmount = Math.ceil(maxDataValue * 1.15);
   const chartHeight = 240;
 
   return (
@@ -241,12 +260,30 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-xl font-semibold text-white">Upcoming Dividends</h2>
-        <button
-          onClick={onCalendarClick}
-          className="text-gray-400 hover:text-white transition-colors"
-        >
-          <Calendar className="w-5 h-5" />
-        </button>
+        <div className="relative" ref={isDropdownOpen ? dropdownRef : null}>
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+            title="More Actions"
+          >
+            <MoreVertical className="w-4 h-4 text-gray-400 hover:text-white" />
+          </button>
+
+          {isDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50">
+              <button
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  onCalendarClick?.();
+                }}
+                className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
+              >
+                <Calendar className="w-4 h-4" />
+                <span>View Calendar</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {monthlyDividends.length > 0 && monthlyDividends.some(m => m.amount > 0) ? (
@@ -258,7 +295,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                 <div className="w-1 h-6 bg-blue-400 rounded"></div>
                 <span className="text-gray-400 text-sm">Next 12m</span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-xl font-bold text-white">
                 ${next12MonthsTotal.toFixed(2)}
               </div>
             </div>
@@ -267,18 +304,38 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                 <div className="w-1 h-6 bg-blue-400 rounded"></div>
                 <span className="text-gray-400 text-sm">Monthly</span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-xl font-bold text-white">
                 ${monthlyAverage.toFixed(2)}
               </div>
             </div>
           </div>
 
           {/* Chart Container */}
-          <div className="relative pt-8" style={{ height: `${chartHeight + 60}px` }}>
-            {/* Horizontal grid lines */}
-            <div className="absolute inset-x-0" style={{ top: '8px', height: `${chartHeight}px` }}>
+          <div className="relative pt-8 pl-12" style={{ height: `${chartHeight + 60}px` }}>
+            {/* Y-axis labels */}
+            <div className="absolute left-0" style={{ top: '8px', height: `${chartHeight}px` }}>
               {[0, 0.33, 0.66, 1].map((ratio) => {
                 const value = maxAmount * (1 - ratio);
+                return (
+                  <div
+                    key={ratio}
+                    className="absolute text-xs text-gray-500"
+                    style={{
+                      top: `${chartHeight * ratio - 8}px`,
+                      left: '0',
+                      width: '40px',
+                      textAlign: 'right'
+                    }}
+                  >
+                    ${value.toFixed(0)}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Horizontal grid lines */}
+            <div className="absolute" style={{ top: '8px', height: `${chartHeight}px`, left: '48px', right: '0' }}>
+              {[0, 0.33, 0.66, 1].map((ratio) => {
                 return (
                   <div
                     key={ratio}
@@ -298,17 +355,17 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                   }}
                 >
                   <span className="absolute right-0 -top-3 text-xs text-blue-400">
-                    avg
+                    avg ${monthlyAverage.toFixed(2)}
                   </span>
                 </div>
               )}
             </div>
 
             {/* Bars */}
-            <div className="relative flex items-end justify-between px-2" style={{ height: `${chartHeight}px` }}>
+            <div className="relative flex items-end justify-between" style={{ height: `${chartHeight}px`, marginLeft: '48px', paddingLeft: '8px', paddingRight: '8px' }}>
               {monthlyDividends.map((month, index) => {
-                const barHeight = maxAmount > 0 ? (month.amount / maxAmount) * (chartHeight - 20) : 0;
-                const paidHeight = maxAmount > 0 ? (month.paidAmount / maxAmount) * (chartHeight - 20) : 0;
+                const barHeight = maxAmount > 0 ? (month.amount / maxAmount) * chartHeight : 0;
+                const paidHeight = maxAmount > 0 ? (month.paidAmount / maxAmount) * chartHeight : 0;
                 const unpaidHeight = barHeight - paidHeight;
                 const isCurrentMonth = index === 0;
                 const hasPaidDividends = month.paidAmount > 0;
@@ -355,12 +412,19 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                           <>
                             <div className="border-t border-gray-600 my-3"></div>
                             <div className="space-y-1">
-                              {month.payments.map((payment, idx) => (
-                                <div key={idx} className="flex items-center gap-2 text-sm">
-                                  <div className={`w-2 h-2 rounded-full ${payment.isPaid ? 'bg-purple-500' : 'bg-blue-400'}`}></div>
-                                  <span className="text-gray-400">{payment.symbol}: ${payment.amount.toFixed(2)}</span>
-                                </div>
-                              ))}
+                              {month.payments.map((payment, idx) => {
+                                const paymentDate = new Date(payment.date + 'T00:00:00');
+                                const formattedDate = paymentDate.toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric'
+                                });
+                                return (
+                                  <div key={idx} className="flex items-center gap-2 text-sm">
+                                    <div className={`w-2 h-2 rounded-full ${payment.isPaid ? 'bg-purple-500' : 'bg-blue-400'}`}></div>
+                                    <span className="text-gray-400">{payment.symbol}: ${payment.amount.toFixed(2)} @ {formattedDate}</span>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </>
                         )}
@@ -368,7 +432,7 @@ const FutureDividends: React.FC<FutureDividendsProps> = ({ portfolioId, onCalend
                     )}
 
                     {/* Bar container */}
-                    <div className="w-full flex flex-col items-center justify-end" style={{ height: `${chartHeight - 20}px` }}>
+                    <div className="w-full flex flex-col items-center justify-end" style={{ height: `${chartHeight}px` }}>
                       {/* Amount label on top of bar */}
                       {month.amount > 0 && (
                         <div className="text-xs font-medium text-gray-300 mb-1">

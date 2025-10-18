@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, DollarSign } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { logActivity } from '../utils/activityLogger';
 
 interface Stock {
   id: string;
@@ -62,6 +63,8 @@ const AddDividendModal: React.FC<AddDividendModalProps> = ({ portfolioId, onClos
     setLoading(true);
 
     try {
+      const selectedStock = stocks.find(s => s.id === selectedStockId);
+
       const { error: insertError } = await supabase
         .from('transactions')
         .insert({
@@ -76,6 +79,13 @@ const AddDividendModal: React.FC<AddDividendModalProps> = ({ portfolioId, onClos
         });
 
       if (insertError) throw insertError;
+
+      await logActivity('dividend_recorded', {
+        stock_id: selectedStockId,
+        stock_symbol: selectedStock?.symbol,
+        amount: parseFloat(amount),
+        payment_date: date
+      });
 
       onSuccess();
       onClose();

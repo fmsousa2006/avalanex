@@ -38,6 +38,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
   const [isAddingDividend, setIsAddingDividend] = useState(false);
   const [editingStock, setEditingStock] = useState<Stock | null>(null);
   const [editingDividend, setEditingDividend] = useState<Dividend | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ type: 'stock' | 'dividend'; id: string; name: string } | null>(null);
 
   const [stockForm, setStockForm] = useState({
     symbol: '',
@@ -161,10 +162,6 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
   };
 
   const handleDeleteStock = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this stock? This will affect all related data.')) {
-      return;
-    }
-
     try {
       const { error } = await supabase
         .from('stocks')
@@ -172,6 +169,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
         .eq('id', id);
 
       if (error) throw error;
+      setDeleteConfirmation(null);
       fetchStocks();
     } catch (error) {
       console.error('Error deleting stock:', error);
@@ -240,10 +238,6 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
   };
 
   const handleDeleteDividend = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this dividend?')) {
-      return;
-    }
-
     try {
       const { error } = await supabase
         .from('dividends')
@@ -251,6 +245,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
         .eq('id', id);
 
       if (error) throw error;
+      setDeleteConfirmation(null);
       fetchDividends();
     } catch (error) {
       console.error('Error deleting dividend:', error);
@@ -676,7 +671,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDeleteStock(stock.id)}
+                            onClick={() => setDeleteConfirmation({ type: 'stock', id: stock.id, name: stock.symbol })}
                             className="p-2 text-red-400 hover:bg-red-400/20 rounded-lg transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -753,7 +748,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
                               <Edit2 className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => handleDeleteDividend(dividend.id)}
+                              onClick={() => setDeleteConfirmation({ type: 'dividend', id: dividend.id, name: stock?.symbol || 'this dividend' })}
                               className="p-2 text-red-400 hover:bg-red-400/20 rounded-lg transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -769,6 +764,39 @@ const StockManagement: React.FC<StockManagementProps> = ({ onBack }) => {
           </div>
         </div>
       </div>
+
+      {deleteConfirmation && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-700">
+            <h3 className="text-xl font-bold mb-4">Confirm Deletion</h3>
+            <p className="text-gray-300 mb-6">
+              {deleteConfirmation.type === 'stock'
+                ? `Are you sure you want to delete ${deleteConfirmation.name}? This will affect all related data.`
+                : `Are you sure you want to delete this dividend for ${deleteConfirmation.name}?`}
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setDeleteConfirmation(null)}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (deleteConfirmation.type === 'stock') {
+                    handleDeleteStock(deleteConfirmation.id);
+                  } else {
+                    handleDeleteDividend(deleteConfirmation.id);
+                  }
+                }}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
