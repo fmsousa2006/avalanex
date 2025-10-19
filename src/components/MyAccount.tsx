@@ -22,6 +22,45 @@ interface UserPreferences {
   email_notifications: boolean;
 }
 
+interface UserProfile {
+  full_name: string;
+  username: string;
+  country: string;
+}
+
+const countries = [
+  { code: 'US', name: 'United States', flag: '🇺🇸' },
+  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
+  { code: 'CA', name: 'Canada', flag: '🇨🇦' },
+  { code: 'AU', name: 'Australia', flag: '🇦🇺' },
+  { code: 'DE', name: 'Germany', flag: '🇩🇪' },
+  { code: 'FR', name: 'France', flag: '🇫🇷' },
+  { code: 'ES', name: 'Spain', flag: '🇪🇸' },
+  { code: 'IT', name: 'Italy', flag: '🇮🇹' },
+  { code: 'NL', name: 'Netherlands', flag: '🇳🇱' },
+  { code: 'SE', name: 'Sweden', flag: '🇸🇪' },
+  { code: 'NO', name: 'Norway', flag: '🇳🇴' },
+  { code: 'DK', name: 'Denmark', flag: '🇩🇰' },
+  { code: 'FI', name: 'Finland', flag: '🇫🇮' },
+  { code: 'PT', name: 'Portugal', flag: '🇵🇹' },
+  { code: 'PL', name: 'Poland', flag: '🇵🇱' },
+  { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
+  { code: 'MX', name: 'Mexico', flag: '🇲🇽' },
+  { code: 'JP', name: 'Japan', flag: '🇯🇵' },
+  { code: 'CN', name: 'China', flag: '🇨🇳' },
+  { code: 'IN', name: 'India', flag: '🇮🇳' },
+  { code: 'SG', name: 'Singapore', flag: '🇸🇬' },
+  { code: 'HK', name: 'Hong Kong', flag: '🇭🇰' },
+  { code: 'KR', name: 'South Korea', flag: '🇰🇷' },
+  { code: 'ZA', name: 'South Africa', flag: '🇿🇦' },
+  { code: 'AE', name: 'United Arab Emirates', flag: '🇦🇪' },
+  { code: 'CH', name: 'Switzerland', flag: '🇨🇭' },
+  { code: 'AT', name: 'Austria', flag: '🇦🇹' },
+  { code: 'BE', name: 'Belgium', flag: '🇧🇪' },
+  { code: 'IE', name: 'Ireland', flag: '🇮🇪' },
+  { code: 'NZ', name: 'New Zealand', flag: '🇳🇿' },
+];
+
 interface UsageStats {
   portfolioCount: number;
   stockCount: number;
@@ -44,6 +83,11 @@ const MyAccount: React.FC<MyAccountProps> = ({ onBack, onOpenWatchlist, onLogout
     date_format: 'MM/DD/YYYY',
     language: 'en-US',
     email_notifications: true,
+  });
+  const [userProfile, setUserProfile] = useState<UserProfile>({
+    full_name: '',
+    username: '',
+    country: '',
   });
   const [usageStats, setUsageStats] = useState<UsageStats>({
     portfolioCount: 0,
@@ -119,6 +163,20 @@ const MyAccount: React.FC<MyAccountProps> = ({ onBack, onOpenWatchlist, onLogout
         });
       }
 
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('full_name, username, country')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (profile) {
+        setUserProfile({
+          full_name: profile.full_name || '',
+          username: profile.username || '',
+          country: profile.country || '',
+        });
+      }
+
       const { data: portfolios } = await supabase
         .from('portfolios')
         .select('id')
@@ -127,7 +185,7 @@ const MyAccount: React.FC<MyAccountProps> = ({ onBack, onOpenWatchlist, onLogout
       const portfolioCount = portfolios?.length || 0;
 
       const { data: holdings } = await supabase
-        .from('holdings')
+        .from('portfolio_holdings')
         .select('stock_id', { count: 'exact' })
         .in('portfolio_id', portfolios?.map(p => p.id) || []);
 
@@ -323,6 +381,39 @@ const MyAccount: React.FC<MyAccountProps> = ({ onBack, onOpenWatchlist, onLogout
       </div>
 
       <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">Full Name</label>
+        <input
+          type="text"
+          value={userProfile.full_name}
+          disabled
+          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-400 cursor-not-allowed"
+        />
+        <p className="text-xs text-gray-500 mt-1">This was set during account creation and cannot be changed</p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">Username</label>
+        <input
+          type="text"
+          value={userProfile.username}
+          disabled
+          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-400 cursor-not-allowed"
+        />
+        <p className="text-xs text-gray-500 mt-1">This was set during account creation and cannot be changed</p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">Country</label>
+        <input
+          type="text"
+          value={userProfile.country ? `${countries.find(c => c.code === userProfile.country)?.flag || ''} ${countries.find(c => c.code === userProfile.country)?.name || userProfile.country}` : ''}
+          disabled
+          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-400 cursor-not-allowed"
+        />
+        <p className="text-xs text-gray-500 mt-1">This was set during account creation and cannot be changed</p>
+      </div>
+
+      <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">Display Name</label>
         <input
           type="text"
@@ -331,6 +422,7 @@ const MyAccount: React.FC<MyAccountProps> = ({ onBack, onOpenWatchlist, onLogout
           placeholder="Your name"
           className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
+        <p className="text-xs text-gray-500 mt-1">Optional: Set a custom display name for your account</p>
       </div>
 
       <div>
