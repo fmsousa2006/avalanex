@@ -274,15 +274,8 @@ const MyAccount: React.FC<MyAccountProps> = ({ onBack, onOpenWatchlist, onLogout
   const handleDeleteAccount = async () => {
     try {
       setDeleteLoading(true);
-
-      const { data: sessionData } = await supabase.auth.getSession();
-      const session = sessionData.session;
-      const user = session?.user;
-
-      if (!user || !session) {
-        setDeleteLoading(false);
-        return;
-      }
+      const { data: { user }, data: { session } } = await supabase.auth.getSession();
+      if (!user || !session) return;
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,

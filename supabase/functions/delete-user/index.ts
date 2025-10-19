@@ -59,6 +59,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Check if user is trying to delete their own account or if they're an admin
     const isDeletingOwnAccount = user.id === userId;
     let isAdmin = false;
 
@@ -82,6 +83,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Delete user data
     await supabaseAdmin
       .from('watchlist')
       .delete()
@@ -96,12 +98,17 @@ Deno.serve(async (req: Request) => {
       const portfolioIds = portfolios.map((p: any) => p.id);
 
       await supabaseAdmin
-        .from('portfolio_holdings')
+        .from('holdings')
         .delete()
         .in('portfolio_id', portfolioIds);
 
       await supabaseAdmin
         .from('transactions')
+        .delete()
+        .in('portfolio_id', portfolioIds);
+
+      await supabaseAdmin
+        .from('dividends')
         .delete()
         .in('portfolio_id', portfolioIds);
 
@@ -113,11 +120,6 @@ Deno.serve(async (req: Request) => {
 
     await supabaseAdmin
       .from('admin_notes')
-      .delete()
-      .eq('user_id', userId);
-
-    await supabaseAdmin
-      .from('user_activity_logs')
       .delete()
       .eq('user_id', userId);
 
