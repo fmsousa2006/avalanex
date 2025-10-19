@@ -55,7 +55,7 @@ export const Notification: React.FC<NotificationProps> = ({
   const Icon = config.icon;
 
   return (
-    <div className="fixed top-4 right-4 z-[100] animate-in slide-in-from-top-2 duration-300">
+    <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-2 duration-300">
       <div
         className={`flex items-center space-x-3 ${config.bgColor} ${config.borderColor} border rounded-lg p-4 shadow-lg max-w-md`}
       >
