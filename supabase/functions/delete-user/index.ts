@@ -47,22 +47,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { data: adminCheck } = await supabaseClient
-      .from('user_subscriptions')
-      .select('subscription_tier')
-      .eq('user_id', user.id)
-      .single();
-
-    if (adminCheck?.subscription_tier !== 'admin') {
-      return new Response(
-        JSON.stringify({ error: 'Admin access required' }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
     const { userId } = await req.json();
 
     if (!userId) {
@@ -75,6 +59,31 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Check if user is trying to delete their own account or if they're an admin
+    const isDeletingOwnAccount = user.id === userId;
+    let isAdmin = false;
+
+    if (!isDeletingOwnAccount) {
+      const { data: adminCheck } = await supabaseClient
+        .from('user_subscriptions')
+        .select('subscription_tier')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      isAdmin = adminCheck?.subscription_tier === 'admin';
+
+      if (!isAdmin) {
+        return new Response(
+          JSON.stringify({ error: 'You can only delete your own account or you need admin privileges' }),
+          {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+    }
+
+    // Delete user data
     await supabaseAdmin
       .from('watchlist')
       .delete()
@@ -89,12 +98,17 @@ Deno.serve(async (req: Request) => {
       const portfolioIds = portfolios.map((p: any) => p.id);
 
       await supabaseAdmin
-        .from('portfolio_holdings')
+        .from('holdings')
         .delete()
         .in('portfolio_id', portfolioIds);
 
       await supabaseAdmin
         .from('transactions')
+        .delete()
+        .in('portfolio_id', portfolioIds);
+
+      await supabaseAdmin
+        .from('dividends')
         .delete()
         .in('portfolio_id', portfolioIds);
 
@@ -106,6 +120,11 @@ Deno.serve(async (req: Request) => {
 
     await supabaseAdmin
       .from('admin_notes')
+      .delete()
+      .eq('user_id', userId);
+
+    await supabaseAdmin
+      .from('user_preferences')
       .delete()
       .eq('user_id', userId);
 

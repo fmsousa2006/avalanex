@@ -274,15 +274,15 @@ const MyAccount: React.FC<MyAccountProps> = ({ onBack, onOpenWatchlist, onLogout
   const handleDeleteAccount = async () => {
     try {
       setDeleteLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: { user }, data: { session } } = await supabase.auth.getSession();
+      if (!user || !session) return;
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ userId: user.id }),
@@ -290,14 +290,15 @@ const MyAccount: React.FC<MyAccountProps> = ({ onBack, onOpenWatchlist, onLogout
       );
 
       if (!response.ok) {
-        throw new Error('Failed to delete account');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete account');
       }
 
       await supabase.auth.signOut();
       window.location.href = '/';
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting account:', error);
-      setNotification({ type: 'error', message: 'Failed to delete account' });
+      setNotification({ type: 'error', message: error.message || 'Failed to delete account' });
       setDeleteLoading(false);
     }
   };
