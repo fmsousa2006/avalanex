@@ -47,6 +47,22 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const { data: adminCheck } = await supabaseClient
+      .from('user_subscriptions')
+      .select('subscription_tier')
+      .eq('user_id', user.id)
+      .single();
+
+    if (adminCheck?.subscription_tier !== 'admin') {
+      return new Response(
+        JSON.stringify({ error: 'Admin access required' }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     const { userId } = await req.json();
 
     if (!userId) {
@@ -57,29 +73,6 @@ Deno.serve(async (req: Request) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
-    }
-
-    const isDeletingOwnAccount = user.id === userId;
-    let isAdmin = false;
-
-    if (!isDeletingOwnAccount) {
-      const { data: adminCheck } = await supabaseClient
-        .from('user_subscriptions')
-        .select('subscription_tier')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      isAdmin = adminCheck?.subscription_tier === 'admin';
-
-      if (!isAdmin) {
-        return new Response(
-          JSON.stringify({ error: 'You can only delete your own account or you need admin privileges' }),
-          {
-            status: 403,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        );
-      }
     }
 
     await supabaseAdmin
@@ -113,16 +106,6 @@ Deno.serve(async (req: Request) => {
 
     await supabaseAdmin
       .from('admin_notes')
-      .delete()
-      .eq('user_id', userId);
-
-    await supabaseAdmin
-      .from('user_activity_logs')
-      .delete()
-      .eq('user_id', userId);
-
-    await supabaseAdmin
-      .from('user_preferences')
       .delete()
       .eq('user_id', userId);
 
