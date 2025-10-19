@@ -18,6 +18,7 @@ import Logo1 from './logos/Logo1';
 import UserMenu from './UserMenu';
 import Watchlist from './Watchlist';
 import MyAccount from './MyAccount';
+import Positions from './Positions';
 import { supabase } from '../lib/supabase';
 import { logActivity } from '../utils/activityLogger';
 import { exchangeRateService } from '../lib/exchangeRate';
@@ -27,6 +28,7 @@ console.log('🏠 Dashboard component rendering...');
 export const Dashboard = () => {
   const [showWatchlist, setShowWatchlist] = useState(false);
   const [showMyAccount, setShowMyAccount] = useState(false);
+  const [showPositions, setShowPositions] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -59,10 +61,15 @@ export const Dashboard = () => {
     );
   }
 
+  if (showPositions) {
+    return <Positions onBack={() => setShowPositions(false)} />;
+  }
+
   return (
     <DashboardContent
       onOpenWatchlist={() => setShowWatchlist(true)}
       onOpenMyAccount={() => setShowMyAccount(true)}
+      onOpenPositions={() => setShowPositions(true)}
     />
   );
 };
@@ -70,9 +77,10 @@ export const Dashboard = () => {
 interface DashboardContentProps {
   onOpenWatchlist: () => void;
   onOpenMyAccount: () => void;
+  onOpenPositions: () => void;
 }
 
-const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist, onOpenMyAccount }) => {
+const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist, onOpenMyAccount, onOpenPositions }) => {
   const {
     portfolios,
     currentPortfolio,
@@ -752,6 +760,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist, on
                 onAdminClick={() => setIsAdminOpen(true)}
                 onSyncClick={handleSyncPortfolioPrices}
                 onMyAccountClick={onOpenMyAccount}
+                onPositionsClick={onOpenPositions}
                 isSyncing={isSyncing}
                 canSync={isFinnhubConfigured && !!currentPortfolio && !isUsingMockData}
               />

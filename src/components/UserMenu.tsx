@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Settings, HelpCircle, Sparkles, LogOut, Shield, Crown, Bell, RefreshCw, UserCircle } from 'lucide-react';
+import { User, Settings, HelpCircle, Sparkles, LogOut, Shield, Crown, Bell, RefreshCw, UserCircle, PieChart } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface UserMenuProps {
@@ -7,11 +7,12 @@ interface UserMenuProps {
   onAdminClick?: () => void;
   onSyncClick?: () => void;
   onMyAccountClick?: () => void;
+  onPositionsClick?: () => void;
   isSyncing?: boolean;
   canSync?: boolean;
 }
 
-const UserMenu: React.FC<UserMenuProps> = ({ onLogout, onAdminClick, onSyncClick, onMyAccountClick, isSyncing = false, canSync = false }) => {
+const UserMenu: React.FC<UserMenuProps> = ({ onLogout, onAdminClick, onSyncClick, onMyAccountClick, onPositionsClick, isSyncing = false, canSync = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
   const [subscriptionTier, setSubscriptionTier] = useState<string>('free');
@@ -103,6 +104,16 @@ const UserMenu: React.FC<UserMenuProps> = ({ onLogout, onAdminClick, onSyncClick
             >
               <UserCircle className="w-4 h-4" />
               <span>My Account</span>
+            </button>
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                onPositionsClick?.();
+              }}
+              className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
+            >
+              <PieChart className="w-4 h-4" />
+              <span>Positions</span>
             </button>
             <button
               onClick={() => {
