@@ -202,6 +202,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
         return 'text-green-400';
       case 'trial':
         return 'text-blue-400';
+      case 'pending':
+        return 'text-yellow-400';
       case 'cancelled':
         return 'text-orange-400';
       case 'expired':
@@ -484,6 +486,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
                 >
                   <option value="all">All Statuses</option>
                   <option value="active">Active</option>
+                  <option value="pending">Pending</option>
                   <option value="trial">Trial</option>
                   <option value="cancelled">Cancelled</option>
                   <option value="expired">Expired</option>
@@ -536,6 +539,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
                       <div className="flex items-center space-x-2">
                         {user.status === 'active' && <CheckCircle2 className={`w-4 h-4 ${getStatusColor(user.status)}`} />}
                         {user.status === 'trial' && <Clock className={`w-4 h-4 ${getStatusColor(user.status)}`} />}
+                        {user.status === 'pending' && <Clock className={`w-4 h-4 ${getStatusColor(user.status)}`} />}
                         {user.status === 'cancelled' && <AlertCircle className={`w-4 h-4 ${getStatusColor(user.status)}`} />}
                         {user.status === 'expired' && <XCircle className={`w-4 h-4 ${getStatusColor(user.status)}`} />}
                         <span className={`text-sm capitalize ${getStatusColor(user.status)}`}>{user.status}</span>
