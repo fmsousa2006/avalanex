@@ -52,7 +52,17 @@ const Login = ({ onShowSignUp, confirmationMessage, onClearMessage }: LoginProps
 
       if (error) {
         await logActivity('failed_login', { email, reason: error.message });
-        throw error;
+
+        if (error.message.includes('Email not confirmed') ||
+            error.message.includes('email_not_confirmed') ||
+            error.message === 'Email not confirmed') {
+          setError('Please confirm your email address before logging in. Check your inbox for the confirmation link.');
+        } else if (error.message === 'Invalid login credentials') {
+          setError('Invalid email or password. Please try again.');
+        } else {
+          setError(error.message);
+        }
+        return;
       }
 
       await logActivity('login', { email });
