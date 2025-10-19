@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, User, CreditCard, Bell, Shield, AlertTriangle, Save, Loader2, Star, ChevronDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ConfirmationModal } from './ConfirmationModal';
+import { Notification } from './Notification';
 import Logo1 from './logos/Logo1';
 import UserMenu from './UserMenu';
 
@@ -24,6 +25,11 @@ interface UserPreferences {
 interface UsageStats {
   portfolioCount: number;
   stockCount: number;
+}
+
+interface NotificationState {
+  type: 'success' | 'error' | 'info';
+  message: string;
 }
 
 const MyAccount: React.FC<MyAccountProps> = ({ onBack, onOpenWatchlist, onLogout }) => {
@@ -55,6 +61,7 @@ const MyAccount: React.FC<MyAccountProps> = ({ onBack, onOpenWatchlist, onLogout
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [isCurrencyDropdownOpen, setIsCurrencyDropdownOpen] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState<'USD' | 'EUR'>('USD');
+  const [notification, setNotification] = useState<NotificationState | null>(null);
   const currencyDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -161,10 +168,10 @@ const MyAccount: React.FC<MyAccountProps> = ({ onBack, onOpenWatchlist, onLogout
           .insert([{ ...preferences, user_id: user.id }]);
       }
 
-      alert('Preferences saved successfully!');
+      setNotification({ type: 'success', message: 'Preferences saved successfully!' });
     } catch (error) {
       console.error('Error saving preferences:', error);
-      alert('Failed to save preferences');
+      setNotification({ type: 'error', message: 'Failed to save preferences' });
     } finally {
       setSaving(false);
     }
@@ -193,10 +200,10 @@ const MyAccount: React.FC<MyAccountProps> = ({ onBack, onOpenWatchlist, onLogout
           .insert([{ email_notifications: preferences.email_notifications, user_id: user.id }]);
       }
 
-      alert('Notification preferences saved!');
+      setNotification({ type: 'success', message: 'Notification preferences saved!' });
     } catch (error) {
       console.error('Error saving notifications:', error);
-      alert('Failed to save notification preferences');
+      setNotification({ type: 'error', message: 'Failed to save notification preferences' });
     } finally {
       setSaving(false);
     }
@@ -253,12 +260,12 @@ const MyAccount: React.FC<MyAccountProps> = ({ onBack, onOpenWatchlist, onLogout
         await supabase.from('portfolios').delete().in('id', portfolioIds);
       }
 
-      alert('All data deleted successfully!');
+      setNotification({ type: 'success', message: 'All data deleted successfully!' });
       setShowDeleteDataModal(false);
       await fetchUserData();
     } catch (error) {
       console.error('Error deleting data:', error);
-      alert('Failed to delete data');
+      setNotification({ type: 'error', message: 'Failed to delete data' });
     } finally {
       setDeleteLoading(false);
     }
@@ -290,7 +297,7 @@ const MyAccount: React.FC<MyAccountProps> = ({ onBack, onOpenWatchlist, onLogout
       window.location.href = '/';
     } catch (error) {
       console.error('Error deleting account:', error);
-      alert('Failed to delete account');
+      setNotification({ type: 'error', message: 'Failed to delete account' });
       setDeleteLoading(false);
     }
   };
@@ -758,6 +765,14 @@ const MyAccount: React.FC<MyAccountProps> = ({ onBack, onOpenWatchlist, onLogout
         confirmButtonClass="bg-red-700 hover:bg-red-800"
         loading={deleteLoading}
       />
+
+      {notification && (
+        <Notification
+          type={notification.type}
+          message={notification.message}
+          onClose={() => setNotification(null)}
+        />
+      )}
     </div>
   );
 };
