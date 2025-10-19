@@ -1,22 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Settings, HelpCircle, Sparkles, LogOut, Shield, Crown, Bell, RefreshCw, UserCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import MyAccount from './MyAccount';
 
 interface UserMenuProps {
   onLogout: () => void;
   onAdminClick?: () => void;
   onSyncClick?: () => void;
+  onMyAccountClick?: () => void;
   isSyncing?: boolean;
   canSync?: boolean;
 }
 
-const UserMenu: React.FC<UserMenuProps> = ({ onLogout, onAdminClick, onSyncClick, isSyncing = false, canSync = false }) => {
+const UserMenu: React.FC<UserMenuProps> = ({ onLogout, onAdminClick, onSyncClick, onMyAccountClick, isSyncing = false, canSync = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
   const [subscriptionTier, setSubscriptionTier] = useState<string>('free');
   const [isAdmin, setIsAdmin] = useState(false);
-  const [isMyAccountOpen, setIsMyAccountOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -98,7 +97,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ onLogout, onAdminClick, onSyncClick
             <button
               onClick={() => {
                 setIsOpen(false);
-                setIsMyAccountOpen(true);
+                onMyAccountClick?.();
               }}
               className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-3"
             >
@@ -190,11 +189,6 @@ const UserMenu: React.FC<UserMenuProps> = ({ onLogout, onAdminClick, onSyncClick
           </div>
         </div>
       )}
-
-      <MyAccount
-        isOpen={isMyAccountOpen}
-        onClose={() => setIsMyAccountOpen(false)}
-      />
     </div>
   );
 };

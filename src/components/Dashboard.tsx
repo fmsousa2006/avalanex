@@ -17,6 +17,7 @@ import Admin from './Admin';
 import Logo1 from './logos/Logo1';
 import UserMenu from './UserMenu';
 import Watchlist from './Watchlist';
+import MyAccount from './MyAccount';
 import { supabase } from '../lib/supabase';
 import { logActivity } from '../utils/activityLogger';
 import { exchangeRateService } from '../lib/exchangeRate';
@@ -25,19 +26,53 @@ console.log('🏠 Dashboard component rendering...');
 
 export const Dashboard = () => {
   const [showWatchlist, setShowWatchlist] = useState(false);
+  const [showMyAccount, setShowMyAccount] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await logActivity('logout', {});
+
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error logging out:', error);
+      window.location.href = '/';
+    }
+  };
 
   if (showWatchlist) {
     return <Watchlist onBack={() => setShowWatchlist(false)} />;
   }
 
-  return <DashboardContent onOpenWatchlist={() => setShowWatchlist(true)} />;
+  if (showMyAccount) {
+    return (
+      <MyAccount
+        onBack={() => setShowMyAccount(false)}
+        onOpenWatchlist={() => {
+          setShowMyAccount(false);
+          setShowWatchlist(true);
+        }}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  return (
+    <DashboardContent
+      onOpenWatchlist={() => setShowWatchlist(true)}
+      onOpenMyAccount={() => setShowMyAccount(true)}
+    />
+  );
 };
 
 interface DashboardContentProps {
   onOpenWatchlist: () => void;
+  onOpenMyAccount: () => void;
 }
 
-const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) => {
+const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist, onOpenMyAccount }) => {
   const {
     portfolios,
     currentPortfolio,
@@ -716,6 +751,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ onOpenWatchlist }) 
                 onLogout={handleLogout}
                 onAdminClick={() => setIsAdminOpen(true)}
                 onSyncClick={handleSyncPortfolioPrices}
+                onMyAccountClick={onOpenMyAccount}
                 isSyncing={isSyncing}
                 canSync={isFinnhubConfigured && !!currentPortfolio && !isUsingMockData}
               />

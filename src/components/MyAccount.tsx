@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { X, User, CreditCard, Bell, Shield, AlertTriangle, Save, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, User, CreditCard, Bell, Shield, AlertTriangle, Save, Loader2, Star, ChevronDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ConfirmationModal } from './ConfirmationModal';
+import Logo1 from './logos/Logo1';
+import UserMenu from './UserMenu';
 
 interface MyAccountProps {
-  isOpen: boolean;
-  onClose: () => void;
+  onBack: () => void;
+  onOpenWatchlist: () => void;
+  onLogout: () => void;
 }
 
 type TabType = 'profile' | 'subscription' | 'notifications' | 'security' | 'danger';
@@ -23,7 +26,7 @@ interface UsageStats {
   stockCount: number;
 }
 
-const MyAccount: React.FC<MyAccountProps> = ({ isOpen, onClose }) => {
+const MyAccount: React.FC<MyAccountProps> = ({ onBack, onOpenWatchlist, onLogout }) => {
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -50,12 +53,29 @@ const MyAccount: React.FC<MyAccountProps> = ({ isOpen, onClose }) => {
   const [showDeleteDataModal, setShowDeleteDataModal] = useState(false);
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [isCurrencyDropdownOpen, setIsCurrencyDropdownOpen] = useState(false);
+  const [selectedCurrency, setSelectedCurrency] = useState<'USD' | 'EUR'>('USD');
+  const currencyDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      fetchUserData();
+    fetchUserData();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (currencyDropdownRef.current && !currencyDropdownRef.current.contains(event.target as Node)) {
+        setIsCurrencyDropdownOpen(false);
+      }
+    };
+
+    if (isCurrencyDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
     }
-  }, [isOpen]);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isCurrencyDropdownOpen]);
 
   const fetchUserData = async () => {
     try {
@@ -274,8 +294,6 @@ const MyAccount: React.FC<MyAccountProps> = ({ isOpen, onClose }) => {
       setDeleteLoading(false);
     }
   };
-
-  if (!isOpen) return null;
 
   const renderProfileTab = () => (
     <div className="space-y-6">
@@ -528,100 +546,196 @@ const MyAccount: React.FC<MyAccountProps> = ({ isOpen, onClose }) => {
   );
 
   return (
-    <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-gray-800 rounded-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
-          <div className="flex items-center justify-between p-6 border-b border-gray-700">
-            <h2 className="text-2xl font-bold text-white">My Account</h2>
+    <div className="min-h-screen bg-gray-900 text-white">
+      <header className="bg-gray-800 border-b border-gray-700 px-4 sm:px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div title="Avalanex">
+              <Logo1 size={48} />
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <div className="relative" ref={isCurrencyDropdownOpen ? currencyDropdownRef : null}>
+              <button
+                onClick={() => setIsCurrencyDropdownOpen(!isCurrencyDropdownOpen)}
+                className="flex items-center space-x-2 px-3 py-2 hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <span className="text-blue-400 font-semibold">{selectedCurrency}</span>
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              </button>
+
+              {isCurrencyDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50">
+                  <button
+                    onClick={() => {
+                      setSelectedCurrency('USD');
+                      setIsCurrencyDropdownOpen(false);
+                    }}
+                    className={`w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors flex items-center space-x-3 ${
+                      selectedCurrency === 'USD' ? 'bg-gray-700' : ''
+                    }`}
+                  >
+                    <div className="w-8 h-6 rounded overflow-hidden flex-shrink-0 border border-gray-600">
+                      <svg viewBox="0 0 60 30" className="w-full h-full">
+                        <rect width="60" height="30" fill="#B22234"/>
+                        <path d="M0,3.5 h60 M0,7 h60 M0,10.5 h60 M0,14 h60 M0,17.5 h60 M0,21 h60 M0,24.5 h60" stroke="#fff" strokeWidth="2.3"/>
+                        <rect width="24" height="15" fill="#3C3B6E"/>
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-white font-medium">USD</div>
+                      <div className="text-sm text-gray-400">US Dollar</div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setSelectedCurrency('EUR');
+                      setIsCurrencyDropdownOpen(false);
+                    }}
+                    className={`w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors flex items-center space-x-3 ${
+                      selectedCurrency === 'EUR' ? 'bg-gray-700' : ''
+                    }`}
+                  >
+                    <div className="w-8 h-6 rounded bg-blue-600 flex-shrink-0 flex items-center justify-center relative">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-5 h-5 flex items-center justify-center">
+                          {[...Array(12)].map((_, i) => (
+                            <div
+                              key={i}
+                              className="absolute w-0.5 h-0.5 bg-yellow-400 rounded-full"
+                              style={{
+                                transform: `rotate(${i * 30}deg) translateY(-7px)`
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-white font-medium">EUR</div>
+                      <div className="text-sm text-gray-400">Euro</div>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+
             <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors"
+              onClick={onOpenWatchlist}
+              className="relative p-2 hover:bg-gray-700 rounded-lg transition-colors group"
+              title="Watchlist"
             >
-              <X className="w-6 h-6" />
+              <Star className="w-5 h-5 text-gray-400 group-hover:text-yellow-400" />
+            </button>
+
+            <UserMenu
+              onLogout={onLogout}
+            />
+          </div>
+        </div>
+      </header>
+
+      <main className="p-4 sm:p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-6">
+            <button
+              onClick={onBack}
+              className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span>Back to Dashboard</span>
             </button>
           </div>
 
-          <div className="flex flex-1 overflow-hidden">
-            <div className="w-64 border-r border-gray-700 p-4 space-y-2 overflow-y-auto">
-              <button
-                onClick={() => setActiveTab('profile')}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                  activeTab === 'profile'
-                    ? 'bg-gray-700 text-white'
-                    : 'text-gray-400 hover:bg-gray-700 hover:text-white'
-                }`}
-              >
-                <User className="w-5 h-5" />
-                <span>Profile</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('subscription')}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                  activeTab === 'subscription'
-                    ? 'bg-gray-700 text-white'
-                    : 'text-gray-400 hover:bg-gray-700 hover:text-white'
-                }`}
-              >
-                <CreditCard className="w-5 h-5" />
-                <span>Subscription</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('notifications')}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                  activeTab === 'notifications'
-                    ? 'bg-gray-700 text-white'
-                    : 'text-gray-400 hover:bg-gray-700 hover:text-white'
-                }`}
-              >
-                <Bell className="w-5 h-5" />
-                <span>Notifications</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('security')}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                  activeTab === 'security'
-                    ? 'bg-gray-700 text-white'
-                    : 'text-gray-400 hover:bg-gray-700 hover:text-white'
-                }`}
-              >
-                <Shield className="w-5 h-5" />
-                <span>Security</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('danger')}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                  activeTab === 'danger'
-                    ? 'bg-gray-700 text-white'
-                    : 'text-gray-400 hover:bg-gray-700 hover:text-white'
-                }`}
-              >
-                <AlertTriangle className="w-5 h-5" />
-                <span>Danger Zone</span>
-              </button>
+          <div className="bg-gray-800 rounded-xl border border-gray-700">
+            <div className="p-6 border-b border-gray-700">
+              <h1 className="text-3xl font-bold text-white">My Account</h1>
             </div>
 
-            <div className="flex-1 p-6 overflow-y-auto">
-              {loading ? (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-                </div>
-              ) : (
-                <>
-                  {activeTab === 'profile' && renderProfileTab()}
-                  {activeTab === 'subscription' && renderSubscriptionTab()}
-                  {activeTab === 'notifications' && renderNotificationsTab()}
-                  {activeTab === 'security' && renderSecurityTab()}
-                  {activeTab === 'danger' && renderDangerTab()}
-                </>
-              )}
+            <div className="flex flex-col md:flex-row">
+              <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-gray-700 p-4 space-y-2">
+                <button
+                  onClick={() => setActiveTab('profile')}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeTab === 'profile'
+                      ? 'bg-gray-700 text-white'
+                      : 'text-gray-400 hover:bg-gray-700 hover:text-white'
+                  }`}
+                >
+                  <User className="w-5 h-5" />
+                  <span>Profile</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('subscription')}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeTab === 'subscription'
+                      ? 'bg-gray-700 text-white'
+                      : 'text-gray-400 hover:bg-gray-700 hover:text-white'
+                  }`}
+                >
+                  <CreditCard className="w-5 h-5" />
+                  <span>Subscription</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('notifications')}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeTab === 'notifications'
+                      ? 'bg-gray-700 text-white'
+                      : 'text-gray-400 hover:bg-gray-700 hover:text-white'
+                  }`}
+                >
+                  <Bell className="w-5 h-5" />
+                  <span>Notifications</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('security')}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeTab === 'security'
+                      ? 'bg-gray-700 text-white'
+                      : 'text-gray-400 hover:bg-gray-700 hover:text-white'
+                  }`}
+                >
+                  <Shield className="w-5 h-5" />
+                  <span>Security</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('danger')}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeTab === 'danger'
+                      ? 'bg-gray-700 text-white'
+                      : 'text-gray-400 hover:bg-gray-700 hover:text-white'
+                  }`}
+                >
+                  <AlertTriangle className="w-5 h-5" />
+                  <span>Danger Zone</span>
+                </button>
+              </div>
+
+              <div className="flex-1 p-6">
+                {loading ? (
+                  <div className="flex items-center justify-center h-96">
+                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                  </div>
+                ) : (
+                  <>
+                    {activeTab === 'profile' && renderProfileTab()}
+                    {activeTab === 'subscription' && renderSubscriptionTab()}
+                    {activeTab === 'notifications' && renderNotificationsTab()}
+                    {activeTab === 'security' && renderSecurityTab()}
+                    {activeTab === 'danger' && renderDangerTab()}
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </main>
 
       <ConfirmationModal
         isOpen={showDeleteDataModal}
@@ -644,7 +758,7 @@ const MyAccount: React.FC<MyAccountProps> = ({ isOpen, onClose }) => {
         confirmButtonClass="bg-red-700 hover:bg-red-800"
         loading={deleteLoading}
       />
-    </>
+    </div>
   );
 };
 
