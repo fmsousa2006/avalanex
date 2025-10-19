@@ -76,13 +76,15 @@ const Positions: React.FC<PositionsProps> = ({ onBack }) => {
         .select(`
           *,
           stocks:stock_id (
+            id,
             symbol,
-            name
+            name,
+            current_price
           )
         `)
         .in('portfolio_id', portfolioIds);
 
-      if (!holdings) {
+      if (!holdings || holdings.length === 0) {
         setPositions([]);
         setLoading(false);
         return;
@@ -93,37 +95,42 @@ const Positions: React.FC<PositionsProps> = ({ onBack }) => {
         name: string;
         shares: number;
         costBasis: number;
+        stockId: string;
       }>();
 
       holdings.forEach((holding: any) => {
         const symbol = holding.stocks?.symbol;
         if (!symbol) return;
 
+        const sharesCount = holding.shares || 0;
+        const avgCost = parseFloat(holding.average_cost) || 0;
+
         if (stockMap.has(symbol)) {
           const existing = stockMap.get(symbol)!;
-          existing.shares += holding.quantity;
-          existing.costBasis += holding.quantity * holding.purchase_price;
+          existing.shares += sharesCount;
+          existing.costBasis += sharesCount * avgCost;
         } else {
           stockMap.set(symbol, {
             symbol,
             name: holding.stocks.name,
-            shares: holding.quantity,
-            costBasis: holding.quantity * holding.purchase_price,
+            shares: sharesCount,
+            costBasis: sharesCount * avgCost,
+            stockId: holding.stocks.id,
           });
         }
       });
 
-      const symbols = Array.from(stockMap.keys());
+      const stockIds = Array.from(stockMap.values()).map(s => s.stockId);
       const { data: priceData } = await supabase
         .from('stock_prices_1d')
-        .select('symbol, price')
-        .in('symbol', symbols)
+        .select('stock_id, close_price')
+        .in('stock_id', stockIds)
         .order('timestamp', { ascending: false });
 
       const latestPrices = new Map<string, number>();
       priceData?.forEach((p: any) => {
-        if (!latestPrices.has(p.symbol)) {
-          latestPrices.set(p.symbol, p.price);
+        if (!latestPrices.has(p.stock_id)) {
+          latestPrices.set(p.stock_id, parseFloat(p.close_price) || 0);
         }
       });
 
@@ -131,7 +138,7 @@ const Positions: React.FC<PositionsProps> = ({ onBack }) => {
       let totalCost = 0;
 
       const positionsData: Position[] = Array.from(stockMap.entries()).map(([symbol, data]) => {
-        const currentPrice = latestPrices.get(symbol) || 0;
+        const currentPrice = latestPrices.get(data.stockId) || parseFloat(holdings.find(h => h.stocks?.symbol === symbol)?.stocks?.current_price) || 0;
         const value = data.shares * currentPrice;
         const gainLoss = value - data.costBasis;
         const gainLossPercent = data.costBasis > 0 ? (gainLoss / data.costBasis) * 100 : 0;
@@ -314,19 +321,19 @@ const Positions: React.FC<PositionsProps> = ({ onBack }) => {
                       </div>
                       <div className="text-right">
                         <div className="text-white font-semibold">
-                          {currencySymbol}{position.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {currencySymbol}{(position.value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
-                        <div className="text-gray-400 text-sm">{position.percentage.toFixed(2)}%</div>
+                        <div className="text-gray-400 text-sm">{(position.percentage || 0).toFixed(2)}%</div>
                       </div>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <div className="text-gray-400">
-                        {position.shares.toLocaleString()} shares @ {currencySymbol}{position.currentPrice.toFixed(2)}
+                        {(position.shares || 0).toLocaleString()} shares @ {currencySymbol}{(position.currentPrice || 0).toFixed(2)}
                       </div>
-                      <div className={`flex items-center ${position.gainLoss >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {position.gainLoss >= 0 ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
-                        {position.gainLoss >= 0 ? '+' : ''}{currencySymbol}{Math.abs(position.gainLoss).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        <span className="ml-1">({position.gainLossPercent >= 0 ? '+' : ''}{position.gainLossPercent.toFixed(2)}%)</span>
+                      <div className={`flex items-center ${(position.gainLoss || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {(position.gainLoss || 0) >= 0 ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+                        {(position.gainLoss || 0) >= 0 ? '+' : ''}{currencySymbol}{Math.abs(position.gainLoss || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        <span className="ml-1">({(position.gainLossPercent || 0) >= 0 ? '+' : ''}{(position.gainLossPercent || 0).toFixed(2)}%)</span>
                       </div>
                     </div>
                   </div>
