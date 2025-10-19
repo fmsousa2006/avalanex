@@ -10,9 +10,11 @@ interface ConfirmationModalProps {
   confirmText?: string;
   cancelText?: string;
   variant?: 'danger' | 'warning' | 'info';
+  confirmButtonClass?: string;
+  loading?: boolean;
 }
 
-const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
+export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
@@ -21,6 +23,8 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   variant = 'danger',
+  confirmButtonClass,
+  loading = false,
 }) => {
   if (!isOpen) return null;
 
@@ -73,18 +77,19 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         <div className="flex items-center justify-end space-x-3 px-6 pb-6">
           <button
             onClick={onClose}
-            className="px-5 py-2.5 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg font-medium transition-colors"
+            disabled={loading}
+            className="px-5 py-2.5 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {cancelText}
           </button>
           <button
             onClick={() => {
               onConfirm();
-              onClose();
             }}
-            className={`px-5 py-2.5 rounded-lg font-medium transition-colors text-white ${classes.button}`}
+            disabled={loading}
+            className={`px-5 py-2.5 rounded-lg font-medium transition-colors text-white disabled:opacity-50 disabled:cursor-not-allowed ${confirmButtonClass || classes.button}`}
           >
-            {confirmText}
+            {loading ? 'Processing...' : confirmText}
           </button>
         </div>
       </div>
