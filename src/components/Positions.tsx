@@ -243,15 +243,31 @@ const Positions: React.FC<PositionsProps> = ({ onBack }) => {
         </svg>
 
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-          <div className="text-gray-400 text-sm mb-2">Total Net Worth</div>
-          <div className="text-white text-4xl font-bold">
-            {currencySymbol}{totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </div>
-          <div className={`text-sm mt-2 flex items-center justify-center ${totalGainLoss >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {totalGainLoss >= 0 ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
-            {totalGainLoss >= 0 ? '+' : ''}{currencySymbol}{Math.abs(totalGainLoss).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            <span className="ml-2">({totalGainLossPercent >= 0 ? '+' : ''}{totalGainLossPercent.toFixed(2)}%)</span>
-          </div>
+          {hoveredPosition ? (
+            <>
+              <div className="text-gray-400 text-sm mb-2">
+                {positions.find(p => p.symbol === hoveredPosition)?.name || hoveredPosition}
+              </div>
+              <div className="text-white text-4xl font-bold">
+                {currencySymbol}{(positions.find(p => p.symbol === hoveredPosition)?.value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-gray-400 text-lg mt-2">
+                {(positions.find(p => p.symbol === hoveredPosition)?.percentage || 0).toFixed(2)}%
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-gray-400 text-sm mb-2">Total Net Worth</div>
+              <div className="text-white text-4xl font-bold">
+                {currencySymbol}{totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className={`text-sm mt-2 flex items-center justify-center ${totalGainLoss >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {totalGainLoss >= 0 ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
+                {totalGainLoss >= 0 ? '+' : ''}{currencySymbol}{Math.abs(totalGainLoss).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <span className="ml-2">({totalGainLossPercent >= 0 ? '+' : ''}{totalGainLossPercent.toFixed(2)}%)</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
